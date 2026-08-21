@@ -38,7 +38,7 @@ CONTEXT_CALIBRATION_MIN = 8192
 CONTEXT_CALIBRATION_KEEP_ALIVE = '5m'
 CONTEXT_CALIBRATION_TIMEOUT = MAX_RESPONSE_TIMEOUT_SECONDS
 CONTEXT_CALIBRATION_ALGORITHM = 'ascending-small-buffer-swap-watchdog-v3'
-CONTEXT_ESTIMATOR_POLICY_VERSION = 'known-architecture-f16-kv-v1'
+CONTEXT_ESTIMATOR_POLICY_VERSION = 'known-architecture-f16-kv-v2'
 CONTEXT_HEADROOM_MIN_BYTES = 4 * 1024**3
 CONTEXT_HEADROOM_FRACTION = 0.0
 CONTEXT_CANCELLATION_GUARD_BYTES = 0
@@ -274,7 +274,14 @@ def require_local_linux_adaptive_endpoint(base_url):
 
 def ollama_show(model, base_url=DEFAULT_OLLAMA_URL):
     try:
-        return req_json(base_url.rstrip('/') + '/api/show', {'name': model}, timeout=30)
+        # Verbose metadata preserves per-layer architecture arrays (for
+        # example Nemotron-H's sparse KV-head layout) required by the
+        # fail-closed context admission estimator.
+        return req_json(
+            base_url.rstrip('/') + '/api/show',
+            {'name': model, 'verbose': True},
+            timeout=30,
+        )
     except Exception as exc:
         return {'_benchmark_capability_error': repr(exc)[:1000]}
 
@@ -1016,12 +1023,33 @@ def estimate_context_candidate_bytes(model, num_ctx):
             full_attention_blocks=int(math.ceil((blocks or 0)/full_attention_interval))
             local_attention_blocks=0; kv_heads=max(int(observed_kv_heads or 0),4)
     elif prefix and 'nemotron_h_moe' in prefix.lower():
-        estimator_policy='nemotron-h-moe-eight-attention-layers'
-        if blocks != 88:
-            estimator_policy='unknown-hybrid'
-        else:
+        estimator_policy='nemotron-h-moe-metadata-attention-layers'
+        raw_kv_layout=info.get(prefix+'.attention.head_count_kv')
+        parsed_kv_layout=None
+        if isinstance(raw_kv_layout,list):
+            try:
+                parsed_kv_layout=[int(value) for value in raw_kv_layout]
+            except (TypeError,ValueError):
+                parsed_kv_layout=None
+        active_kv_heads=(
+            [value for value in parsed_kv_layout if value > 0]
+            if parsed_kv_layout is not None else []
+        )
+        if (
+            parsed_kv_layout is not None
+            and len(parsed_kv_layout) == int(blocks or 0)
+            and all(value >= 0 for value in parsed_kv_layout)
+            and active_kv_heads
+        ):
+            full_attention_blocks=len(active_kv_heads); local_attention_blocks=0
+            kv_heads=max(max(active_kv_heads),int(observed_kv_heads or 0),2)
+        elif blocks == 88 and observed_kv_heads:
+            # Compatibility with older Ollama metadata that exposed a scalar
+            # KV-head count for the original 88-block Nemotron-H checkpoint.
             full_attention_blocks=8; local_attention_blocks=0
-            kv_heads=max(int(observed_kv_heads or 0),2)
+            kv_heads=max(int(observed_kv_heads),2)
+        else:
+            estimator_policy='unknown-hybrid'
     elif prefix and ('gemma4' in prefix.lower() or 'gemma_4' in prefix.lower()):
         estimator_policy='gemma4-ten-global-fifty-local'
         if blocks != 60 or (sliding_window is not None and sliding_window != 1024):

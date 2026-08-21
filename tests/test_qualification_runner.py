@@ -24,6 +24,17 @@ sys.path.insert(0, str(SCRIPT_DIR))
 SPEC.loader.exec_module(runner)
 
 
+class ModelDiscoveryTests(unittest.TestCase):
+    def test_ollama_show_requests_verbose_architecture_metadata(self):
+        with mock.patch.object(runner, "req_json", return_value={}) as request:
+            runner.ollama_show("fixture:latest", "http://127.0.0.1:11434")
+        request.assert_called_once_with(
+            "http://127.0.0.1:11434/api/show",
+            {"name": "fixture:latest", "verbose": True},
+            timeout=30,
+        )
+
+
 def fixture_linux_resource_snapshot(sampled=1.0):
     return {
         "mem_total_bytes": 128 * 1024**3,
@@ -531,6 +542,34 @@ class ResourceGuardV2Tests(unittest.TestCase):
         self.assertTrue(estimate["admission_estimator_complete"])
         self.assertEqual(8, estimate["kv_head_count"])
         self.assertEqual(0, estimate["local_attention_blocks"])
+
+    def test_nemotron35_lightning_uses_metadata_sparse_attention_layers(self):
+        kv_layout = [0] * 53
+        for index in (5, 12, 19, 26, 33, 42, 52):
+            kv_layout[index] = 2
+        model = {
+            "name": "nemotron-3.5-lightning:latest",
+            "family": "nemotron_h_moe",
+            "size": 25_430_749_387,
+            "model_info": {
+                "nemotron_h_moe.context_length": 1_048_576,
+                "nemotron_h_moe.block_count": 53,
+                "nemotron_h_moe.attention.head_count": 32,
+                "nemotron_h_moe.attention.head_count_kv": kv_layout,
+                "nemotron_h_moe.attention.key_length": 128,
+                "nemotron_h_moe.attention.value_length": 128,
+            },
+        }
+        estimate = runner.estimate_context_candidate_bytes(model, 1_048_576)
+        self.assertTrue(estimate["admission_estimator_complete"])
+        self.assertEqual(
+            "nemotron-h-moe-metadata-attention-layers",
+            estimate["context_estimator_policy"],
+        )
+        self.assertEqual(7, estimate["full_attention_blocks"])
+        self.assertEqual(0, estimate["local_attention_blocks"])
+        self.assertEqual(2, estimate["kv_head_count"])
+        self.assertEqual(7 * self.GIB, estimate["kv_cache_estimate_bytes"])
 
     def test_tag_name_cannot_override_contradictory_global_metadata(self):
         model = {
