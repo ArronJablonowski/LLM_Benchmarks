@@ -24,6 +24,16 @@ python3 scripts/ollama_standardized_local_benchmarks.py \
 
 The plan-only default does not call `/api/generate`, stop or load a model, start telemetry, or create a report directory. With adaptive context it displays the unresolved guarded-ascending ladder beginning at 8,192 tokens but does not execute an empty-prompt load probe. `--list-tasks` is even more isolated and does not contact Ollama.
 
+To review the complete standalone official AIME 2026 and GPQA Diamond task inventory on the Spark without contacting Ollama:
+
+```bash
+python3 scripts/ollama_standardized_local_benchmarks.py \
+  --task-profile standard-local \
+  --list-tasks
+```
+
+This prints 228 vendored items. Their runtime requires no internet, external judge, container, or third-party Python dependency. Official profiles use single-arm execution; run matched `--thinking off` and `--thinking on` campaigns when both controls are needed. Paired mode is intentionally rejected so its qualification probes cannot change the official score denominator.
+
 ## Telemetry on Spark
 
 With `--telemetry auto`, Linux selects `nvidia-smi` and records:

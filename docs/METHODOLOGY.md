@@ -18,6 +18,16 @@ By default each task unloads the model before execution and requests `keep_alive
 
 The CLI defaults to plan-only behavior. Actual model inference requires an explicit `--run` flag. Planning, task listing, unit tests, and dashboard generation are not benchmark executions.
 
+## Full official standalone profiles
+
+`--task-profile standard-local` loads two complete, frozen official test splits: 30 AIME 2026 math problems and 198 GPQA Diamond graduate-level multiple-choice questions. The individual `aime2026` and `gpqa-diamond` profiles select only one split. Integrity is checked against `data/standard_local/manifest.json` before model discovery or inference.
+
+AIME is graded by an anchored terminal integer answer; both ordinary integer spelling and the contest's zero-padded three-digit spelling are accepted. GPQA is graded by an anchored terminal A-D choice. Its four choices were deterministically shuffled once from the upstream record identifier and frozen in the vendored snapshot. Runtime scoring uses the existing standard-library exact-answer grader. It does not use answer substrings, an LLM judge, network access, or external packages.
+
+These profiles keep the direct runner's streaming capture, unlimited suite-level generation (`num_predict=-1`), 1,800-second maximum deadline, telemetry, provenance, cold/warm controls, and explicit `--run` guard. They intentionally reject schema-v3 paired mode because its `simple_reasoning` and `math500_mini` qualification probes are not official AIME/GPQA items. Separate single-arm thinking-off and thinking-on runs keep the official denominator exact.
+
+The selection boundary is methodological, not a claim that the other Muse Glimmer evaluations are unimportant. IFBench, SciCode, multimodal document/UI benchmarks, LLM-judge benchmarks, and agent-environment benchmarks were excluded because faithfully reproducing their official scoring requires external packages, large auxiliary assets, another model/service, or a simulator/container. A reduced imitation is not reported under an official benchmark name.
+
 ## Paired thinking protocol
 
 `--thinking paired` is one schema-v3 campaign, not two unrelated single-arm runs. It selects models with verified Ollama thinking capability, groups identical non-empty digests so aliases are measured once, and records every alias. Non-thinking models are excluded. Temperature remains zero, generation seed remains 42, `num_predict` remains -1, and every task retains the 1,800-second ceiling.

@@ -12,6 +12,7 @@ GENERATOR = ROOT / "dashboard" / "generate_local_llm_dashboard.py"
 PLATFORM_SUPPORT = ROOT / "scripts" / "platform_support.py"
 ACCURACY_GRADING = ROOT / "scripts" / "accuracy_grading.py"
 THINKING_PAIR_SUPPORT = ROOT / "scripts" / "thinking_pair_support.py"
+STANDARD_LOCAL_TASKS = ROOT / "scripts" / "standard_local_tasks.py"
 
 
 def literal_assignment(path, name):
@@ -38,7 +39,7 @@ class RepositoryTests(unittest.TestCase):
     def test_python_sources_compile(self):
         for path in (
             DIRECT, OPENCLAW, GENERATOR, PLATFORM_SUPPORT, ACCURACY_GRADING,
-            THINKING_PAIR_SUPPORT,
+            THINKING_PAIR_SUPPORT, STANDARD_LOCAL_TASKS,
         ):
             compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
@@ -59,7 +60,7 @@ class RepositoryTests(unittest.TestCase):
             path.read_text(encoding="utf-8")
             for path in (
                 DIRECT, OPENCLAW, GENERATOR, PLATFORM_SUPPORT,
-                ACCURACY_GRADING, THINKING_PAIR_SUPPORT,
+                ACCURACY_GRADING, THINKING_PAIR_SUPPORT, STANDARD_LOCAL_TASKS,
             )
         )
         self.assertNotIn("/Users/", source)

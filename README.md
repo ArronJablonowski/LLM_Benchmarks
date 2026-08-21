@@ -5,11 +5,14 @@ This repository contains the shared source for the general local-LLM benchmark w
 ## Included tools
 
 - `scripts/ollama_standardized_local_benchmarks.py` runs 18 direct Ollama proxy tests: three smoke tests and 15 standardized mini tasks. Text-only models skip the OCR task, leaving 17 scored tests.
+- `scripts/standard_local_tasks.py` loads integrity-checked, vendored snapshots of the full AIME 2026 (30 items) and GPQA Diamond (198 items) test sets. These 228 items run offline with deterministic exact-answer grading and no external judge or Python package.
 - `scripts/thinking_pair_support.py` creates frozen schema-v3 treatment and qualification plans, deduplicates identical model aliases, and supplies stable campaign identifiers for resumable comparisons.
 - `scripts/openclaw_18_test_benchmarks.py` runs the same 17 text tests through the OpenClaw agent gateway. It does not run OCR.
 - `dashboard/generate_local_llm_dashboard.py` builds a host-specific HTML dashboard from the installed Ollama inventory and the latest local result CSVs.
 
 These are deterministic local regression tests, not complete official dataset evaluations. Names such as GSM8K, MATH-500, HumanEval, and MMLU-Pro identify the style of a small proxy task; they do not mean the full dataset was executed.
+
+The `standard-local`, `aime2026`, and `gpqa-diamond` task profiles are the exception: they run the complete frozen test split named by the profile. Their snapshots, hashes, source URLs, and licenses are stored under `data/standard_local/`.
 
 ## Supported hosts and requirements
 
@@ -48,6 +51,40 @@ List tasks without contacting Ollama:
 ```bash
 python3 scripts/ollama_standardized_local_benchmarks.py --list-tasks
 ```
+
+### Full official offline profiles
+
+The standard-local profile adds the official local tests that can be graded faithfully with the Python standard library alone:
+
+| Profile | Items | Grading | Runtime dependencies |
+|---|---:|---|---|
+| AIME 2026 | 30 | Exact final integer | None |
+| GPQA Diamond | 198 | Exact final choice | None |
+| `standard-local` combined | 228 | Both deterministic graders | None |
+
+The questions and answers are read only from vendored JSONL. No network request, hosted judge, API, container, browser, retrieval service, or third-party Python package is used during a run. Web access was used only to acquire and verify the official upstream snapshots. GPQA choices have a deterministic, frozen order so the correct option is not always in its source position.
+
+Review the combined plan without inference:
+
+```bash
+python3 scripts/ollama_standardized_local_benchmarks.py \
+  --task-profile standard-local \
+  --models qwen3.6:35b
+```
+
+List one official suite without contacting Ollama:
+
+```bash
+python3 scripts/ollama_standardized_local_benchmarks.py \
+  --task-profile aime2026 \
+  --list-tasks
+```
+
+After explicit approval, add `--run`. AIME 2026 is CC BY-NC-SA 4.0 and therefore carries a non-commercial restriction; GPQA is CC BY 4.0. See `data/standard_local/THIRD_PARTY_NOTICES.md` before redistribution or commercial use.
+
+Official standard-local profiles currently use single-arm execution. To compare reasoning control, run separate otherwise-identical `--thinking off` and `--thinking on` campaigns. `--thinking paired` is rejected for these profiles so its two auxiliary qualification probes cannot silently alter the official 30-, 198-, or 228-item score denominator.
+
+Other Muse Glimmer methodology benchmarks were not relabeled or approximated. IFBench's official verifier requires several external language packages; SciCode requires a scientific execution stack; multimodal suites require substantial image assets and specialized preprocessing; judge-scored suites require another LLM; and agent suites require containers or simulators. Those do not meet this repository's standalone, no-external-dependency rule.
 
 After reviewing the plan and explicitly approving a real benchmark, add `--run`:
 

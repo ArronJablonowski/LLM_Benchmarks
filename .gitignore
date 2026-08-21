@@ -14,5 +14,9 @@ results/
 logs/
 *.csv
 *.jsonl
+# Frozen, integrity-checked official benchmark inputs are source data, not
+# generated result artifacts.
+!data/standard_local/
+!data/standard_local/*.jsonl
 Local LLM Benchmark Dashboard.html
 Local LLM Model Research/

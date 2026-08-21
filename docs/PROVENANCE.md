@@ -10,6 +10,10 @@ Canonical source inputs:
 
 Portability and safety changes made during synchronization:
 
+- Frozen full official AIME 2026 (30 items) and GPQA Diamond (198 items) snapshots acquired from their upstream public distributions on August 21, 2026, normalized to JSONL, and bound by SHA-256 in `data/standard_local/manifest.json`
+- Standard-library-only official task loader with fail-closed file hash/count validation, deterministic frozen GPQA option ordering, anchored exact-answer grading, and no benchmark-runtime network or external-judge dependency
+- Separate standard-local task profiles that preserve official item denominators and reject auxiliary paired-thinking qualification probes; reasoning-control comparisons use separate single-arm campaigns
+
 - Dynamic Mac Studio/Mac Mini/NVIDIA DGX Spark dashboard labels
 - Installed-model filtering from the newer Studio dashboard behavior
 - Partial CSV merging by model and task, with newer task rows winning

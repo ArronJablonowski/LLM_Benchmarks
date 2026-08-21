@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "snapshot_date": "2026-08-21",
+  "runtime_network_required": false,
+  "benchmarks": {
+    "aime2026": {
+      "file": "aime_2026.jsonl",
+      "item_count": 30,
+      "sha256": "02ca179061822bd0da8755a88713279c91991aa3811f71bf0235e3ad7d510e59",
+      "source_url": "https://huggingface.co/datasets/MathArena/aime_2026",
+      "source_artifact_sha256": "3af7cbd02284c8b998a71f7b247be5916439314861cc908ed1ee786acd1b43f0",
+      "license": "CC BY-NC-SA 4.0"
+    },
+    "gpqa_diamond": {
+      "file": "gpqa_diamond.jsonl",
+      "item_count": 198,
+      "sha256": "213ae51ab225de032e3fed122248d92eb53fd99513909271c4d5c551918eee9d",
+      "source_url": "https://github.com/idavidrein/gpqa",
+      "source_artifact_sha256": "461ae7329f15a3e35f8184d2dac24b990f34fdf12f366ca4062d8e6638cd08dc",
+      "license": "CC BY 4.0"
+    }
+  }
+}

@@ -10,6 +10,11 @@ from accuracy_grading import (
     grade_task,
 )
 from platform_support import create_sampler, run_metadata
+from standard_local_tasks import (
+    PROFILE_CHOICES,
+    STANDARD_LOCAL_PROFILE,
+    load_standard_local_tasks,
+)
 from thinking_pair_support import (
     build_paired_plan,
     classify_reasoning_trace,
@@ -3489,8 +3494,9 @@ def paired_comparison_integrity(model, model_rows, tasks):
 
 
 def main(argv=None):
-    ap=argparse.ArgumentParser(description='Run the cross-platform direct Ollama 18-task local benchmark suite.')
+    ap=argparse.ArgumentParser(description='Run cross-platform direct Ollama local benchmark profiles.')
     ap.add_argument('--models', nargs='*', help='Exact installed model tags. Default plan includes all installed models.')
+    ap.add_argument('--task-profile', choices=PROFILE_CHOICES, default='core', help='Task set: the 18-task local proxy core, all vendored official local tests, or one official benchmark.')
     ap.add_argument('--limit-tasks', type=int, default=0, help='Use only the first N tasks.')
     ap.add_argument('--timeout', type=int, default=DEFAULT_TIMEOUT, help=f'Hard per-task response deadline in seconds (1-{MAX_RESPONSE_TIMEOUT_SECONDS}; default: %(default)s).')
     context_group=ap.add_mutually_exclusive_group()
@@ -3511,6 +3517,12 @@ def main(argv=None):
     ap.add_argument('--list-tasks', action='store_true', help='List task IDs without contacting Ollama.')
     args=ap.parse_args(argv)
 
+    profile_tasks = TASKS if args.task_profile == 'core' else load_standard_local_tasks(args.task_profile)
+    benchmark_profile = (
+        BENCHMARK_PROFILE if args.task_profile == 'core'
+        else f'{STANDARD_LOCAL_PROFILE}:{args.task_profile}'
+    )
+
     if args.limit_tasks < 0:
         ap.error('--limit-tasks must be zero or greater')
     if args.timeout < 1 or args.timeout > MAX_RESPONSE_TIMEOUT_SECONDS:
@@ -3529,8 +3541,14 @@ def main(argv=None):
         ap.error('--adaptive-native-context requires --thinking paired')
     if args.resume_plan and args.thinking != 'paired':
         ap.error('--resume-plan requires --thinking paired')
+    if args.task_profile != 'core' and args.thinking == 'paired':
+        ap.error(
+            '--thinking paired is not available for official standard-local profiles; '
+            'run separate --thinking off and --thinking on campaigns so qualification '
+            'probes cannot alter the official score denominator'
+        )
     if args.list_tasks:
-        for task in TASKS:
+        for task in profile_tasks:
             print(f"{task['id']}\t{task['family']}\t{task['name']}")
         return 0
 
@@ -3543,7 +3561,7 @@ def main(argv=None):
     sampler=create_sampler(telemetry_mode, interval_ms=args.telemetry_interval_ms)
     metadata=run_metadata(sampler.backend, base_url)
     models=load_models(args.models, base_url)
-    tasks=TASKS[:args.limit_tasks] if args.limit_tasks else TASKS
+    tasks=profile_tasks[:args.limit_tasks] if args.limit_tasks else list(profile_tasks)
     if args.thinking == 'paired' and not args.resume_plan:
         selected_task_ids={task['id'] for task in tasks}
         for qualification_task_id in (
@@ -3571,7 +3589,7 @@ def main(argv=None):
         'keep_alive':keep_alive_request,
         'residency_policy':residency_policy,
         'suite_version':metadata.get('suite_version') or '',
-        'benchmark_profile':BENCHMARK_PROFILE,
+        'benchmark_profile':benchmark_profile,
         'grading_profile':GRADING_PROFILE,
         'output_token_policy':OUTPUT_TOKEN_POLICY,
         'system_page_size_bytes':SYSTEM_PAGE_SIZE_BYTES,
@@ -3595,7 +3613,7 @@ def main(argv=None):
         if args.resume_plan:
             resume_path=args.resume_plan.expanduser().resolve()
             paired_plan=json.loads(resume_path.read_text(encoding='utf-8'))
-            task_catalog={task['id']:task for task in TASKS}
+            task_catalog={task['id']:task for task in profile_tasks}
             try:
                 tasks=[task_catalog[task_id] for task_id in paired_plan.get('task_ids') or []]
             except KeyError as exc:
@@ -3674,7 +3692,7 @@ def main(argv=None):
     print(f"Telemetry: {sampler.backend} ({sampler.description})")
     print(f"Telemetry interval: {args.telemetry_interval_ms}ms")
     print(f"Residency policy: {residency_policy} (keep_alive={keep_alive_request!r})")
-    print(f"Benchmark profile: {BENCHMARK_PROFILE}")
+    print(f"Benchmark profile: {benchmark_profile}")
     print(f"Grading profile: {GRADING_PROFILE}")
     print(f"Output token limit: unlimited ({OUTPUT_TOKEN_LIMIT}); generation still ends on EOS, stop conditions, errors, or timeout")
     print(f"Hard response timeout: {args.timeout}s per task (suite maximum {MAX_RESPONSE_TIMEOUT_SECONDS}s)")
@@ -3708,7 +3726,7 @@ def main(argv=None):
         else:
             _, _, effective = thinking_request_for_model(model, args.thinking)
             print(f" - {model['name']} ({model.get('params') or 'unknown'}, {model.get('quant') or 'unknown'}; native_context={model.get('context_length') or 'unknown'}; thinking={effective})")
-    print(f"Tasks: {len(tasks)} / {len(TASKS)} defined")
+    print(f"Tasks: {len(tasks)} / {len(profile_tasks)} defined")
     for task in tasks:
         print(f" - {task['id']} ({task['family']})")
     print(f"Maximum task time per treatment: {len(tasks) * args.timeout / 3600:.2f} hours")
@@ -3776,7 +3794,7 @@ def main(argv=None):
         md_path=out_dir/f'{report_prefix}.md'
     metadata['run_id']=stamp
     metadata.update({
-        'benchmark_profile': BENCHMARK_PROFILE,
+        'benchmark_profile': benchmark_profile,
         'grading_profile': GRADING_PROFILE,
         'output_token_policy': OUTPUT_TOKEN_POLICY,
         'output_token_limit': OUTPUT_TOKEN_LIMIT,
@@ -4081,7 +4099,7 @@ def main(argv=None):
                         'protocol_valid':str(protocol_valid).lower(),'protocol_error':protocol_error,
                         'model_aliases':','.join(model.get('aliases') or [model['name']]),
                         **qualification_fields,
-                        'benchmark_profile':BENCHMARK_PROFILE,'grading_profile':GRADING_PROFILE,
+                        'benchmark_profile':benchmark_profile,'grading_profile':GRADING_PROFILE,
                         'runner_sha256':metadata['runner_sha256'],'grader_sha256':metadata['grader_sha256'],'planner_sha256':metadata.get('planner_sha256',''),
                         'output_token_policy':OUTPUT_TOKEN_POLICY,
                         'output_token_limit':OUTPUT_TOKEN_LIMIT,'num_predict':OUTPUT_TOKEN_LIMIT,'temperature':0,'seed':42,'response_timeout_seconds':args.timeout,
@@ -4263,7 +4281,7 @@ def main(argv=None):
         f"Host: {metadata['host_label']} (`{metadata['host']}` · {metadata['platform']}/{metadata['architecture']})",
         f"Ollama: {metadata['ollama_version'] or 'unknown'}",
         f"Telemetry: {sampler.backend}",'',
-        f"Benchmark profile: {BENCHMARK_PROFILE}",
+        f"Benchmark profile: {benchmark_profile}",
         f"Grading profile: {GRADING_PROFILE}",
         f"Runner SHA-256: `{metadata['runner_sha256']}`",
         f"Grader SHA-256: `{metadata['grader_sha256']}`",
@@ -4275,7 +4293,12 @@ def main(argv=None):
         f"Experiment ID: {metadata.get('experiment_id') or 'single-arm legacy mode'}",
         f"Plan SHA-256: `{metadata.get('plan_sha256') or 'not applicable'}`",'',
         f'Models: {len(models)}','',f'Tasks per model: {len(tasks)}','',
-        'Suite definition: 3 smoke tests + 15 standardized mini tasks = 18 defined tests. Text-only models skip OCR, leaving 17 applicable tests.','',
+        (
+            'Suite definition: 3 smoke tests + 15 standardized mini tasks = 18 defined tests. '
+            'Text-only models skip OCR, leaving 17 applicable tests.'
+            if args.task_profile == 'core' else
+            f'Suite definition: {len(profile_tasks)} frozen official local items from task profile `{args.task_profile}`; runtime network access and external judges are not used.'
+        ),'',
         f'CSV: `{csv_path}`',f'JSONL: `{jsonl_path}`',
         (f'Plan: `{plan_path}`' if paired_plan else ''),''
     ]
