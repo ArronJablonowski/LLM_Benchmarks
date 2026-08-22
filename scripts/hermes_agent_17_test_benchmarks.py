@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Accuracy-first text benchmarks through the real Hermes Agent one-shot path."""
+"""Accuracy-first benchmarks through the real Hermes Agent one-shot path."""
 from __future__ import annotations
 
 import argparse
@@ -7,6 +7,7 @@ import csv
 import hashlib
 import json
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -18,8 +19,11 @@ from accuracy_grading import GRADING_PROFILE, grade_task
 from ollama_standardized_local_benchmarks import (
     TASKS as ALL_TASKS,
     RESOURCE_GUARD_INFRASTRUCTURE_FAILURE,
+    SYSTEM_PAGE_SIZE_BYTES,
     avg_field,
     finish_paired_task_resource_guard,
+    load_models,
+    make_text_png_base64,
     max_field,
     read_linux_resource_snapshot,
     start_paired_task_resource_guard,
@@ -28,14 +32,16 @@ from ollama_standardized_local_benchmarks import (
     verify_paired_runtime_identity,
 )
 from platform_support import create_sampler, run_metadata
+from vision_benchmark_support import materialize_ocr_asset, model_supports_vision
 
-SUITE_VERSION = "0.1.0"
-BENCHMARK_PROFILE = "hermes-agent-accuracy-first-v1"
+SUITE_VERSION = "0.2.0"
+BENCHMARK_PROFILE = "hermes-agent-accuracy-first-v2"
 DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
 DEFAULT_TIMEOUT = 1800
 DEFAULT_OUT_DIR = Path.home() / ".hermes/reports/hermes_agent_benchmarks"
 DEFAULT_HERMES_HOME = Path.home() / ".hermes"
-TEXT_TASKS = [task for task in ALL_TASKS if task["id"] != "ocrbench_mini"]
+TASKS = list(ALL_TASKS)
+TEXT_TASKS = [task for task in TASKS if not task.get("requires_image")]  # compatibility for report tooling/tests
 
 
 def _json_file(path: Path) -> dict:
@@ -59,6 +65,28 @@ def _plan_models(plan: dict, selected: list[str] | None) -> list[dict]:
     return models
 
 
+def _dedupe_models(models: list[dict]) -> list[dict]:
+    """Benchmark one canonical local tag per installed checkpoint digest."""
+    grouped: dict[str, list[dict]] = {}
+    for index, model in enumerate(models):
+        key = str(model.get("digest") or f"missing:{index}:{model.get('name', '')}")
+        grouped.setdefault(key, []).append(dict(model))
+    result = []
+    for aliases in grouped.values():
+        names = sorted({str(item.get("name") or "") for item in aliases if item.get("name")})
+        canonical = sorted(names, key=lambda name: (name.lower().startswith("hf.co/"), len(name), name.lower()))[0]
+        model = next(item for item in aliases if item.get("name") == canonical)
+        model["aliases"] = names
+        capable = "thinking" in {str(value).lower() for value in model.get("capabilities") or []}
+        model["treatments"] = [{
+            "treatment_key": "model-default",
+            "treatment_role": "default",
+            "hermes_reasoning": "max" if capable else "none",
+        }]
+        result.append(model)
+    return sorted(result, key=lambda model: str(model.get("name") or "").lower())
+
+
 def _treatments(model: dict) -> list[dict]:
     result = []
     for item in model.get("treatments") or []:
@@ -75,7 +103,7 @@ def _treatments(model: dict) -> list[dict]:
             reasoning = "high"
         else:
             reasoning = "max"
-        result.append({**item, "hermes_reasoning": reasoning})
+        result.append({**item, "hermes_reasoning": item.get("hermes_reasoning") or reasoning})
     return result or [{"treatment_key": "model-default", "treatment_role": "default", "hermes_reasoning": "max"}]
 
 
@@ -83,40 +111,62 @@ def _run(cmd: list[str], timeout: int) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, text=True, capture_output=True, timeout=timeout)
 
 
-def _set_context(hermes_python: Path, context: int) -> None:
-    cmd = [str(hermes_python), "-m", "hermes_cli.main", "config", "set", "model.ollama_num_ctx", str(context)]
+def _hermes_gateway_active() -> bool:
+    if platform.system() == "Darwin":
+        proc = _run(["launchctl", "print", f"gui/{os.getuid()}/ai.hermes.gateway"], 15)
+        return proc.returncode == 0
+    proc = _run(["systemctl", "--user", "is-active", "hermes-gateway.service"], 15)
+    return proc.returncode == 0 and proc.stdout.strip() == "active"
+
+
+def _set_config(hermes_python: Path, key: str, value: str) -> None:
+    cmd = [str(hermes_python), "-m", "hermes_cli.main", "config", "set", key, value]
     proc = _run(cmd, 30)
     if proc.returncode:
-        raise RuntimeError((proc.stderr or proc.stdout or "Hermes context update failed").strip())
-    verify = _run([str(hermes_python), "-m", "hermes_cli.main", "config", "get", "model.ollama_num_ctx"], 30)
-    if verify.returncode or verify.stdout.strip() != str(context):
-        raise RuntimeError(f"Hermes context verification failed: expected {context}, got {verify.stdout.strip()!r}")
+        raise RuntimeError((proc.stderr or proc.stdout or f"Hermes config update failed for {key}").strip())
+    verify = _run([str(hermes_python), "-m", "hermes_cli.main", "config", "get", key], 30)
+    if verify.returncode or verify.stdout.strip().lower() != str(value).lower():
+        raise RuntimeError(
+            f"Hermes config verification failed for {key}: expected {value}, got {verify.stdout.strip()!r}"
+        )
+
+
+def _set_context(hermes_python: Path, context: int) -> None:
+    _set_config(hermes_python, "model.ollama_num_ctx", str(context))
+
+
+def _set_native_vision(hermes_python: Path, enabled: bool) -> None:
+    """Make Hermes native routing explicit so OCR can never use its aux model."""
+    _set_config(hermes_python, "model.supports_vision", "true" if enabled else "false")
+    _set_config(hermes_python, "agent.image_input_mode", "native" if enabled else "auto")
 
 
 def _hermes_command(
-    hermes_python: Path, model: str, prompt: str, reasoning: str, usage_file: Path
+    hermes_python: Path, model: str, prompt: str, reasoning: str, usage_file: Path,
+    provider: str = "custom", toolset: str = "clarify",
 ) -> list[str]:
     return [
         str(hermes_python), "-m", "hermes_cli.main",
         "--oneshot", prompt,
         "--usage-file", str(usage_file),
         "--model", model,
-        "--provider", "custom",
+        "--provider", provider,
         "--reasoning", reasoning,
-        "--toolsets", "clarify",
+        "--toolsets", toolset,
         "--ignore-rules",
     ]
 
 
 def _summary(rows: list[dict], path: Path, metadata: dict) -> None:
     lines = [
-        "# Hermes Agent 17-Test Text Benchmark", "",
+        "# Hermes Agent 18-Test Benchmark", "",
         f"- Run: `{metadata['run_id']}`",
         f"- Host: {metadata['host_label']}",
         f"- Hermes: `{metadata['hermes_version']}`",
         f"- Execution: Hermes one-shot agent → custom provider → local Ollama",
-        f"- Tasks: 17 text tasks; OCR is excluded because Hermes one-shot has no image flag.",
-        f"- Tool surface: `clarify` only; rules/memory injection disabled for repeatability.", "",
+        f"- Tasks: 17 text tasks plus capability-gated OCR.",
+        f"- OCR transport: local file path through `vision_analyze`; native routing is forced for verified vision models and auxiliary vision fallback is disabled.",
+        f"- Tool surface: `clarify` for text and `vision` for OCR; rules/memory injection disabled for repeatability.", "",
         "| Model | Treatment | Pass | Scored | Errors | Avg wall s | Output tokens |", "|---|---:|---:|---:|---:|---:|---:|",
     ]
     keys = sorted({(row["model"], row["treatment_key"]) for row in rows})
@@ -166,13 +216,13 @@ def _load_resume_records(
             if str(row.get(field, "")) != str(value):
                 mismatches.append(field)
         status = str(row.get("status") or "")
-        if status not in {"ok", "error", "timeout"}:
+        if status not in {"ok", "error", "timeout", "skip"}:
             mismatches.append("status")
-        grading = grade_task(task, status, str(record.get("assistant_text") or ""), skipped=False)
+        grading = grade_task(task, status, str(record.get("assistant_text") or ""), skipped=status == "skip")
         if grading.get("verdict") != row.get("verdict"):
             mismatches.append("verdict")
         guard = record.get("resource_guard") or {}
-        if (
+        if status != "skip" and (
             guard.get("watchdog_triggered") is not False
             or guard.get("memory_recovery_verified") is not True
             or guard.get("watchdog_join_verified") is not True
@@ -189,8 +239,20 @@ def _load_resume_records(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--context-plan", type=Path, required=True)
+    parser.add_argument(
+        "--context-plan", type=Path,
+        help="Frozen paired/context plan. Omit to benchmark every unique local checkpoint at the Ollama runtime context default.",
+    )
     parser.add_argument("--models", nargs="*")
+    parser.add_argument(
+        "--external-models", nargs="*", default=[],
+        help="Authenticated non-Ollama Hermes model IDs. When supplied, local model discovery and context/resource guards are skipped.",
+    )
+    parser.add_argument(
+        "--external-vision-models", nargs="*", default=[],
+        help="Subset of --external-models explicitly verified to accept native image input. Others skip OCR.",
+    )
+    parser.add_argument("--provider", default="openai-codex", help="Hermes provider used with --external-models.")
     parser.add_argument("--tasks", nargs="*")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
     parser.add_argument("--ollama-url", default=DEFAULT_OLLAMA_URL)
@@ -206,33 +268,73 @@ def main(argv: list[str] | None = None) -> int:
     if not 1 <= args.timeout <= 1800:
         parser.error("--timeout must be between 1 and 1800 seconds")
 
-    plan = _json_file(args.context_plan.expanduser())
-    models = _plan_models(plan, args.models)
-    tasks = TEXT_TASKS
+    base_url = args.ollama_url.rstrip("/")
+    if args.context_plan and args.external_models:
+        parser.error("--context-plan cannot be combined with --external-models")
+    unknown_external_vision = set(args.external_vision_models) - set(args.external_models)
+    if unknown_external_vision:
+        parser.error("--external-vision-models must be a subset of --external-models")
+    if args.external_models:
+        models = [{
+            "name": model,
+            "digest": "",
+            "capabilities": ["completion", "thinking"] + (["vision"] if model in args.external_vision_models else []),
+            "external": True,
+            "treatments": [{
+                "treatment_key": "model-default",
+                "treatment_role": "default",
+                "hermes_reasoning": "medium",
+            }],
+        } for model in args.external_models]
+        plan = {"ollama_version": "", "runtime_resource_safety_policy": {"system_page_size_bytes": SYSTEM_PAGE_SIZE_BYTES}}
+        context_plan_sha256 = hashlib.sha256(
+            json.dumps({"provider": args.provider, "models": args.external_models}, sort_keys=True).encode()
+        ).hexdigest()
+        use_frozen_context = False
+    elif args.context_plan:
+        plan = _json_file(args.context_plan.expanduser())
+        models = _plan_models(plan, args.models)
+        context_plan_sha256 = hashlib.sha256(args.context_plan.expanduser().read_bytes()).hexdigest()
+        use_frozen_context = True
+    else:
+        runtime = run_metadata("none", base_url)
+        models = _dedupe_models(load_models(args.models, base_url))
+        plan = {
+            "ollama_version": runtime.get("ollama_version") or "",
+            "runtime_resource_safety_policy": {"system_page_size_bytes": SYSTEM_PAGE_SIZE_BYTES},
+        }
+        context_plan_sha256 = hashlib.sha256(
+            json.dumps({
+                "ollama_version": plan["ollama_version"],
+                "models": [{"name": model.get("name"), "digest": model.get("digest")} for model in models],
+                "context_policy": "ollama-runtime-default",
+            }, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        use_frozen_context = False
+    tasks = TASKS
     if args.tasks:
         wanted = set(args.tasks)
         tasks = [task for task in tasks if task["id"] in wanted]
         missing = wanted - {task["id"] for task in tasks}
         if missing:
-            raise RuntimeError("Unknown/non-text task IDs: " + ", ".join(sorted(missing)))
+            raise RuntimeError("Unknown task IDs: " + ", ".join(sorted(missing)))
     hermes_python = args.hermes_home.expanduser() / "hermes-agent/venv/bin/python"
     if not hermes_python.exists():
         raise RuntimeError(f"Hermes runtime not found: {hermes_python}")
     model_calls = sum(len(_treatments(model)) for model in models)
-    print(f"Models: {len(models)}; treatments: {model_calls}; text tasks: {len(tasks)}; calls: {model_calls * len(tasks)}")
+    print(f"Models: {len(models)}; treatments: {model_calls}; tasks: {len(tasks)}; calls: {model_calls * len(tasks)}")
     for model in models:
         labels = ", ".join(f"{item['treatment_key']}=>{item['hermes_reasoning']}" for item in _treatments(model))
-        print(f" - {model['name']}: num_ctx={model['requested_num_ctx']}; {labels}")
+        context_label = model.get("requested_num_ctx") if use_frozen_context else "runtime-default"
+        print(f" - {model['name']}: num_ctx={context_label}; {labels}")
     print("Persistent Hermes config is backed up and restored; gateway must be stopped during the run.")
     if args.dry_run or not args.run:
         print("PLAN ONLY: no config mutation, telemetry, model stop, or inference occurred.")
         return 0
 
-    gateway = _run(["systemctl", "--user", "is-active", "hermes-gateway.service"], 15)
-    if gateway.stdout.strip() == "active":
-        raise RuntimeError("Stop hermes-gateway.service before running to prevent concurrent Ollama traffic")
-    base_url = args.ollama_url.rstrip("/")
-    metadata = run_metadata(base_url)
+    if _hermes_gateway_active():
+        raise RuntimeError("Stop the Hermes gateway before running to prevent concurrent Ollama traffic")
+    metadata = run_metadata("none", base_url)
     version = _run([str(hermes_python), "-m", "hermes_cli.main", "--version"], 30)
     if version.returncode:
         raise RuntimeError("Unable to read Hermes version")
@@ -245,10 +347,16 @@ def main(argv: list[str] | None = None) -> int:
         "runner_sha256": current_runner_sha256,
         "recovery_runner_sha256": "",
         "hermes_version": version.stdout.splitlines()[0].strip(),
-        "context_plan": str(args.context_plan.expanduser()),
-        "context_plan_sha256": hashlib.sha256(args.context_plan.expanduser().read_bytes()).hexdigest(),
+        "context_plan": str(args.context_plan.expanduser()) if args.context_plan else "",
+        "context_plan_sha256": context_plan_sha256,
+        "provider": args.provider if args.external_models else "custom",
     })
     out_dir = args.output_dir.expanduser(); out_dir.mkdir(parents=True, exist_ok=True)
+    ocr_task = next((task for task in tasks if task.get("requires_image")), None)
+    ocr_asset = (
+        materialize_ocr_asset(ocr_task, make_text_png_base64(ocr_task.get("image_text", "LOCAL OCR 42")), out_dir)
+        if ocr_task else None
+    )
     prefix = (
         args.resume_prefix.expanduser()
         if args.resume_prefix else out_dir / f"hermes_agent_text_benchmark_{metadata['run_id']}"
@@ -277,7 +385,8 @@ def main(argv: list[str] | None = None) -> int:
     fields = [
         "run_id","suite_version","host","host_label","platform","os_version","architecture","telemetry_backend","ollama_version",
         "benchmark_profile","grading_profile","runner_sha256","recovery_runner_sha256","hermes_version","context_plan_sha256",
-        "model","model_digest","requested_num_ctx","native_context_length","treatment_key","treatment_role","hermes_reasoning_requested",
+        "provider","model","model_digest","requested_num_ctx","native_context_length","treatment_key","treatment_role","hermes_reasoning_requested",
+        "vision_capable","image_transport","image_path","image_sha256","image_mime_type","image_bytes","native_vision_required","vision_skip_reason",
         "benchmark_family","category","task_id","task_name","status","verdict","grader_type","grader_version","grader_tests_passed","grader_tests_total","grader_error","grading_wall_seconds",
         "wall_seconds","timed_out","termination_reason","prompt_eval_count","eval_count","reasoning_tokens","total_token_count","api_calls","response_chars","response_bytes",
         "max_cpu_usage_pct","avg_cpu_usage_pct","max_gpu_usage_pct","avg_gpu_usage_pct","max_gpu_temp_c","avg_gpu_temp_c","max_host_temp_c","avg_host_temp_c","max_gpu_power_w","avg_gpu_power_w","sample_count","response_preview","exit_code","error",
@@ -293,50 +402,80 @@ def main(argv: list[str] | None = None) -> int:
             call_index = 0
             for model_index, model in enumerate(models, 1):
                 print(f"\n=== {model_index}/{len(models)} {model['name']} ===", flush=True)
-                _set_context(hermes_python, int(model["requested_num_ctx"]))
+                vision_capable = model_supports_vision(model)
+                _set_native_vision(hermes_python, vision_capable)
+                if use_frozen_context:
+                    _set_context(hermes_python, int(model["requested_num_ctx"]))
                 for treatment in _treatments(model):
                     for task in tasks:
                         call_index += 1
                         if (model["name"], treatment["treatment_key"], task["id"]) in completed:
                             continue
-                        verify_paired_runtime_identity(plan, model, base_url)
-                        stop_model(model["name"], base_url); verify_empty_paired_residency(model["name"], base_url)
-                        guard = start_paired_task_resource_guard(
-                            model, base_url, campaign_baseline=campaign_baseline,
-                            expected_system_page_size_bytes=plan["runtime_resource_safety_policy"]["system_page_size_bytes"],
-                        )
+                        external = bool(model.get("external"))
+                        skipped = bool(task.get("requires_image") and not vision_capable)
+                        skip_reason = "model metadata does not advertise image/vision/OCR capability" if skipped else ""
+                        if not external and not skipped:
+                            verify_paired_runtime_identity(plan, model, base_url)
+                            stop_model(model["name"], base_url); verify_empty_paired_residency(model["name"], base_url)
+                        if not external and use_frozen_context and not skipped:
+                            guard = start_paired_task_resource_guard(
+                                model, base_url, campaign_baseline=campaign_baseline,
+                                expected_system_page_size_bytes=plan["runtime_resource_safety_policy"]["system_page_size_bytes"],
+                            )
+                        else:
+                            guard = None
                         print(f"[{call_index}] {task['id']} / {treatment['treatment_key']}...", flush=True)
                         usage_fd, usage_name = tempfile.mkstemp(prefix="hermes-bench-usage-", suffix=".json")
                         os.close(usage_fd)
                         usage_file = Path(usage_name)
                         sample_start = sampler.snapshot_len(); started = time.monotonic()
                         stdout = stderr = error = ""; exit_code = 1; timed_out = False
-                        try:
-                            proc = _run(_hermes_command(hermes_python, model["name"], task["prompt"], treatment["hermes_reasoning"], usage_file), args.timeout + 30)
-                            stdout, stderr, exit_code = proc.stdout or "", proc.stderr or "", proc.returncode
-                        except subprocess.TimeoutExpired as exc:
-                            timed_out = True; exit_code = 124
-                            stdout = (exc.stdout or "") if isinstance(exc.stdout, str) else ""
-                            stderr = (exc.stderr or "") if isinstance(exc.stderr, str) else ""
-                            error = f"outer timeout after {args.timeout + 30}s"
-                            stop_model(model["name"], base_url)
+                        if skipped:
+                            exit_code = 0; error = skip_reason
+                        else:
+                            prompt = task["prompt"]
+                            toolset = "clarify"
+                            if task.get("requires_image"):
+                                prompt = (
+                                    f"{prompt}\nYou must call vision_analyze exactly once with image_url={ocr_asset['path']!r} "
+                                    "and question asking it to read all visible text. Use the pixels returned to answer; do not use any auxiliary model."
+                                )
+                                toolset = "vision"
+                            try:
+                                proc = _run(_hermes_command(
+                                    hermes_python, model["name"], prompt, treatment["hermes_reasoning"], usage_file,
+                                    args.provider if external else "custom", toolset,
+                                ), args.timeout + 30)
+                                stdout, stderr, exit_code = proc.stdout or "", proc.stderr or "", proc.returncode
+                            except subprocess.TimeoutExpired as exc:
+                                timed_out = True; exit_code = 124
+                                stdout = (exc.stdout or "") if isinstance(exc.stdout, str) else ""
+                                stderr = (exc.stderr or "") if isinstance(exc.stderr, str) else ""
+                                error = f"outer timeout after {args.timeout + 30}s"
+                                if not external:
+                                    stop_model(model["name"], base_url)
                         wall = round(time.monotonic() - started, 3)
-                        stop_model(model["name"], base_url); verify_empty_paired_residency(model["name"], base_url)
-                        evidence = finish_paired_task_resource_guard(guard, model["name"], base_url, campaign_baseline=campaign_baseline)
-                        if evidence.get("infrastructure_error") or evidence.get("watchdog_triggered"):
-                            raise RuntimeError(evidence.get("infrastructure_error") or evidence.get("resource_pressure_reason") or "resource guard triggered")
+                        if not external and not skipped:
+                            stop_model(model["name"], base_url); verify_empty_paired_residency(model["name"], base_url)
+                        if not external and use_frozen_context and not skipped:
+                            evidence = finish_paired_task_resource_guard(guard, model["name"], base_url, campaign_baseline=campaign_baseline)
+                            if evidence.get("infrastructure_error") or evidence.get("watchdog_triggered"):
+                                raise RuntimeError(evidence.get("infrastructure_error") or evidence.get("resource_pressure_reason") or "resource guard triggered")
+                        else:
+                            evidence = {}
                         samples = sampler.get_since(sample_start)
-                        usage = _json_file(usage_file) if usage_file.exists() else {}
+                        usage = _json_file(usage_file) if usage_file.exists() and usage_file.stat().st_size else {}
                         usage_file.unlink(missing_ok=True)
                         if not error and exit_code:
                             error = (stderr or usage.get("failure") or f"Hermes exit {exit_code}").strip()[:1000]
-                        status = "timeout" if timed_out else ("ok" if exit_code == 0 and stdout.strip() else "error")
-                        grading_started = time.monotonic(); grading = grade_task(task, status, stdout, skipped=False)
+                        status = "skip" if skipped else ("timeout" if timed_out else ("ok" if exit_code == 0 and stdout.strip() else "error"))
+                        grading_started = time.monotonic(); grading = grade_task(task, status, stdout, skipped=skipped)
                         grading_wall = round(time.monotonic() - grading_started, 3)
                         row = {
                             **{key: metadata.get(key, "") for key in ("run_id","suite_version","host","host_label","platform","os_version","architecture","telemetry_backend","ollama_version","benchmark_profile","grading_profile","runner_sha256","recovery_runner_sha256","hermes_version","context_plan_sha256")},
-                            "model":model["name"],"model_digest":model.get("digest", ""),"requested_num_ctx":model["requested_num_ctx"],"native_context_length":model.get("native_context_length") or model.get("model_context_length", ""),
+                            "provider":args.provider if external else "custom","model":model["name"],"model_digest":model.get("digest", ""),"requested_num_ctx":model.get("requested_num_ctx", ""),"native_context_length":model.get("native_context_length") or model.get("model_context_length", ""),
                             "treatment_key":treatment.get("treatment_key", ""),"treatment_role":treatment.get("treatment_role", ""),"hermes_reasoning_requested":treatment["hermes_reasoning"],
+                            "vision_capable":str(vision_capable).lower(),"image_transport":"hermes_vision_analyze_local_path" if task.get("requires_image") and not skipped else "","image_path":ocr_asset["path"] if task.get("requires_image") and ocr_asset else "","image_sha256":ocr_asset["sha256"] if task.get("requires_image") and ocr_asset else "","image_mime_type":ocr_asset["mime_type"] if task.get("requires_image") and ocr_asset else "","image_bytes":ocr_asset["bytes"] if task.get("requires_image") and ocr_asset else "","native_vision_required":str(bool(task.get("requires_image"))).lower(),"vision_skip_reason":skip_reason,
                             "benchmark_family":task["family"],"category":task["category"],"task_id":task["id"],"task_name":task["name"],"status":status,"verdict":grading["verdict"],
                             "grader_type":grading.get("grader_type", ""),"grader_version":grading.get("grader_version", ""),"grader_tests_passed":grading.get("tests_passed", 0),"grader_tests_total":grading.get("tests_total", 0),"grader_error":str(grading.get("error") or "").replace("\n", " ")[:1000],"grading_wall_seconds":grading_wall,
                             "wall_seconds":wall,"timed_out":str(timed_out).lower(),"termination_reason":"timeout" if timed_out else ("completed" if status == "ok" else "error"),

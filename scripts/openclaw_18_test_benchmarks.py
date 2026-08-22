@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 
 from accuracy_grading import (
@@ -23,12 +24,18 @@ from accuracy_grading import (
     grade_task,
 )
 from platform_support import create_sampler, run_metadata
+from ollama_standardized_local_benchmarks import (
+    TASKS as DIRECT_TASKS,
+    make_text_png_base64,
+)
+from vision_benchmark_support import materialize_ocr_asset, model_supports_vision
 
 HOME = Path.home()
 DEFAULT_OUT_DIR = HOME / '.hermes/reports/openclaw_benchmarks'
 DEFAULT_OLLAMA_URL = os.environ.get('LLM_BENCHMARK_OLLAMA_URL', 'http://127.0.0.1:11434').rstrip('/')
 
-BENCHMARK_PROFILE = 'accuracy-first-v2'
+SUITE_VERSION = '0.2.0'
+BENCHMARK_PROFILE = 'accuracy-first-v3'
 OUTPUT_TOKEN_POLICY = 'gateway/model-default'
 THINKING_CONTROL = 'capability-aware-openclaw-passthrough'
 THINKING_LIMITATIONS = 'provider-may-normalize;separate-reasoning-trace-unavailable'
@@ -40,9 +47,9 @@ DEFAULT_SUBPROCESS_TIMEOUT_SECONDS = DEFAULT_OPENCLAW_TIMEOUT_SECONDS + DEFAULT_
 MAX_SUBPROCESS_TIMEOUT_SECONDS = MAX_OPENCLAW_TIMEOUT_SECONDS + MAX_SUBPROCESS_GRACE_SECONDS
 DEFAULT_RESTORE_MODEL = os.environ.get('OPENCLAW_RESTORE_MODEL', '')
 
-# Same text task IDs as the Direct Ollama combined suite, excluding OCR/image.
-# OpenClaw agent CLI currently has no image attachment option, so OpenClaw runs
-# a 17-test scored text suite: 3 smoke tests + 14 standardized text-mini tests.
+# Same 17 text task IDs as the Direct Ollama suite. The capability-gated OCR
+# task is appended below and sent through the supported Gateway agent RPC
+# attachment field because `openclaw agent` has no image flag.
 TASKS = [
     {
         'id': 'exact_reply', 'family': 'Smoke', 'category': 'smoke_instruction',
@@ -150,6 +157,7 @@ TASKS = [
         'strict_json': True, 'exact_json_keys': True, 'compact_json': True,
     },
 ]
+TASKS.append(dict(next(task for task in DIRECT_TASKS if task.get('requires_image'))))
 
 
 def agent_timeout_seconds(value):
@@ -322,6 +330,32 @@ def build_agent_command(session, prompt, timeout, thinking=None):
     return command
 
 
+def build_gateway_image_command(session, task, timeout, thinking, asset):
+    """Build an OpenClaw Gateway agent call with an in-memory image attachment."""
+    params = {
+        'message': task['prompt'],
+        'sessionKey': session,
+        'timeout': timeout,
+        'modelRun': True,
+        'promptMode': 'none',
+        'cleanupBundleMcpOnRunEnd': True,
+        'idempotencyKey': uuid.uuid4().hex,
+        'attachments': [{
+            'type': 'image',
+            'fileName': Path(asset['path']).name,
+            'mimeType': asset['mime_type'],
+            'content': asset['base64'],
+        }],
+    }
+    if thinking:
+        params['thinking'] = thinking
+    return [
+        'openclaw', 'gateway', 'call', 'agent',
+        '--params', json.dumps(params, separators=(',', ':')),
+        '--expect-final', '--json', '--timeout', str((timeout + DEFAULT_SUBPROCESS_GRACE_SECONDS) * 1000),
+    ]
+
+
 def require_openclaw_thinking_support(thinking_requests):
     """Fail before configuration mutation if this CLI cannot pass thinking levels."""
     requested = [value for value in thinking_requests if value]
@@ -402,7 +436,7 @@ def write_summary(rows, md_path, metadata):
     for r in rows:
         by_model.setdefault(r['model'], []).append(r)
     lines = [
-        '# OpenClaw 17-Test Text Benchmark', '',
+        '# OpenClaw 18-Test Benchmark', '',
         f'Generated: {dt.datetime.now().astimezone().isoformat(timespec="seconds")}', '',
         f"Host: {metadata.get('host_label')} (`{metadata.get('host')}` · {metadata.get('platform')}/{metadata.get('architecture')})",
         f"Telemetry: {metadata.get('telemetry_backend')}",
@@ -415,12 +449,12 @@ def write_summary(rows, md_path, metadata):
         f"Output-token policy: {metadata.get('output_token_policy')}",
         f"Thinking request/resolved: {metadata.get('thinking_requested')} / {metadata.get('thinking_resolved')} ({metadata.get('thinking_control')})", '',
         '## Method', '',
-        '- Suite: same text task IDs as Direct Ollama combined benchmark suite, excluding OCR/image.',
-        '- Execution path: `openclaw agent` through the OpenClaw Gateway.',
+        '- Suite: same 18 core task IDs as the Direct Ollama combined benchmark suite; OCR is capability-gated.',
+        '- Execution path: `openclaw agent` for text and the supported Gateway `agent` RPC attachment field for OCR.',
         '- Fallbacks cleared for each model to test one model at a time.',
         '- OpenClaw does not expose Ollama `num_predict` through this CLI path, so the gateway/model output policy is recorded rather than claiming an unlimited direct-Ollama token setting.',
         '- Thinking selections are passed to OpenClaw when explicitly requested. The provider may normalize them, and this interface does not expose a separate reasoning trace.',
-        '- OCR/image task is disabled for OpenClaw because `openclaw agent` currently exposes text message input only; no CLI image attachment option was available in `openclaw agent --help`.',
+        '- OCR uses the exact preserved PNG bytes as Direct/Hermes. Non-vision models are skipped, and fallbacks remain cleared.',
         '- Telemetry: platform-selected sampler (`mactop` on macOS or `nvidia-smi` on NVIDIA Linux). Unavailable metrics remain blank.', '',
         '## Per-task results', '',
         '| Model | Task | Family | Status | Verdict | Wall s | Output tok | Response chars | Timed out | Max CPU % | Max GPU % | Max CPU °C | Max GPU °C | Max host °C | Samples | Error |',
@@ -447,10 +481,18 @@ def write_summary(rows, md_path, metadata):
     md_path.write_text('\n'.join(lines), encoding='utf-8')
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description='Run OpenClaw benchmarks with the same text task IDs as Direct Ollama combined suite, excluding OCR/image.')
+    ap = argparse.ArgumentParser(description='Run OpenClaw benchmarks with the same 18 core task IDs as Direct Ollama.')
     ap.add_argument('--models', nargs='*', help='Exact local Ollama model tags to benchmark. Default: all installed text models except x/flux*.')
+    ap.add_argument(
+        '--external-models', nargs='*', default=[],
+        help='Authenticated non-Ollama OpenClaw model refs (for example openai/gpt-5.6-sol). When supplied without --models, only these refs are run.',
+    )
+    ap.add_argument(
+        '--external-vision-models', nargs='*', default=[],
+        help='Subset of --external-models explicitly verified for native image input. Other external models skip OCR.',
+    )
     ap.add_argument('--limit-models', type=int, help='Limit number of discovered models.')
-    ap.add_argument('--tasks', nargs='*', help='Task IDs to run. Default: all 17 OpenClaw text tests.')
+    ap.add_argument('--tasks', nargs='*', help='Task IDs to run. Default: all 18 capability-aware core tests.')
     ap.add_argument(
         '--timeout', type=agent_timeout_seconds, default=DEFAULT_OPENCLAW_TIMEOUT_SECONDS,
         help=f'OpenClaw agent response timeout in seconds (default and maximum: {MAX_OPENCLAW_TIMEOUT_SECONDS}).',
@@ -483,6 +525,10 @@ def main(argv=None):
     ap.add_argument('--list-tasks', action='store_true', help='List task IDs without contacting Ollama or OpenClaw.')
     args = ap.parse_args(argv)
 
+    unknown_external_vision = set(args.external_vision_models) - set(args.external_models)
+    if unknown_external_vision:
+        ap.error('--external-vision-models must be a subset of --external-models')
+
     if args.subprocess_timeout is None:
         args.subprocess_timeout = args.timeout + DEFAULT_SUBPROCESS_GRACE_SECONDS
     grace_seconds = args.subprocess_timeout - args.timeout
@@ -502,13 +548,26 @@ def main(argv=None):
     telemetry_mode = 'none' if args.no_telemetry else args.telemetry
     sampler = create_sampler(telemetry_mode, interval_ms=args.telemetry_interval_ms)
     metadata = run_metadata(sampler.backend, base_url)
-    models = get_ollama_models(args.models, args.limit_models, base_url)
+    models = (
+        get_ollama_models(args.models, args.limit_models, base_url)
+        if args.models is not None or not args.external_models else []
+    )
+    models.extend({
+        'name': model_ref,
+        'digest': '',
+        'family': 'openai',
+        'capabilities': ['completion', 'thinking'] + (['vision'] if model_ref in args.external_vision_models else []),
+        'capabilities_known': True,
+        'capability_error': '',
+        'external': True,
+    } for model_ref in args.external_models)
     thinking_plan = {
         model['name']: thinking_request_for_model(model, args.thinking)
         for model in models
     }
     resolved_thinking = sorted({plan[2] for plan in thinking_plan.values()})
     metadata.update({
+        'suite_version': SUITE_VERSION,
         'benchmark_profile': BENCHMARK_PROFILE,
         'grading_profile': GRADING_PROFILE,
         'runner_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
@@ -547,7 +606,7 @@ def main(argv=None):
         print('Add --run only after reviewing this plan and receiving explicit permission.')
         return 0
     if not models:
-        raise RuntimeError('No installed Ollama models matched the requested selection.')
+        raise RuntimeError('No local or external models matched the requested selection.')
     capability_unknown=[model for model in models if model.get('capabilities_known') is False]
     if capability_unknown:
         details='; '.join(
@@ -567,6 +626,11 @@ def main(argv=None):
     restore_model = args.restore_model or original_state['model']
     out_dir = args.output_dir.expanduser()
     out_dir.mkdir(parents=True, exist_ok=True)
+    ocr_task = next((task for task in tasks if task.get('requires_image')), None)
+    ocr_asset = (
+        materialize_ocr_asset(ocr_task, make_text_png_base64(ocr_task.get('image_text', 'LOCAL OCR 42')), out_dir)
+        if ocr_task else None
+    )
     stamp = time.strftime('%Y%m%d_%H%M%S')
     metadata['run_id'] = stamp
     csv_path = out_dir / f'openclaw_local_model_benchmark_telemetry_{stamp}.csv'
@@ -579,6 +643,7 @@ def main(argv=None):
         'thinking_mode','thinking_requested','thinking_resolved','thinking_effective','thinking_reported',
         'thinking_control','thinking_limitations','thinking_trace_available',
         'model','model_digest','benchmark_family', 'category', 'task_id', 'task_name', 'status', 'verdict',
+        'vision_capable','image_transport','image_path','image_sha256','image_mime_type','image_bytes','native_vision_required','vision_skip_reason',
         'grader_type','grader_version','grader_tests_passed','grader_tests_total','grader_error','grading_wall_seconds',
         'wall_seconds', 'openclaw_duration_ms','timed_out','timeout_layer','termination_reason',
         'prompt_eval_count','eval_count','total_token_count','cache_read_count','cache_write_count',
@@ -601,19 +666,26 @@ def main(argv=None):
             for mi, model in enumerate(models, 1):
                 print(f'\n=== {mi}/{len(models)} MODEL {model["name"]} ===', flush=True)
                 for maybe in models:
-                    if maybe['name'] != model['name']:
+                    if not maybe.get('external') and maybe['name'] != model['name']:
                         stop_model(maybe['name'], base_url)
-                checked_run(['openclaw', 'models', 'set', f'ollama/{model["name"]}'], 90, f'unable to select OpenClaw model {model["name"]}')
+                target_model = model['name'] if model.get('external') else f'ollama/{model["name"]}'
+                checked_run(['openclaw', 'models', 'set', target_model], 90, f'unable to select OpenClaw model {model["name"]}')
                 checked_run(['openclaw', 'models', 'fallbacks', 'clear'], 60, 'unable to clear OpenClaw fallbacks before benchmark')
                 restart_openclaw_gateway(restart_command)
                 time.sleep(5)
-                stop_model(model['name'], base_url)
+                if not model.get('external'):
+                    stop_model(model['name'], base_url)
+                vision_capable = model_supports_vision(model)
                 _, thinking_cli_value, thinking_resolved = thinking_plan[model['name']]
                 for ti, task in enumerate(tasks, 1):
-                    skipped = False
-                    skip_error = ''
+                    skipped = bool(task.get('requires_image') and not vision_capable)
+                    skip_error = 'model metadata does not advertise image/vision/OCR capability' if skipped else ''
                     session = f'agent:main:oc18-{safe_model_id(model["name"])}-{task["id"]}-{time.strftime("%Y%m%d%H%M%S")}'
-                    cmd = build_agent_command(session, task['prompt'], args.timeout, thinking_cli_value)
+                    cmd = (
+                        build_gateway_image_command(session, task, args.timeout, thinking_cli_value, ocr_asset)
+                        if task.get('requires_image') and not skipped
+                        else build_agent_command(session, task['prompt'], args.timeout, thinking_cli_value)
+                    )
                     print(f'Running {model["name"]} / {task["id"]} ({ti}/{len(tasks)})...', flush=True)
                     sample_start = sampler.snapshot_len()
                     t0 = time.monotonic(); error = skip_error; stdout = ''; stderr = ''; exit_code = None; data = None; text = ''; meta = agent = trace = {}; outer_timed_out = False
@@ -635,6 +707,8 @@ def main(argv=None):
                     wall = time.monotonic() - t0
                     samples = sampler.get_since(sample_start)
                     reported_status = data.get('status') if isinstance(data, dict) else ''
+                    if not reported_status and isinstance(data, dict) and data.get('result') is not None:
+                        reported_status = 'ok'
                     timeout_text = f'{reported_status} {error} {stderr}'.lower()
                     agent_timed_out = (
                         str(reported_status).lower() == 'timeout'
@@ -691,6 +765,14 @@ def main(argv=None):
                         'thinking_trace_available':'false',
                         'model': model['name'],'model_digest':model.get('digest',''),'benchmark_family': task['family'], 'category': task['category'],
                         'task_id': task['id'], 'task_name': task['name'], 'status': status, 'verdict': verdict,
+                        'vision_capable':str(vision_capable).lower(),
+                        'image_transport':'openclaw_gateway_agent_attachment_base64' if task.get('requires_image') and not skipped else '',
+                        'image_path':ocr_asset['path'] if task.get('requires_image') and ocr_asset else '',
+                        'image_sha256':ocr_asset['sha256'] if task.get('requires_image') and ocr_asset else '',
+                        'image_mime_type':ocr_asset['mime_type'] if task.get('requires_image') and ocr_asset else '',
+                        'image_bytes':ocr_asset['bytes'] if task.get('requires_image') and ocr_asset else '',
+                        'native_vision_required':str(bool(task.get('requires_image'))).lower(),
+                        'vision_skip_reason':skip_error,
                         'grader_type':grading.get('grader_type',''),'grader_version':grading.get('grader_version',''),
                         'grader_tests_passed':grading.get('tests_passed',0),'grader_tests_total':grading.get('tests_total',0),
                         'grader_error':str(grading.get('error') or '').replace('\n',' ')[:1000],
@@ -729,7 +811,9 @@ def main(argv=None):
                         raise RuntimeError(
                             f"Accuracy measurement invalid: grader failed for {model['name']} / {task['id']}: {grading.get('error') or 'unknown grader error'}"
                         )
-                    stop_model(model['name'], base_url); time.sleep(2)
+                    if not model.get('external'):
+                        stop_model(model['name'], base_url)
+                    time.sleep(2)
     finally:
         print('Stopping telemetry sampler and restoring OpenClaw config...', flush=True)
         sampler.stop()

@@ -82,11 +82,19 @@ Paired campaigns write a hashed schema-v3 plan manifest plus canonical JSONL. Pa
 
 ## OpenClaw suite
 
-The OpenClaw runner uses the same 17 text task IDs. It measures the complete agent path, including gateway and routing overhead, rather than only Ollama generation time. Its results must not be compared directly with direct-runner latency.
+The OpenClaw runner uses the same 18 core task IDs. It measures the complete agent path, including gateway and routing overhead, rather than only Ollama generation time. Its results must not be compared directly with direct-runner latency.
 
 Its agent deadline defaults to and is capped at 1,800 seconds; an outer subprocess deadline adds 30 seconds of cleanup grace by default. Capability-aware `auto` thinking requests `max`, or `high` for GPT-OSS, and omits the flag for unsupported models. Before any gateway configuration mutation, the runner verifies that the installed OpenClaw CLI exposes `--thinking`. Provider-reported thinking and usage data are recorded when available.
 
 OpenClaw does not expose Ollama `num_predict` through this CLI route. These rows therefore record `output_token_policy=gateway/model-default` with no claimed numeric limit. Full assistant text, stdout, and stderr are retained in JSONL; scalar token, timeout, response-size, and process statistics are placed in CSV when the gateway reports them.
+
+The OCR task is applicable only when frozen/discovered model metadata advertises image, vision, or OCR capability. The exact deterministic PNG used by the direct path is written under the report directory, hashed, and sent through the Gateway `agent` RPC attachment field as base64. The text-only `openclaw agent` command is not used for that task. Fallbacks are cleared, so a different model cannot silently earn the result. Non-vision models are skipped rather than failed; external models require explicit operator declaration through `--external-vision-models`.
+
+## Hermes Agent suite
+
+The Hermes runner also uses the 18 core task IDs. Text calls expose only the `clarify` toolset. OCR calls expose only `vision`, pass the preserved image's absolute local path to `vision_analyze`, and temporarily force `model.supports_vision=true` plus `agent.image_input_mode=native` only for models whose source metadata already declares vision capability. Hermes therefore returns a multimodal tool result to the measured model instead of invoking its auxiliary vision model. Its original configuration is restored after the run. Capability-negative models are recorded as skips, and authenticated external models require explicit `--external-vision-models` opt-in.
+
+All three paths record the fixture path, SHA-256, MIME type, byte count, delivery transport, native-vision requirement, capability decision, and skip reason. This proves byte identity while keeping path-specific latency comparisons descriptive.
 
 ## Accuracy-first grading
 

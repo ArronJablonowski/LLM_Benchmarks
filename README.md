@@ -7,7 +7,9 @@ This repository contains the shared source for the general local-LLM benchmark w
 - `scripts/ollama_standardized_local_benchmarks.py` runs 18 direct Ollama proxy tests: three smoke tests and 15 standardized mini tasks. Text-only models skip the OCR task, leaving 17 scored tests.
 - `scripts/standard_local_tasks.py` loads integrity-checked, vendored snapshots of the full AIME 2026 (30 items) and GPQA Diamond (198 items) test sets. These 228 long-running items are opt-in through `--full-suite` (or `--full_suite`) and run offline with deterministic exact-answer grading and no external judge or Python package.
 - `scripts/thinking_pair_support.py` creates frozen schema-v3 treatment and qualification plans, deduplicates identical model aliases, and supplies stable campaign identifiers for resumable comparisons.
-- `scripts/openclaw_18_test_benchmarks.py` runs the same 17 text tests through the OpenClaw agent gateway. It does not run OCR.
+- `scripts/hermes_agent_17_test_benchmarks.py` runs the same 18 core tasks through Hermes Agent. Its OCR task passes an absolute local image path to `vision_analyze`, forces native image routing, and skips models without verified vision capability.
+- `scripts/openclaw_18_test_benchmarks.py` runs the same 18 core tasks through OpenClaw. Its OCR task reads the local fixture and sends the bytes through the supported Gateway `agent` RPC attachment field; non-vision models skip it.
+- `scripts/vision_benchmark_support.py` preserves the deterministic OCR PNG beside the reports and records its path, SHA-256, MIME type, byte count, transport, capability decision, and skip reason.
 - `dashboard/generate_local_llm_dashboard.py` builds a host-specific HTML dashboard from the installed Ollama inventory and the latest local result CSVs.
 
 These are deterministic local regression tests, not complete official dataset evaluations. Names such as GSM8K, MATH-500, HumanEval, and MMLU-Pro identify the style of a small proxy task; they do not mean the full dataset was executed.
@@ -28,6 +30,7 @@ Telemetry defaults to `auto`. The runner selects `mactop` on macOS, `nvidia-smi`
 Benchmark reports remain host-local in:
 
 - `~/.hermes/reports/ollama_benchmarks/`
+- `~/.hermes/reports/hermes_agent_benchmarks/`
 - `~/.hermes/reports/openclaw_benchmarks/`
 
 ## Validate the repository
@@ -185,7 +188,13 @@ Add `--run` only after explicit approval. A real run temporarily changes OpenCla
 
 The OpenClaw runner also defaults to a 1,800-second agent deadline, with a 30-second outer-process cleanup allowance. It requests the highest supported thinking level for capable models after verifying that the installed OpenClaw CLI supports `--thinking`. OpenClaw does not expose Ollama's `num_predict` through this path, so its output policy is honestly recorded as `gateway/model-default`; only the direct Ollama runner guarantees `num_predict: -1`.
 
-On macOS the gateway restart defaults to `launchctl`. Linux users must provide the exact service command through `--gateway-restart-command`; the suite does not guess a service name. OpenClaw is not installed on the DGX Spark, which uses Hermes Agent, so Spark model testing currently uses the direct Ollama runner. The OpenClaw runner must not be treated as a Hermes benchmark.
+For OCR, the ordinary `openclaw agent` CLI is not used because it has no image flag. The runner reads the preserved local PNG, base64-encodes those exact bytes, and calls the Gateway's supported `agent` RPC with an image attachment. Fallbacks remain cleared. Local models run OCR only when Ollama metadata advertises `image`, `vision`, or `ocr`; other models receive a recorded skip. For an authenticated external model, opt in only after verifying native image input by listing it in both `--external-models` and `--external-vision-models`.
+
+On macOS the gateway restart defaults to `launchctl`. Linux users must provide the exact service command through `--gateway-restart-command`; the suite does not guess a service name. OpenClaw and Hermes are distinct measured agent paths and must not be relabeled as one another.
+
+## Hermes Agent benchmark
+
+The Hermes runner uses the same 18-task core list. Text tasks expose only the `clarify` toolset. For OCR, it exposes only the `vision` toolset and instructs `vision_analyze` to load the preserved PNG by absolute local path. Before a verified vision model runs, the runner temporarily sets `model.supports_vision=true` and `agent.image_input_mode=native`; this makes Hermes attach pixels to the model under test and prevents its auxiliary vision model from receiving benchmark credit. The original Hermes configuration is backed up and restored. Models lacking declared vision support are recorded as skipped. External models require the explicit `--external-vision-models` opt-in.
 
 ## Dashboard
 
@@ -207,4 +216,4 @@ For paired campaigns, the dashboard retains both treatments under one model, dis
 
 Only this repository's source and documentation should be synchronized between machines. Do not copy `.hermes/reports`, generated dashboards, or model-detail pages between hosts: hardware results must remain attributable to the machine that produced them.
 
-No Git remote is configured. Add the future GitHub remote only after reviewing repository visibility and choosing the desired license.
+The canonical Git remote is [ArronJablonowski/LLM_Benchmarks](https://github.com/ArronJablonowski/LLM_Benchmarks). Review dataset notices and repository visibility before redistributing results or changing licensing.

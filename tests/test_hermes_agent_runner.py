@@ -3,6 +3,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -82,6 +83,19 @@ class HermesAgentRunnerTests(unittest.TestCase):
             "thinking_resolved":"high",
         })
         self.assertEqual("high",hermes_runner._treatments(model)[0]["hermes_reasoning"])
+
+    def test_gateway_check_uses_native_service_manager(self):
+        completed = type("Completed", (), {"returncode": 0, "stdout": "active\n"})()
+        with patch.object(hermes_runner.platform, "system", return_value="Darwin"), patch.object(
+            hermes_runner, "_run", return_value=completed,
+        ) as run:
+            self.assertTrue(hermes_runner._hermes_gateway_active())
+            self.assertEqual("launchctl", run.call_args.args[0][0])
+        with patch.object(hermes_runner.platform, "system", return_value="Linux"), patch.object(
+            hermes_runner, "_run", return_value=completed,
+        ) as run:
+            self.assertTrue(hermes_runner._hermes_gateway_active())
+            self.assertEqual("systemctl", run.call_args.args[0][0])
 
 
 if __name__ == "__main__":

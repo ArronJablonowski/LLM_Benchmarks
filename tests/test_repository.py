@@ -13,6 +13,8 @@ PLATFORM_SUPPORT = ROOT / "scripts" / "platform_support.py"
 ACCURACY_GRADING = ROOT / "scripts" / "accuracy_grading.py"
 THINKING_PAIR_SUPPORT = ROOT / "scripts" / "thinking_pair_support.py"
 STANDARD_LOCAL_TASKS = ROOT / "scripts" / "standard_local_tasks.py"
+HERMES = ROOT / "scripts" / "hermes_agent_17_test_benchmarks.py"
+VISION_SUPPORT = ROOT / "scripts" / "vision_benchmark_support.py"
 
 
 def literal_assignment(path, name):
@@ -39,7 +41,7 @@ class RepositoryTests(unittest.TestCase):
     def test_python_sources_compile(self):
         for path in (
             DIRECT, OPENCLAW, GENERATOR, PLATFORM_SUPPORT, ACCURACY_GRADING,
-            THINKING_PAIR_SUPPORT, STANDARD_LOCAL_TASKS,
+            THINKING_PAIR_SUPPORT, STANDARD_LOCAL_TASKS, HERMES, VISION_SUPPORT,
         ):
             compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
@@ -47,11 +49,8 @@ class RepositoryTests(unittest.TestCase):
         direct = load_source_module(DIRECT, "repository_direct").TASKS
         openclaw = load_source_module(OPENCLAW, "repository_openclaw").TASKS
         self.assertEqual(18, len(direct))
-        self.assertEqual(17, len(openclaw))
-        direct_text_ids = {task["id"] for task in direct if not task.get("requires_image")}
-        self.assertEqual(direct_text_ids, {task["id"] for task in openclaw})
-        self.assertEqual({"ocrbench_mini"}, {task["id"] for task in direct} - direct_text_ids)
-        direct_by_id = {task["id"]: task for task in direct if not task.get("requires_image")}
+        self.assertEqual(18, len(openclaw))
+        direct_by_id = {task["id"]: task for task in direct}
         openclaw_by_id = {task["id"]: task for task in openclaw}
         self.assertEqual(direct_by_id, openclaw_by_id)
 
@@ -61,6 +60,7 @@ class RepositoryTests(unittest.TestCase):
             for path in (
                 DIRECT, OPENCLAW, GENERATOR, PLATFORM_SUPPORT,
                 ACCURACY_GRADING, THINKING_PAIR_SUPPORT, STANDARD_LOCAL_TASKS,
+                HERMES, VISION_SUPPORT,
             )
         )
         self.assertNotIn("/Users/", source)

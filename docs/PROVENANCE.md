@@ -28,6 +28,8 @@ Portability and safety changes made during synchronization:
 - Complete JSONL response/reasoning retention and scalar token, timeout, first-output, termination, character/byte, and stream-chunk statistics
 - Exact Ollama usage counters restricted to completed final events; partial timeout output retained without fabricated token counts
 - OpenClaw 1,800-second agent deadline plus bounded cleanup grace, full stdout/stderr retention, and honest gateway-default output policy
+- Capability-gated agent-path OCR using one preserved, hashed PNG: Hermes receives an absolute local path through native-only `vision_analyze`, while OpenClaw receives the same bytes through the Gateway `agent` RPC attachment field
+- Explicit vision provenance and conservative skips; Hermes auxiliary vision fallback cannot earn OCR credit, OpenClaw fallbacks remain cleared, and external vision models require operator opt-in
 - Documentation-only IP addresses in public-safe benchmark prompts
 - Capture and restoration of the initial OpenClaw model and fallback list
 - Configurable non-macOS OpenClaw gateway restart command
