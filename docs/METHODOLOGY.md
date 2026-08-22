@@ -20,7 +20,7 @@ The CLI defaults to plan-only behavior. Actual model inference requires an expli
 
 ## Full official standalone profiles
 
-`--task-profile standard-local` loads two complete, frozen official test splits: 30 AIME 2026 math problems and 198 GPQA Diamond graduate-level multiple-choice questions. The individual `aime2026` and `gpqa-diamond` profiles select only one split. Integrity is checked against `data/standard_local/manifest.json` before model discovery or inference.
+The default CLI path loads only the 18-task core suite. `--full-suite` (alias `--full_suite`) is the required opt-in for the newer, long-running official profiles. By itself it loads two complete, frozen official test splits: 30 AIME 2026 math problems and 198 GPQA Diamond graduate-level multiple-choice questions. With the switch present, `--task-profile aime2026` and `--task-profile gpqa-diamond` select only one split. Official profiles are rejected without the switch. Integrity is checked against `data/standard_local/manifest.json` before model discovery or inference.
 
 AIME is graded by an anchored terminal integer answer; both ordinary integer spelling and the contest's zero-padded three-digit spelling are accepted. GPQA is graded by an anchored terminal A-D choice. Its four choices were deterministically shuffled once from the upstream record identifier and frozen in the vendored snapshot. Runtime scoring uses the existing standard-library exact-answer grader. It does not use answer substrings, an LLM judge, network access, or external packages.
 

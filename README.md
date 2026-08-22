@@ -5,14 +5,14 @@ This repository contains the shared source for the general local-LLM benchmark w
 ## Included tools
 
 - `scripts/ollama_standardized_local_benchmarks.py` runs 18 direct Ollama proxy tests: three smoke tests and 15 standardized mini tasks. Text-only models skip the OCR task, leaving 17 scored tests.
-- `scripts/standard_local_tasks.py` loads integrity-checked, vendored snapshots of the full AIME 2026 (30 items) and GPQA Diamond (198 items) test sets. These 228 items run offline with deterministic exact-answer grading and no external judge or Python package.
+- `scripts/standard_local_tasks.py` loads integrity-checked, vendored snapshots of the full AIME 2026 (30 items) and GPQA Diamond (198 items) test sets. These 228 long-running items are opt-in through `--full-suite` (or `--full_suite`) and run offline with deterministic exact-answer grading and no external judge or Python package.
 - `scripts/thinking_pair_support.py` creates frozen schema-v3 treatment and qualification plans, deduplicates identical model aliases, and supplies stable campaign identifiers for resumable comparisons.
 - `scripts/openclaw_18_test_benchmarks.py` runs the same 17 text tests through the OpenClaw agent gateway. It does not run OCR.
 - `dashboard/generate_local_llm_dashboard.py` builds a host-specific HTML dashboard from the installed Ollama inventory and the latest local result CSVs.
 
 These are deterministic local regression tests, not complete official dataset evaluations. Names such as GSM8K, MATH-500, HumanEval, and MMLU-Pro identify the style of a small proxy task; they do not mean the full dataset was executed.
 
-The `standard-local`, `aime2026`, and `gpqa-diamond` task profiles are the exception: they run the complete frozen test split named by the profile. Their snapshots, hashes, source URLs, and licenses are stored under `data/standard_local/`.
+The default command runs only the short 18-task `core` profile. AIME 2026 and GPQA Diamond are never included unless `--full-suite` (alias `--full_suite`) is present. With that opt-in, the `standard-local`, `aime2026`, and `gpqa-diamond` task profiles run the complete frozen test split named by the profile. Their snapshots, hashes, source URLs, and licenses are stored under `data/standard_local/`.
 
 ## Supported hosts and requirements
 
@@ -52,7 +52,9 @@ List tasks without contacting Ollama:
 python3 scripts/ollama_standardized_local_benchmarks.py --list-tasks
 ```
 
-### Full official offline profiles
+This lists the default 18-task core suite. A normal `--run` command without `--full-suite` also uses only those core tests and excludes AIME 2026 and GPQA Diamond.
+
+### Full official offline profiles (explicit opt-in)
 
 The standard-local profile adds the official local tests that can be graded faithfully with the Python standard library alone:
 
@@ -68,7 +70,7 @@ Review the combined plan without inference:
 
 ```bash
 python3 scripts/ollama_standardized_local_benchmarks.py \
-  --task-profile standard-local \
+  --full-suite \
   --models qwen3.6:35b
 ```
 
@@ -76,11 +78,14 @@ List one official suite without contacting Ollama:
 
 ```bash
 python3 scripts/ollama_standardized_local_benchmarks.py \
+  --full-suite \
   --task-profile aime2026 \
   --list-tasks
 ```
 
-After explicit approval, add `--run`. AIME 2026 is CC BY-NC-SA 4.0 and therefore carries a non-commercial restriction; GPQA is CC BY 4.0. See `data/standard_local/THIRD_PARTY_NOTICES.md` before redistribution or commercial use.
+`--full_suite` is accepted as a compatibility spelling of `--full-suite`. Official task profiles are rejected unless one of these switches is present, which prevents an old or copied `--task-profile standard-local` command from unexpectedly launching the long campaign. `--full-suite` without `--task-profile` selects the combined 228-item `standard-local` profile; use it with `--task-profile aime2026` or `--task-profile gpqa-diamond` to run only one official split.
+
+After explicit approval, add `--run`. At the 1,800-second per-task limit, the combined profile has a theoretical maximum response budget of 114 hours per model, so review the plan carefully. AIME 2026 is CC BY-NC-SA 4.0 and therefore carries a non-commercial restriction; GPQA is CC BY 4.0. See `data/standard_local/THIRD_PARTY_NOTICES.md` before redistribution or commercial use.
 
 Official standard-local profiles currently use single-arm execution. To compare reasoning control, run separate otherwise-identical `--thinking off` and `--thinking on` campaigns. `--thinking paired` is rejected for these profiles so its two auxiliary qualification probes cannot silently alter the official 30-, 198-, or 228-item score denominator.
 

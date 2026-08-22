@@ -67,17 +67,45 @@ class StandardLocalTaskTests(unittest.TestCase):
         direct = load_direct()
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            result = direct.main(["--task-profile", "aime2026", "--list-tasks"])
+            result = direct.main([
+                "--full-suite", "--task-profile", "aime2026", "--list-tasks",
+            ])
         self.assertEqual(0, result)
         lines = output.getvalue().splitlines()
         self.assertEqual(30, len(lines))
         self.assertTrue(lines[0].startswith("aime2026_"))
 
+    def test_default_list_excludes_long_official_tasks(self):
+        direct = load_direct()
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            result = direct.main(["--list-tasks"])
+        self.assertEqual(0, result)
+        lines = output.getvalue().splitlines()
+        self.assertEqual(18, len(lines))
+        self.assertFalse(any("AIME 2026" in line or "GPQA Diamond" in line for line in lines))
+
+    def test_full_suite_switch_selects_combined_official_profile(self):
+        direct = load_direct()
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            result = direct.main(["--full_suite", "--list-tasks"])
+        self.assertEqual(0, result)
+        lines = output.getvalue().splitlines()
+        self.assertEqual(228, len(lines))
+        self.assertTrue(lines[0].startswith("aime2026_"))
+        self.assertTrue(lines[-1].startswith("gpqa_diamond_"))
+
+    def test_official_profile_requires_full_suite_switch(self):
+        direct = load_direct()
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            direct.main(["--task-profile", "standard-local", "--list-tasks"])
+
     def test_official_profile_rejects_paired_mode_before_network(self):
         direct = load_direct()
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             direct.main([
-                "--task-profile", "standard-local", "--thinking", "paired",
+                "--full-suite", "--task-profile", "standard-local", "--thinking", "paired",
                 "--num-ctx", "65536", "--dry-run",
             ])
 

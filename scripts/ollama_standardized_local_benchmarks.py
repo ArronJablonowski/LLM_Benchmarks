@@ -3496,7 +3496,8 @@ def paired_comparison_integrity(model, model_rows, tasks):
 def main(argv=None):
     ap=argparse.ArgumentParser(description='Run cross-platform direct Ollama local benchmark profiles.')
     ap.add_argument('--models', nargs='*', help='Exact installed model tags. Default plan includes all installed models.')
-    ap.add_argument('--task-profile', choices=PROFILE_CHOICES, default='core', help='Task set: the 18-task local proxy core, all vendored official local tests, or one official benchmark.')
+    ap.add_argument('--full-suite', '--full_suite', dest='full_suite', action='store_true', help='Opt in to the long 228-item AIME 2026 + GPQA Diamond suite. Without this switch, the default remains the 18-task core suite.')
+    ap.add_argument('--task-profile', choices=PROFILE_CHOICES, default=None, help='Task set. Official profiles require --full-suite; omit this option to select core normally or standard-local with --full-suite.')
     ap.add_argument('--limit-tasks', type=int, default=0, help='Use only the first N tasks.')
     ap.add_argument('--timeout', type=int, default=DEFAULT_TIMEOUT, help=f'Hard per-task response deadline in seconds (1-{MAX_RESPONSE_TIMEOUT_SECONDS}; default: %(default)s).')
     context_group=ap.add_mutually_exclusive_group()
@@ -3516,6 +3517,16 @@ def main(argv=None):
     execution.add_argument('--dry-run', action='store_true', help='Print the plan without inference, model stops, telemetry startup, or report writes.')
     ap.add_argument('--list-tasks', action='store_true', help='List task IDs without contacting Ollama.')
     args=ap.parse_args(argv)
+
+    if args.task_profile is None:
+        args.task_profile = 'standard-local' if args.full_suite else 'core'
+    elif args.task_profile != 'core' and not args.full_suite:
+        ap.error(
+            f'--task-profile {args.task_profile} requires --full-suite (alias: --full_suite); '
+            'official AIME 2026 and GPQA Diamond tasks are excluded by default'
+        )
+    elif args.full_suite and args.task_profile == 'core':
+        ap.error('--full-suite cannot be combined with --task-profile core')
 
     profile_tasks = TASKS if args.task_profile == 'core' else load_standard_local_tasks(args.task_profile)
     benchmark_profile = (

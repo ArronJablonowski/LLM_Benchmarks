@@ -28,11 +28,11 @@ To review the complete standalone official AIME 2026 and GPQA Diamond task inven
 
 ```bash
 python3 scripts/ollama_standardized_local_benchmarks.py \
-  --task-profile standard-local \
+  --full-suite \
   --list-tasks
 ```
 
-This prints 228 vendored items. Their runtime requires no internet, external judge, container, or third-party Python dependency. Official profiles use single-arm execution; run matched `--thinking off` and `--thinking on` campaigns when both controls are needed. Paired mode is intentionally rejected so its qualification probes cannot change the official score denominator.
+This prints 228 vendored items. Without `--full-suite` (or its `--full_suite` alias), the runner lists and runs only the default 18-task core profile. Their runtime requires no internet, external judge, container, or third-party Python dependency. Official profiles use single-arm execution; run matched `--thinking off` and `--thinking on` campaigns when both controls are needed. Paired mode is intentionally rejected so its qualification probes cannot change the official score denominator.
 
 ## Telemetry on Spark
 
