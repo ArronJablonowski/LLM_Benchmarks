@@ -18,6 +18,8 @@ By default each task unloads the model before execution and requests `keep_alive
 
 The CLI defaults to plan-only behavior. Actual model inference requires an explicit `--run` flag. Planning, task listing, unit tests, and dashboard generation are not benchmark executions.
 
+Every core execution path publishes the same task catalog through `--list-tasks`/`--list-tests` and accepts exact printed IDs through `--test`/`--tasks`. Selection happens before model discovery, agent-runtime checks, telemetry, report creation, or inference. Unknown IDs fail closed. The three-path campaign wrapper also freezes `all-core` or the single selected ID in its campaign directory so completion markers from different task sets cannot be mixed. Paired-thinking selection may add its frozen qualification probes; use a single-arm mode when exactly one inference task is required.
+
 ## Full official standalone profiles
 
 The default CLI path loads only the 18-task core suite. `--full-suite` (alias `--full_suite`) is the required opt-in for the newer, long-running official profiles. By itself it loads two complete, frozen official test splits: 30 AIME 2026 math problems and 198 GPQA Diamond graduate-level multiple-choice questions. With the switch present, `--task-profile aime2026` and `--task-profile gpqa-diamond` select only one split. Official profiles are rejected without the switch. Integrity is checked against `data/standard_local/manifest.json` before model discovery or inference.

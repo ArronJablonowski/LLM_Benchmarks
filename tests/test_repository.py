@@ -87,6 +87,13 @@ class RepositoryTests(unittest.TestCase):
         self.assertIn("if args.dry_run or not args.run", direct_source)
         self.assertIn("if args.dry_run or not args.run", openclaw_source)
 
+    def test_all_paths_expose_task_listing_and_selection(self):
+        for path in (DIRECT, HERMES, OPENCLAW):
+            source = path.read_text(encoding="utf-8")
+            with self.subTest(path=path.name):
+                self.assertIn("--list-tasks", source)
+                self.assertIn("--test", source)
+
     def test_documentation_covers_both_supported_platforms(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("macOS", readme)

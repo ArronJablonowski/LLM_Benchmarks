@@ -3498,6 +3498,7 @@ def main(argv=None):
     ap.add_argument('--models', nargs='*', help='Exact installed model tags. Default plan includes all installed models.')
     ap.add_argument('--full-suite', '--full_suite', dest='full_suite', action='store_true', help='Opt in to the long 228-item AIME 2026 + GPQA Diamond suite. Without this switch, the default remains the 18-task core suite.')
     ap.add_argument('--task-profile', choices=PROFILE_CHOICES, default=None, help='Task set. Official profiles require --full-suite; omit this option to select core normally or standard-local with --full-suite.')
+    ap.add_argument('--tasks', '--test', dest='tasks', nargs='+', help='Run only the named task ID(s). Use --list-tasks to discover IDs.')
     ap.add_argument('--limit-tasks', type=int, default=0, help='Use only the first N tasks.')
     ap.add_argument('--timeout', type=int, default=DEFAULT_TIMEOUT, help=f'Hard per-task response deadline in seconds (1-{MAX_RESPONSE_TIMEOUT_SECONDS}; default: %(default)s).')
     context_group=ap.add_mutually_exclusive_group()
@@ -3515,7 +3516,7 @@ def main(argv=None):
     execution=ap.add_mutually_exclusive_group()
     execution.add_argument('--run', action='store_true', help='Required to execute inference and write benchmark reports.')
     execution.add_argument('--dry-run', action='store_true', help='Print the plan without inference, model stops, telemetry startup, or report writes.')
-    ap.add_argument('--list-tasks', action='store_true', help='List task IDs without contacting Ollama.')
+    ap.add_argument('--list-tasks', '--list-tests', dest='list_tasks', action='store_true', help='List selected/profile task IDs without contacting Ollama.')
     args=ap.parse_args(argv)
 
     if args.task_profile is None:
@@ -3529,6 +3530,13 @@ def main(argv=None):
         ap.error('--full-suite cannot be combined with --task-profile core')
 
     profile_tasks = TASKS if args.task_profile == 'core' else load_standard_local_tasks(args.task_profile)
+    if args.tasks:
+        wanted=set(args.tasks)
+        selected=[task for task in profile_tasks if task['id'] in wanted]
+        missing=sorted(wanted-{task['id'] for task in selected})
+        if missing:
+            ap.error('unknown task ID(s) for selected profile: '+', '.join(missing))
+        profile_tasks=selected
     benchmark_profile = (
         BENCHMARK_PROFILE if args.task_profile == 'core'
         else f'{STANDARD_LOCAL_PROFILE}:{args.task_profile}'
@@ -3536,6 +3544,8 @@ def main(argv=None):
 
     if args.limit_tasks < 0:
         ap.error('--limit-tasks must be zero or greater')
+    if args.tasks and args.limit_tasks:
+        ap.error('--tasks/--test cannot be combined with --limit-tasks')
     if args.timeout < 1 or args.timeout > MAX_RESPONSE_TIMEOUT_SECONDS:
         ap.error(f'--timeout must be between 1 and {MAX_RESPONSE_TIMEOUT_SECONDS} seconds')
     if args.num_ctx < 0:
@@ -3560,7 +3570,7 @@ def main(argv=None):
         )
     if args.list_tasks:
         for task in profile_tasks:
-            print(f"{task['id']}\t{task['family']}\t{task['name']}")
+            print(f"{task['id']}\t{task['family']}\t{task['category']}\t{task['name']}")
         return 0
 
     base_url=args.ollama_url.rstrip('/')

@@ -492,7 +492,7 @@ def main(argv=None):
         help='Subset of --external-models explicitly verified for native image input. Other external models skip OCR.',
     )
     ap.add_argument('--limit-models', type=int, help='Limit number of discovered models.')
-    ap.add_argument('--tasks', nargs='*', help='Task IDs to run. Default: all 18 capability-aware core tests.')
+    ap.add_argument('--tasks', '--test', dest='tasks', nargs='+', help='Run only the named task ID(s). Default: all 18 capability-aware core tests.')
     ap.add_argument(
         '--timeout', type=agent_timeout_seconds, default=DEFAULT_OPENCLAW_TIMEOUT_SECONDS,
         help=f'OpenClaw agent response timeout in seconds (default and maximum: {MAX_OPENCLAW_TIMEOUT_SECONDS}).',
@@ -522,7 +522,7 @@ def main(argv=None):
     execution = ap.add_mutually_exclusive_group()
     execution.add_argument('--run', action='store_true', help='Required to mutate OpenClaw state and execute inference.')
     execution.add_argument('--dry-run', action='store_true', help='Print the plan without state changes, inference, telemetry startup, or report writes.')
-    ap.add_argument('--list-tasks', action='store_true', help='List task IDs without contacting Ollama or OpenClaw.')
+    ap.add_argument('--list-tasks', '--list-tests', dest='list_tasks', action='store_true', help='List selected task IDs without contacting Ollama or OpenClaw.')
     args = ap.parse_args(argv)
 
     unknown_external_vision = set(args.external_vision_models) - set(args.external_models)
@@ -538,12 +538,12 @@ def main(argv=None):
             f'{MAX_SUBPROCESS_GRACE_SECONDS} seconds'
         )
 
+    tasks = task_subset(args.tasks)
     if args.list_tasks:
-        for task in TASKS:
-            print(f"{task['id']}\t{task['family']}\t{task['name']}")
+        for task in tasks:
+            print(f"{task['id']}\t{task['family']}\t{task['category']}\t{task['name']}")
         return 0
 
-    tasks = task_subset(args.tasks)
     base_url = args.ollama_url.rstrip('/')
     telemetry_mode = 'none' if args.no_telemetry else args.telemetry
     sampler = create_sampler(telemetry_mode, interval_ms=args.telemetry_interval_ms)

@@ -253,7 +253,7 @@ def main(argv: list[str] | None = None) -> int:
         help="Subset of --external-models explicitly verified to accept native image input. Others skip OCR.",
     )
     parser.add_argument("--provider", default="openai-codex", help="Hermes provider used with --external-models.")
-    parser.add_argument("--tasks", nargs="*")
+    parser.add_argument("--tasks", "--test", dest="tasks", nargs="+", help="Run only the named task ID(s).")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
     parser.add_argument("--ollama-url", default=DEFAULT_OLLAMA_URL)
     parser.add_argument("--hermes-home", type=Path, default=DEFAULT_HERMES_HOME)
@@ -264,6 +264,7 @@ def main(argv: list[str] | None = None) -> int:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--run", action="store_true")
     mode.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--list-tasks", "--list-tests", dest="list_tasks", action="store_true", help="List selected task IDs without contacting Hermes or Ollama.")
     args = parser.parse_args(argv)
     if not 1 <= args.timeout <= 1800:
         parser.error("--timeout must be between 1 and 1800 seconds")
@@ -274,6 +275,17 @@ def main(argv: list[str] | None = None) -> int:
     unknown_external_vision = set(args.external_vision_models) - set(args.external_models)
     if unknown_external_vision:
         parser.error("--external-vision-models must be a subset of --external-models")
+    tasks = TASKS
+    if args.tasks:
+        wanted = set(args.tasks)
+        tasks = [task for task in tasks if task["id"] in wanted]
+        missing = wanted - {task["id"] for task in tasks}
+        if missing:
+            parser.error("unknown task ID(s): " + ", ".join(sorted(missing)))
+    if args.list_tasks:
+        for task in tasks:
+            print(f"{task['id']}\t{task['family']}\t{task['category']}\t{task['name']}")
+        return 0
     if args.external_models:
         models = [{
             "name": model,
@@ -311,13 +323,6 @@ def main(argv: list[str] | None = None) -> int:
             }, sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()
         use_frozen_context = False
-    tasks = TASKS
-    if args.tasks:
-        wanted = set(args.tasks)
-        tasks = [task for task in tasks if task["id"] in wanted]
-        missing = wanted - {task["id"] for task in tasks}
-        if missing:
-            raise RuntimeError("Unknown task IDs: " + ", ".join(sorted(missing)))
     hermes_python = args.hermes_home.expanduser() / "hermes-agent/venv/bin/python"
     if not hermes_python.exists():
         raise RuntimeError(f"Hermes runtime not found: {hermes_python}")

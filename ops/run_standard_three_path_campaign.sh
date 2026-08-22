@@ -5,10 +5,53 @@ set -u
 # The default 18-task core profile is intentional; --full-suite is not used.
 
 repo_dir="${BENCH_REPO_DIR:-$HOME/gitRepo/local-llm-benchmark-suite}"
-campaign_id="${BENCH_CAMPAIGN_ID:-standard_three_path_20260822}"
-campaign_dir="${BENCH_CAMPAIGN_DIR:-$HOME/.hermes/reports/campaigns/$campaign_id}"
 python_bin="${BENCH_PYTHON:-python3}"
+selected_task=""
+list_tasks=0
+while (($#)); do
+  case "$1" in
+    --list-tasks|--list-tests)
+      list_tasks=1; shift ;;
+    --test|--task)
+      [[ $# -ge 2 ]] || { echo "$1 requires one task ID" >&2; exit 2; }
+      selected_task="$2"; shift 2 ;;
+    -h|--help)
+      echo "Usage: $0 [--list-tasks] [--test TASK_ID]"
+      echo "--list-tasks is read-only. Without --test, campaign execution runs all 18 core tasks."
+      exit 0 ;;
+    *)
+      echo "Unknown option: $1" >&2; exit 2 ;;
+  esac
+done
+task_selection="all-core"
+if [[ -n "$selected_task" ]]; then
+  "$python_bin" "$repo_dir/scripts/ollama_standardized_local_benchmarks.py" --test "$selected_task" --list-tasks >/dev/null
+  task_selection="$selected_task"
+fi
+if ((list_tasks)); then
+  if [[ -n "$selected_task" ]]; then
+    exec "$python_bin" "$repo_dir/scripts/ollama_standardized_local_benchmarks.py" --test "$selected_task" --list-tasks
+  fi
+  exec "$python_bin" "$repo_dir/scripts/ollama_standardized_local_benchmarks.py" --list-tasks
+fi
+default_campaign_id="standard_three_path_20260822"
+if [[ -n "$selected_task" ]]; then
+  safe_task="${selected_task//[^A-Za-z0-9_.-]/-}"
+  default_campaign_id+="_task_$safe_task"
+fi
+campaign_id="${BENCH_CAMPAIGN_ID:-$default_campaign_id}"
+campaign_dir="${BENCH_CAMPAIGN_DIR:-$HOME/.hermes/reports/campaigns/$campaign_id}"
 mkdir -p "$campaign_dir" "$campaign_dir/logs" "$campaign_dir/markers"
+
+selection_file="$campaign_dir/task-selection.txt"
+if [[ ! -f "$selection_file" ]] && compgen -G "$campaign_dir/markers/*.done" >/dev/null; then
+  printf '%s\n' "all-core" >"$selection_file"
+fi
+if [[ -f "$selection_file" ]] && [[ "$(<"$selection_file")" != "$task_selection" ]]; then
+  echo "Campaign directory is frozen for task selection $(<"$selection_file"); requested $task_selection" >&2
+  exit 2
+fi
+[[ -f "$selection_file" ]] || printf '%s\n' "$task_selection" >"$selection_file"
 
 exec >>"$campaign_dir/campaign.log" 2>&1
 echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] campaign start/resume host=$(hostname) repo=$repo_dir"
@@ -126,12 +169,16 @@ unload_all_ollama_models || exit 1
 
 run_model() {
   local phase="$1" model="$2" digest="$3"; shift 3
+  local command=("$@")
+  if [[ -n "$selected_task" ]]; then
+    command+=(--test "$selected_task")
+  fi
   local key="${phase}-${digest:0:16}"
   local done_marker="$campaign_dir/markers/$key.done"
   local fail_marker="$campaign_dir/markers/$key.failed"
   [[ -f "$done_marker" ]] && return 0
   echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] START phase=$phase model=$model digest=$digest"
-  if "$@" >"$campaign_dir/logs/$key.log" 2>&1; then
+  if "${command[@]}" >"$campaign_dir/logs/$key.log" 2>&1; then
     rm -f "$fail_marker"
     printf '%s\t%s\t%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$model" "$digest" >"$done_marker"
     echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] DONE phase=$phase model=$model"
@@ -170,15 +217,15 @@ fi
 start_openclaw
 sleep 5
 if [[ "$os_name" == "Darwin" ]]; then
-  gateway_args=()
+  gateway_restart_override=""
 else
-  gateway_args=(--gateway-restart-command "systemctl --user restart openclaw-gateway.service")
+  gateway_restart_override="systemctl --user restart openclaw-gateway.service"
 fi
 while IFS=$'\t' read -r model digest _aliases; do
   run_model openclaw "$model" "$digest" \
     "$python_bin" "$repo_dir/scripts/openclaw_18_test_benchmarks.py" \
       --models "$model" --thinking auto --timeout 1800 --run \
-      --output-dir "$campaign_dir/openclaw/$digest" "${gateway_args[@]}"
+      --output-dir "$campaign_dir/openclaw/$digest" --gateway-restart-command "$gateway_restart_override"
 done <"$campaign_dir/models.tsv"
 
 if [[ -n "${BENCH_OPENCLAW_CLOUD_MODELS:-}" ]]; then
@@ -187,7 +234,7 @@ if [[ -n "${BENCH_OPENCLAW_CLOUD_MODELS:-}" ]]; then
     run_model openclaw-cloud "$model" "$digest" \
       "$python_bin" "$repo_dir/scripts/openclaw_18_test_benchmarks.py" \
         --external-models "openai/$model" --thinking auto --timeout 1800 --run \
-        --output-dir "$campaign_dir/openclaw-cloud/$digest" "${gateway_args[@]}"
+        --output-dir "$campaign_dir/openclaw-cloud/$digest" --gateway-restart-command "$gateway_restart_override"
   done
 fi
 

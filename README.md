@@ -39,6 +39,50 @@ Benchmark reports remain host-local in:
 python3 -m unittest discover -s tests -v
 ```
 
+## List and select benchmark tests
+
+All three core runners expose the same 18 task IDs. Listing is local and read-only: it does not contact Ollama, Hermes, or OpenClaw, start telemetry, mutate agent configuration, or create reports.
+
+```bash
+python3 scripts/ollama_standardized_local_benchmarks.py --list-tasks
+python3 scripts/hermes_agent_17_test_benchmarks.py --list-tasks
+python3 scripts/openclaw_18_test_benchmarks.py --list-tasks
+```
+
+Each row contains the task ID, benchmark family, category, and display name. Select one task with either `--test` or `--tasks`; both spellings use the printed ID. Without `--run`, each runner remains plan-only:
+
+```bash
+python3 scripts/ollama_standardized_local_benchmarks.py \
+  --models qwen3.6:35b --test math500_mini
+
+python3 scripts/hermes_agent_17_test_benchmarks.py \
+  --models qwen3.6:35b --test math500_mini
+
+python3 scripts/openclaw_18_test_benchmarks.py \
+  --models qwen3.6:35b --test math500_mini
+```
+
+After reviewing the one-call-per-model plan, add `--run` to the chosen runner. Multiple explicit IDs may be supplied after `--tasks`. The Direct runner rejects combining explicit task IDs with the positional `--limit-tasks` compatibility option.
+
+The three-path wrapper can list the shared core catalog or execute one selected task sequentially across Direct, Hermes, and OpenClaw for every frozen model:
+
+```bash
+bash ops/run_standard_three_path_campaign.sh --list-tasks
+bash ops/run_standard_three_path_campaign.sh --test math500_mini
+```
+
+Unlike the individual Python runners, the second wrapper command starts its campaign immediately. A selected task is frozen in `task-selection.txt`, receives a separate default campaign directory, and cannot reuse completion markers from an all-core campaign.
+
+Official AIME 2026 and GPQA Diamond IDs remain behind the explicit full-suite switch. List or select them from their profile, for example:
+
+```bash
+python3 scripts/ollama_standardized_local_benchmarks.py \
+  --full-suite --task-profile aime2026 --list-tasks
+
+python3 scripts/ollama_standardized_local_benchmarks.py \
+  --full-suite --task-profile aime2026 --test aime2026_001
+```
+
 ## Direct Ollama benchmark
 
 Benchmark execution is deliberately guarded. Without `--run`, the command only prints its model/task plan and performs no inference, model stop, telemetry startup, or report write:
