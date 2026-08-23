@@ -104,6 +104,14 @@ class TaskSelectionTests(unittest.TestCase):
         self.assertIn("openclaw_native_context > openclaw_safe_context", source)
         self.assertIn("no-verified-per-model-context-control", source)
 
+    def test_campaign_wrapper_reconciles_fully_accounted_completion(self):
+        source = (ROOT / "ops" / "run_standard_three_path_campaign.sh").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("all_campaign_paths_accounted", source)
+        self.assertIn("completion-reconciliation.log", source)
+        self.assertIn("status=0", source)
+
     def test_campaign_wrapper_rejects_task_marker_mixing(self):
         with tempfile.TemporaryDirectory() as directory:
             campaign = Path(directory)

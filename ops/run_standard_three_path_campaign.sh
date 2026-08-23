@@ -201,8 +201,31 @@ restore_gateways() {
   fi
 }
 
+all_campaign_paths_accounted() {
+  [[ -s "$campaign_dir/models.tsv" ]] || return 1
+  local model digest aliases phase
+  while IFS=$'\t' read -r model digest aliases; do
+    [[ -n "$model" && -n "$digest" ]] || continue
+    for phase in direct hermes openclaw; do
+      [[ -f "$campaign_dir/markers/${phase}-${digest:0:16}.done" || \
+         -f "$campaign_dir/markers/${phase}-${digest:0:16}.terminal" ]] || return 1
+    done
+  done <"$campaign_dir/models.tsv"
+}
+
 cleanup() {
+  local status=$?
+  if [[ ! -f "$campaign_dir/campaign.complete" ]] && all_campaign_paths_accounted; then
+    touch "$campaign_dir/campaign.complete"
+    printf '%s\t%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" \
+      "completion marker reconciled from fully accounted done/terminal markers after exit status $status" \
+      >>"$campaign_dir/completion-reconciliation.log"
+    echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] campaign completion reconciled after exit status $status"
+    status=0
+  fi
   restore_gateways
+  trap - EXIT
+  exit "$status"
 }
 trap cleanup EXIT
 pause_gateways
