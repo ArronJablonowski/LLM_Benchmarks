@@ -112,6 +112,13 @@ class TaskSelectionTests(unittest.TestCase):
         self.assertIn("completion-reconciliation.log", source)
         self.assertIn("status=0", source)
 
+    def test_campaign_wrapper_refuses_incomplete_normal_completion(self):
+        source = (ROOT / "ops" / "run_standard_three_path_campaign.sh").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("if ! all_campaign_paths_accounted; then", source)
+        self.assertIn("refusing completion: campaign paths remain unaccounted", source)
+
     def test_campaign_wrapper_rejects_task_marker_mixing(self):
         with tempfile.TemporaryDirectory() as directory:
             campaign = Path(directory)

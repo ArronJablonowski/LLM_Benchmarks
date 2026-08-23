@@ -392,5 +392,10 @@ if [[ -n "${BENCH_OPENCLAW_CLOUD_MODELS:-}" ]]; then
   done
 fi
 
+if ! all_campaign_paths_accounted; then
+  echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] refusing completion: campaign paths remain unaccounted" >&2
+  exit 2
+fi
+
 touch "$campaign_dir/campaign.complete"
 echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] campaign complete"
