@@ -18,5 +18,8 @@ logs/
 # generated result artifacts.
 !data/standard_local/
 !data/standard_local/*.jsonl
+# Curated consolidated inputs for the reproducible cross-system HTML report.
+!data/top_models_report/
+!data/top_models_report/*.csv
 Local LLM Benchmark Dashboard.html
 Local LLM Model Research/

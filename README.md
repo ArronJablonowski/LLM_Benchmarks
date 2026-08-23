@@ -11,6 +11,7 @@ This repository contains the shared source for the general local-LLM benchmark w
 - `scripts/openclaw_18_test_benchmarks.py` runs the same 18 core tasks through OpenClaw. Its OCR task reads the local fixture and sends the bytes through the supported Gateway `agent` RPC attachment field; non-vision models skip it.
 - `scripts/vision_benchmark_support.py` preserves the deterministic OCR PNG beside the reports and records its path, SHA-256, MIME type, byte count, transport, capability decision, and skip reason.
 - `dashboard/generate_local_llm_dashboard.py` builds a host-specific HTML dashboard from the installed Ollama inventory and the latest local result CSVs.
+- `dashboard/generate_top_models_report.py` builds the checked-in, self-contained cross-system ranking report from consolidated, provenance-bearing exports in `data/top_models_report/`.
 
 These are deterministic local regression tests, not complete official dataset evaluations. Names such as GSM8K, MATH-500, HumanEval, and MMLU-Pro identify the style of a small proxy task; they do not mean the full dataset was executed.
 
@@ -32,6 +33,20 @@ Benchmark reports remain host-local in:
 - `~/.hermes/reports/ollama_benchmarks/`
 - `~/.hermes/reports/hermes_agent_benchmarks/`
 - `~/.hermes/reports/openclaw_benchmarks/`
+
+The curated cross-system snapshot is the exception: its consolidated inputs and generated report are versioned so the published ranking can be reproduced from any clone. Raw per-run campaign evidence remains host-local.
+
+## Cross-system top-model report
+
+Open `docs/top_10_models_by_system.html` directly in a modern browser. The report shows the top 10 local models per system by default. **Verbose** expands each system to every observed model, while **Cloud** includes or excludes cloud models and recalculates ranks, winners, and the top 10 immediately.
+
+Regenerate the HTML and its SHA-256 verification manifest with:
+
+```bash
+python3 dashboard/generate_top_models_report.py
+```
+
+The default inputs are the three consolidated exports in `data/top_models_report/`. Use `--data-dir` and `--output` to build from another compatible snapshot or write elsewhere.
 
 ## Validate the repository
 
