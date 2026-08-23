@@ -398,6 +398,12 @@ def main(argv: list[str] | None = None) -> int:
     ]
     campaign_baseline = read_linux_resource_snapshot()
     try:
+        if not args.external_models:
+            # Hermes 0.20.5 resolves a bare `--provider custom` override
+            # against the persisted endpoint. Configure local Ollama only
+            # inside the restoration guard.
+            _set_config(hermes_python, "model.provider", "custom")
+            _set_config(hermes_python, "model.base_url", base_url + "/v1")
         sampler.start()
         with csv_path.open("w" if args.resume_prefix else "x", newline="", encoding="utf-8") as cf, jsonl_path.open("a" if args.resume_prefix else "x", encoding="utf-8") as jf:
             writer = csv.DictWriter(cf, fieldnames=fields); writer.writeheader(); cf.flush()
@@ -498,6 +504,16 @@ def main(argv: list[str] | None = None) -> int:
         sampler.stop()
         shutil.copy2(config_backup, config_path)
         config_backup.unlink(missing_ok=True)
+    for model in models:
+        text_rows = [
+            row for row in rows
+            if row.get("model") == model["name"] and row.get("task_id") != "ocrbench_mini"
+        ]
+        if text_rows and not any(row.get("status") == "ok" for row in text_rows):
+            raise RuntimeError(
+                f"Hermes produced no successful text inference for {model['name']}; "
+                "the preserved report is not valid completion evidence"
+            )
     _summary(rows, md_path, metadata)
     print("DONE"); print("CSV:", csv_path); print("JSONL:", jsonl_path); print("MD:", md_path)
     return 0

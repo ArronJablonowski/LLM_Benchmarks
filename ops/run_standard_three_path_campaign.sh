@@ -6,6 +6,25 @@ set -u
 
 repo_dir="${BENCH_REPO_DIR:-$HOME/gitRepo/local-llm-benchmark-suite}"
 python_bin="${BENCH_PYTHON:-python3}"
+
+# Non-interactive launchd/systemd jobs often omit user-local tool directories.
+# Make a managed OpenClaw install discoverable without requiring callers to
+# duplicate a host-specific PATH in every service definition.
+prepend_path_dir() {
+  local candidate="$1"
+  [[ -d "$candidate" ]] || return 0
+  case ":$PATH:" in
+    *":$candidate:"*) ;;
+    *) PATH="$candidate:$PATH" ;;
+  esac
+}
+prepend_path_dir "${BENCH_OPENCLAW_BIN_DIR:-$HOME/.openclaw/bin}"
+prepend_path_dir "$HOME/.openclaw/tools/node/bin"
+for openclaw_node_bin in "$HOME"/.openclaw/tools/node-v*/bin; do
+  prepend_path_dir "$openclaw_node_bin"
+done
+export PATH
+
 selected_task=""
 list_tasks=0
 while (($#)); do
@@ -34,6 +53,28 @@ if ((list_tasks)); then
   fi
   exec "$python_bin" "$repo_dir/scripts/ollama_standardized_local_benchmarks.py" --list-tasks
 fi
+
+# Validate the complete deployed runner set before creating campaign evidence.
+# A partial deployment must fail once here instead of producing one false
+# failure marker for every model in the Hermes and OpenClaw phases.
+required_scripts=(
+  ollama_standardized_local_benchmarks.py
+  hermes_agent_17_test_benchmarks.py
+  openclaw_18_test_benchmarks.py
+  vision_benchmark_support.py
+)
+for required_script in "${required_scripts[@]}"; do
+  if [[ ! -r "$repo_dir/scripts/$required_script" ]]; then
+    echo "Missing required benchmark script: $repo_dir/scripts/$required_script" >&2
+    exit 2
+  fi
+done
+if ! PYTHONPATH="$repo_dir/scripts${PYTHONPATH:+:$PYTHONPATH}" \
+  "$python_bin" -c 'import vision_benchmark_support' >/dev/null 2>&1; then
+  echo "Unable to import required benchmark support module: vision_benchmark_support" >&2
+  exit 2
+fi
+
 default_campaign_id="standard_three_path_20260822"
 if [[ -n "$selected_task" ]]; then
   safe_task="${selected_task//[^A-Za-z0-9_.-]/-}"
@@ -176,7 +217,10 @@ run_model() {
   local key="${phase}-${digest:0:16}"
   local done_marker="$campaign_dir/markers/$key.done"
   local fail_marker="$campaign_dir/markers/$key.failed"
-  [[ -f "$done_marker" ]] && return 0
+  local terminal_marker="$campaign_dir/markers/$key.terminal"
+  [[ -f "$done_marker" || -f "$terminal_marker" ]] && return 0
+  local prior_failure=0
+  [[ -f "$fail_marker" ]] && prior_failure=1
   echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] START phase=$phase model=$model digest=$digest"
   if "${command[@]}" >"$campaign_dir/logs/$key.log" 2>&1; then
     rm -f "$fail_marker"
@@ -184,20 +228,79 @@ run_model() {
     echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] DONE phase=$phase model=$model"
   else
     status=$?
-    printf '%s\t%s\t%s\t%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$model" "$digest" "$status" >"$fail_marker"
-    echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] FAILED phase=$phase model=$model status=$status; continuing"
+    if ((prior_failure)); then
+      printf '%s\t%s\t%s\t%s\t%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$model" "$digest" "$status" "bounded-recovery-exhausted" >"$terminal_marker"
+      echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] TERMINAL phase=$phase model=$model status=$status reason=bounded-recovery-exhausted; continuing"
+    else
+      printf '%s\t%s\t%s\t%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$model" "$digest" "$status" >"$fail_marker"
+      echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] FAILED phase=$phase model=$model status=$status; continuing"
+    fi
   fi
   ollama stop "$model" >/dev/null 2>&1 || true
 }
 
+ollama_native_context_for_model() {
+  "$python_bin" - "$1" <<'PY'
+import json, sys, urllib.request
+request = urllib.request.Request(
+    "http://127.0.0.1:11434/api/show",
+    data=json.dumps({"model": sys.argv[1]}).encode(),
+    headers={"Content-Type": "application/json"},
+)
+with urllib.request.urlopen(request, timeout=30) as response:
+    info = json.load(response).get("model_info") or {}
+values = [int(value) for key, value in info.items() if str(key).endswith(".context_length")]
+print(max(values) if values else 0)
+PY
+}
+
+terminally_account_hermes_context_incompatible() {
+  local model="$1" digest="$2" context="$3"
+  local key="hermes-${digest:0:16}"
+  local marker="$campaign_dir/markers/$key.terminal"
+  [[ -f "$campaign_dir/markers/$key.done" || -f "$marker" ]] && return 0
+  printf '%s\t%s\t%s\t%s\t%s\n' \
+    "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$model" "$digest" "0" \
+    "hermes-minimum-context-64000:model-advertises-$context" >"$marker"
+  echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] TERMINAL phase=hermes model=$model reason=Hermes-requires-64000-context advertised=$context; continuing"
+}
+
+direct_context_args_for_model() {
+  local target_model="$1" entry override_model override_ctx
+  DIRECT_NUM_CTX=""
+  for entry in ${BENCH_DIRECT_NUM_CTX_OVERRIDES:-}; do
+    override_model="${entry%%=*}"
+    override_ctx="${entry#*=}"
+    if [[ "$override_model" == "$target_model" && "$override_ctx" =~ ^[1-9][0-9]*$ ]]; then
+      DIRECT_NUM_CTX="$override_ctx"
+      echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] ADJUSTMENT phase=direct model=$target_model num_ctx=$override_ctx reason=model-specific-memory-fit"
+      return 0
+    fi
+  done
+}
+
 while IFS=$'\t' read -r model digest _aliases; do
-  run_model direct "$model" "$digest" \
-    "$python_bin" "$repo_dir/scripts/ollama_standardized_local_benchmarks.py" \
-      --models "$model" --thinking auto --timeout 1800 --run \
-      --output-dir "$campaign_dir/direct/$digest"
+  direct_context_args_for_model "$model"
+  if [[ -n "$DIRECT_NUM_CTX" ]]; then
+    run_model direct "$model" "$digest" \
+      "$python_bin" "$repo_dir/scripts/ollama_standardized_local_benchmarks.py" \
+        --models "$model" --thinking auto --timeout 1800 --run \
+        --num-ctx "$DIRECT_NUM_CTX" \
+        --output-dir "$campaign_dir/direct/$digest"
+  else
+    run_model direct "$model" "$digest" \
+      "$python_bin" "$repo_dir/scripts/ollama_standardized_local_benchmarks.py" \
+        --models "$model" --thinking auto --timeout 1800 --run \
+        --output-dir "$campaign_dir/direct/$digest"
+  fi
 done <"$campaign_dir/models.tsv"
 
 while IFS=$'\t' read -r model digest _aliases; do
+  hermes_native_context="$(ollama_native_context_for_model "$model")" || exit 1
+  if [[ "$hermes_native_context" =~ ^[0-9]+$ ]] && ((hermes_native_context > 0 && hermes_native_context < 64000)); then
+    terminally_account_hermes_context_incompatible "$model" "$digest" "$hermes_native_context"
+    continue
+  fi
   run_model hermes "$model" "$digest" \
     "$python_bin" "$repo_dir/scripts/hermes_agent_17_test_benchmarks.py" \
       --models "$model" --timeout 1800 --run \

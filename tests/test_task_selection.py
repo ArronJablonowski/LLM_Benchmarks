@@ -68,6 +68,34 @@ class TaskSelectionTests(unittest.TestCase):
         self.assertEqual(0, selected.returncode, selected.stderr)
         self.assertEqual("math500_mini", selected.stdout.split("\t", 1)[0])
 
+    def test_campaign_wrapper_discovers_managed_openclaw_in_service_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            managed_bin = home / ".openclaw" / "bin"
+            managed_bin.mkdir(parents=True)
+            openclaw_bin = managed_bin / "openclaw"
+            openclaw_bin.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            openclaw_bin.chmod(0o755)
+            python_probe = home / "python-probe"
+            python_probe.write_text(
+                "#!/bin/sh\ncommand -v openclaw\n",
+                encoding="utf-8",
+            )
+            python_probe.chmod(0o755)
+            env = {
+                "HOME": str(home),
+                "PATH": "/usr/bin:/bin",
+                "BENCH_REPO_DIR": str(ROOT),
+                "BENCH_PYTHON": str(python_probe),
+            }
+            proc = subprocess.run(
+                ["bash", str(ROOT / "ops" / "run_standard_three_path_campaign.sh"),
+                 "--list-tests"],
+                text=True, capture_output=True, timeout=30, env=env,
+            )
+            self.assertEqual(0, proc.returncode, proc.stderr)
+            self.assertEqual(str(openclaw_bin), proc.stdout.strip())
+
     def test_campaign_wrapper_rejects_task_marker_mixing(self):
         with tempfile.TemporaryDirectory() as directory:
             campaign = Path(directory)

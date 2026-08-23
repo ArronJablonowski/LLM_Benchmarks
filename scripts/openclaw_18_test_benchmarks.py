@@ -38,7 +38,7 @@ SUITE_VERSION = '0.2.0'
 BENCHMARK_PROFILE = 'accuracy-first-v3'
 OUTPUT_TOKEN_POLICY = 'gateway/model-default'
 THINKING_CONTROL = 'capability-aware-openclaw-passthrough'
-THINKING_LIMITATIONS = 'provider-may-normalize;separate-reasoning-trace-unavailable'
+THINKING_LIMITATIONS = 'local-ollama-provider-allows-off-only;provider-may-normalize;separate-reasoning-trace-unavailable'
 MAX_OPENCLAW_TIMEOUT_SECONDS = 1800
 DEFAULT_OPENCLAW_TIMEOUT_SECONDS = MAX_OPENCLAW_TIMEOUT_SECONDS
 DEFAULT_SUBPROCESS_GRACE_SECONDS = 30
@@ -304,6 +304,11 @@ def thinking_request_for_model(model, thinking_mode='auto'):
     capable = 'thinking' in caps
     if not capable:
         return False, None, 'unsupported'
+    if not model.get('external'):
+        # OpenClaw 2026.7.x currently advertises only `off` for Ollama
+        # provider routes, even when Ollama reports a thinking-capable model.
+        # Omitting the CLI flag is the supported provider-default/off path.
+        return True, None, 'provider-default/off'
     if is_gpt_oss_model(model):
         if thinking_mode == 'off':
             return True, None, 'required/model-default'
@@ -369,6 +374,28 @@ def require_openclaw_thinking_support(thinking_requests):
         raise RuntimeError(
             'Selected thinking-capable models require an OpenClaw CLI with '
             f'`openclaw agent --thinking`; upgrade OpenClaw or use the direct Ollama runner{suffix}'
+        )
+
+
+def require_openclaw_provider_auth(models):
+    """Require a non-secret auth profile before starting local model calls."""
+    if not any(not model.get('external') for model in models):
+        return
+    proc = run(['openclaw', 'models', 'auth', 'list', '--json'], timeout=60)
+    if proc.returncode != 0:
+        raise RuntimeError((proc.stderr or proc.stdout or 'unable to inspect OpenClaw auth profiles').strip())
+    try:
+        payload = json.loads(proc.stdout)
+    except Exception as exc:
+        raise RuntimeError(f'OpenClaw auth profile output was not valid JSON: {exc}') from exc
+    providers = {
+        str(profile.get('provider') or '').lower()
+        for profile in payload.get('profiles') or [] if isinstance(profile, dict)
+    }
+    if 'ollama' not in providers:
+        raise RuntimeError(
+            'OpenClaw has no Ollama auth profile for the active agent. Add a local placeholder '
+            'profile with `openclaw models auth paste-api-key --provider ollama` before benchmarking.'
         )
 
 def stop_model(model, base_url=DEFAULT_OLLAMA_URL):
@@ -589,7 +616,7 @@ def main(argv=None):
     print(f'Benchmark profile: {BENCHMARK_PROFILE}')
     print(f'Grading profile: {GRADING_PROFILE}')
     print(f'Output-token policy: {OUTPUT_TOKEN_POLICY} (limit not exposed by OpenClaw CLI)')
-    print(f'Thinking requested: {args.thinking} (auto resolves to max; GPT-OSS resolves to high)')
+    print(f'Thinking requested: {args.thinking} (local Ollama uses OpenClaw provider-default/off; external models retain requested levels)')
     print(f'Response timeout: {args.timeout}s; outer process timeout: {args.subprocess_timeout}s')
     print(f'Models: {len(models)}')
     for model in models:
@@ -620,6 +647,7 @@ def main(argv=None):
         raise RuntimeError('OpenClaw is not installed. The DGX Spark uses the direct Ollama runner; this optional runner is for OpenClaw hosts.')
     if not restart_command:
         raise RuntimeError('OpenClaw is available, but no gateway restart command is configured for this non-macOS host.')
+    require_openclaw_provider_auth(models)
     require_openclaw_thinking_support(plan[1] for plan in thinking_plan.values())
 
     original_state = openclaw_model_state()
@@ -821,6 +849,16 @@ def main(argv=None):
             restore_openclaw(restore_model, original_state['fallbacks'], restart_command)
         except Exception as exc:
             print(f'WARNING: OpenClaw restoration failed: {exc}', file=sys.stderr, flush=True)
+    for model in models:
+        text_rows = [
+            row for row in rows
+            if row.get('model') == model['name'] and row.get('task_id') != 'ocrbench_mini'
+        ]
+        if text_rows and not any(row.get('status') == 'ok' for row in text_rows):
+            raise RuntimeError(
+                f"OpenClaw produced no successful text inference for {model['name']}; "
+                'the preserved report is not valid completion evidence'
+            )
     write_summary(rows, md_path, metadata)
     print('\nDONE')
     print('CSV:', csv_path)

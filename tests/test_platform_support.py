@@ -1427,11 +1427,17 @@ class ExecutionGuardTests(unittest.TestCase):
             "name": "gpt-oss:20b", "capabilities": ["completion", "thinking"]
         }
         unsupported = {"name": "plain:latest", "capabilities": ["completion"]}
-        self.assertEqual((True, "max", "max"), openclaw.thinking_request_for_model(capable))
-        self.assertEqual((True, "high", "high"), openclaw.thinking_request_for_model(gpt_oss))
+        self.assertEqual(
+            (True, None, "provider-default/off"),
+            openclaw.thinking_request_for_model(capable),
+        )
+        self.assertEqual(
+            (True, None, "provider-default/off"),
+            openclaw.thinking_request_for_model(gpt_oss),
+        )
         self.assertEqual((False, None, "unsupported"), openclaw.thinking_request_for_model(unsupported))
         self.assertEqual(
-            (True, None, "required/model-default"),
+            (True, None, "provider-default/off"),
             openclaw.thinking_request_for_model(gpt_oss, "off"),
         )
 

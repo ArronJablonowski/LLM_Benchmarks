@@ -54,6 +54,31 @@ class VisionAgentRunnerTests(unittest.TestCase):
         )
         self.assertEqual("vision", command[command.index("--toolsets") + 1])
 
+    def test_openclaw_local_ollama_omits_unsupported_thinking_level(self):
+        model = {
+            "name": "thinking-local:latest",
+            "family": "fixture",
+            "capabilities": ["completion", "thinking"],
+            "capabilities_known": True,
+        }
+        capable, cli_value, resolved = openclaw_runner.thinking_request_for_model(model, "auto")
+        self.assertTrue(capable)
+        self.assertIsNone(cli_value)
+        self.assertEqual("provider-default/off", resolved)
+
+    def test_openclaw_external_model_retains_requested_thinking_level(self):
+        model = {
+            "name": "gpt-fixture",
+            "family": "openai",
+            "capabilities": ["completion", "thinking"],
+            "capabilities_known": True,
+            "external": True,
+        }
+        capable, cli_value, resolved = openclaw_runner.thinking_request_for_model(model, "high")
+        self.assertTrue(capable)
+        self.assertEqual("high", cli_value)
+        self.assertEqual("high", resolved)
+
 
 if __name__ == "__main__":
     unittest.main()
