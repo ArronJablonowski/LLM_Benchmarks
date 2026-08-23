@@ -265,6 +265,17 @@ terminally_account_hermes_context_incompatible() {
   echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] TERMINAL phase=hermes model=$model reason=Hermes-requires-64000-context advertised=$context; continuing"
 }
 
+terminally_account_openclaw_context_uncontrolled() {
+  local model="$1" digest="$2" native_context="$3" safe_context="$4"
+  local key="openclaw-${digest:0:16}"
+  local marker="$campaign_dir/markers/$key.terminal"
+  [[ -f "$campaign_dir/markers/$key.done" || -f "$marker" ]] && return 0
+  printf '%s\t%s\t%s\t%s\t%s\n' \
+    "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$model" "$digest" "0" \
+    "openclaw-native-context-$native_context-exceeds-established-safe-$safe_context; no-verified-per-model-context-control" >"$marker"
+  echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] TERMINAL phase=openclaw model=$model reason=native-context-$native_context-exceeds-established-safe-$safe_context; continuing"
+}
+
 direct_context_args_for_model() {
   local target_model="$1" entry override_model override_ctx
   DIRECT_NUM_CTX=""
@@ -325,6 +336,23 @@ else
   gateway_restart_override="systemctl --user restart openclaw-gateway.service"
 fi
 while IFS=$'\t' read -r model digest _aliases; do
+  openclaw_safe_context=""
+  for entry in ${BENCH_DIRECT_NUM_CTX_OVERRIDES:-}; do
+    override_model="${entry%%=*}"
+    override_ctx="${entry#*=}"
+    if [[ "$override_model" == "$model" && "$override_ctx" =~ ^[1-9][0-9]*$ ]]; then
+      openclaw_safe_context="$override_ctx"
+      break
+    fi
+  done
+  if [[ -n "$openclaw_safe_context" ]]; then
+    openclaw_native_context="$(ollama_native_context_for_model "$model")" || exit 1
+    if [[ "$openclaw_native_context" =~ ^[0-9]+$ ]] && ((openclaw_native_context > openclaw_safe_context)); then
+      terminally_account_openclaw_context_uncontrolled \
+        "$model" "$digest" "$openclaw_native_context" "$openclaw_safe_context"
+      continue
+    fi
+  fi
   run_model openclaw "$model" "$digest" \
     "$python_bin" "$repo_dir/scripts/openclaw_18_test_benchmarks.py" \
       --models "$model" --thinking auto --timeout 1800 --run \

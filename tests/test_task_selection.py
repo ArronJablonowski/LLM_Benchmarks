@@ -96,6 +96,14 @@ class TaskSelectionTests(unittest.TestCase):
             self.assertEqual(0, proc.returncode, proc.stderr)
             self.assertEqual(str(openclaw_bin), proc.stdout.strip())
 
+    def test_campaign_wrapper_blocks_uncontrolled_openclaw_native_context(self):
+        source = (ROOT / "ops" / "run_standard_three_path_campaign.sh").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("terminally_account_openclaw_context_uncontrolled", source)
+        self.assertIn("openclaw_native_context > openclaw_safe_context", source)
+        self.assertIn("no-verified-per-model-context-control", source)
+
     def test_campaign_wrapper_rejects_task_marker_mixing(self):
         with tempfile.TemporaryDirectory() as directory:
             campaign = Path(directory)
