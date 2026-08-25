@@ -60,6 +60,41 @@ The 18 core tests are one-file-per-test components. See
 [`docs/BENCHMARK_COMPONENTS.md`](docs/BENCHMARK_COMPONENTS.md) to add, replace,
 or validate a test without changing a harness runner.
 
+### Core benchmark catalog
+
+Each entry below is a deliberately small, deterministic proxy—not a score for
+the complete upstream benchmark named in the **Family** column. Together, they
+cover instruction following, reasoning, coding, tool use, grounded answering,
+security judgment, and vision. Every task has a local deterministic grader;
+there is no LLM-as-a-judge in the core profile.
+
+| Task ID | Family | What it tests | How it is evaluated |
+|---|---|---|---|
+| `exact_reply` | Smoke | Can the model obey a single exact-output instruction with no extra text? | Exact token match. |
+| `simple_reasoning` | Smoke | Short arithmetic reasoning in an SOC-alert context. | Required `FINAL:` number. |
+| `coding_micro` | Smoke | Writes a compact, dependency-free Python RFC1918 IPv4 classifier. | Behavioral Python tests and a line limit. |
+| `ifeval_exact` | IFEval | Strict adherence to an exact constrained-response instruction. | Exact token match. |
+| `ifeval_json` | IFEval | Produces compact valid JSON with only the required keys and values. | Strict JSON schema/value check. |
+| `gsm8k_mini` | GSM8K | Grade-school percentage arithmetic expressed as a word problem. | Required `FINAL:` number. |
+| `math500_mini` | MATH-500 | Basic algebraic manipulation and answer formatting. | Required `FINAL:` number. |
+| `mmlu_pro_security` | MMLU-Pro | Security knowledge: selecting an effective credential-stuffing control. | Required `FINAL:` multiple-choice letter. |
+| `arc_challenge_mini` | ARC-Challenge | Everyday physical-science reasoning about thermal conductivity. | Required `FINAL:` multiple-choice letter. |
+| `hellaswag_mini` | HellaSwag | Commonsense inference: choosing the plausible next event. | Required `FINAL:` multiple-choice letter. |
+| `truthfulqa_mini` | TruthfulQA | Avoids an overbroad claim about VPN anonymity and expresses uncertainty truthfully. | Required `FINAL: yes` or `FINAL: no`. |
+| `humaneval_mini` | HumanEval+ | Generates a Python IPv4-private-address function. | Behavioral Python tests and a line limit. |
+| `mbpp_mini` | MBPP+ | Generates a Python function that extracts and counts unique IPv4 addresses. | Behavioral Python tests. |
+| `bfcl_mini` | BFCL | Selects the right function and emits an exact argument payload for a security request. | Strict compact JSON schema/value check. |
+| `ragas_mini` | RAGAS/RAG | Answers only from supplied retrieval context instead of guessing. | Required `FINAL:` value grounded in the context. |
+| `prompt_injection_mini` | Prompt Injection | Resists a malicious instruction embedded in retrieved content. | Required `FINAL:` answer from the trusted fact. |
+| `cyber_soc_mini` | CyberSecEval-style | Defensive SOC triage: classifies a horizontal SSH scan and chooses a safe response. | Strict JSON classification/action check. |
+| `ocrbench_mini` | OCRBench/TextVQA | Reads the text in a deterministic attached image. Text-only models are explicitly skipped. | Required exact `FINAL:` transcription. |
+
+The complete 18-task profile runs through every selected harness. The three
+smoke tests are intentionally quick diagnostics; the remaining 15 tasks are
+the standardized mini suite. A model's score should be interpreted as
+performance on these fixed prompts and deterministic graders, not as a claim
+of performance on the full upstream datasets.
+
 All three core runners expose the same 18 task IDs. Listing is local and read-only: it does not contact Ollama, Hermes, or OpenClaw, start telemetry, mutate agent configuration, or create reports.
 
 ```bash
