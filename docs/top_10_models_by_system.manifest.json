@@ -1,7 +1,7 @@
 {
-  "generated": "2026-08-23 11:17 MDT",
+  "generated": "2026-08-25 08:37 MDT",
   "report": "docs/top_10_models_by_system.html",
-  "report_sha256": "6cd89739a41159a674fb672dbf6d57ee8d235120595fb529f31a3b17bbff09c8",
+  "report_sha256": "16b25de784e2233152358857d98191bbae7f464833a15a6f704451433a144d9d",
   "hosts": {
     "spark": {
       "kind": "consolidated-export",
@@ -12,9 +12,9 @@
     },
     "studio": {
       "kind": "consolidated-export",
-      "row_count": 1236,
+      "row_count": 1163,
       "export": "data/top_models_report/studio_benchmark_results.csv",
-      "export_sha256": "bdf5e7a7c7d69715b4a465de4db80d0ac3dda4015b432881edf8fc194b5907b4",
+      "export_sha256": "14c38b53ac4ad83d12f94080e875dff00768071699935d28d4e68613cce0b789",
       "source_files": []
     },
     "mini": {
@@ -35,12 +35,12 @@
       "valid_candidates": 84
     },
     "studio": {
-      "qualified_models": 27,
-      "cloud_models": 0,
+      "qualified_models": 17,
+      "cloud_models": 5,
       "incomplete_models": 1,
-      "local_observed_models": 28,
-      "observed_models": 28,
-      "valid_candidates": 55
+      "local_observed_models": 18,
+      "observed_models": 23,
+      "valid_candidates": 63
     },
     "mini": {
       "qualified_models": 11,

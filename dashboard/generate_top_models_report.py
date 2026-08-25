@@ -45,9 +45,9 @@ HOSTS = {
     "studio": {
         "name": "Mac Studio",
         "subtitle": "macOS · Apple silicon",
-        "paths": ["ollama_direct", "openclaw"],
-        "minimum_tasks": {"ollama_direct": 15, "openclaw": 17},
-        "source_note": "Historical consolidated results retained from 2026-08-19",
+        "paths": ["ollama_direct", "hermes_agent", "openclaw"],
+        "minimum_tasks": {"ollama_direct": 18, "hermes_agent": 18, "openclaw": 18},
+        "source_note": "Final 2026-08-23 Studio campaign, including cloud and local recovery evidence",
     },
     "mini": {
         "name": "Mac Mini",
@@ -703,7 +703,7 @@ footer {{ color:#788397; padding:24px 0 38px; font-size:12px; }}
     </div>
   </section>
 </main>
-<footer class="container">Source: final DGX Spark and Mac Mini campaigns completed 2026-08-23, plus the retained Mac Studio export from 2026-08-19. Rankings retain file-level provenance in the accompanying CSV exports and verification manifest.</footer>
+<footer class="container">Source: final DGX Spark, Mac Studio, and Mac Mini campaigns completed 2026-08-23. Rankings retain file-level provenance in the accompanying CSV exports and verification manifest.</footer>
 <script type="application/json" id="ranking-data">{data_json}</script>
 <script>
 (() => {{
