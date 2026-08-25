@@ -1,5 +1,15 @@
 # Local LLM Benchmark Suite
 
+## About
+
+Local LLM Benchmark Suite is a reproducible evaluation toolkit for comparing
+local and cloud-connected models on your own hardware. It runs the same
+deterministically graded tasks through Direct Ollama, Hermes Agent, and
+OpenClaw, while preserving the evidence needed to explain a result: model and
+runtime provenance, harness, task outcome, timing, temperature, and memory
+telemetry. Its scores are best used to compare the specific models, settings,
+and host captured in a campaign—not as universal model rankings.
+
 Run the same deterministic local-LLM benchmark suite through three paths:
 
 - **Direct Ollama** — measures the model through Ollama's local API.
