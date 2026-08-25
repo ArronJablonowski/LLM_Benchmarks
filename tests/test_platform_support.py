@@ -175,19 +175,25 @@ def streaming_factory(response):
 class PlatformSupportTests(unittest.TestCase):
     def test_nvidia_parser_handles_values_and_unavailable_fields(self):
         parsed = support.parse_nvidia_smi_line(
-            "2026/08/14 15:12:18.209, 0, 87, 51, 42.75, 2405"
+            "2026/08/14 15:12:18.209, 0, 87, 51, 42.75, 2405, 8123"
         )
         self.assertEqual(0, parsed["gpu_index"])
         self.assertEqual(87.0, parsed["gpu_usage_pct"])
         self.assertEqual(51.0, parsed["gpu_temp_c"])
         self.assertEqual(42.75, parsed["gpu_power_w"])
+        self.assertEqual(8123 * 1024 * 1024, parsed["gpu_memory_used_bytes"])
         unavailable = support.parse_nvidia_smi_line(
-            "2026/08/14 15:12:19.209, 0, N/A, -, [N/A], N/A"
+            "2026/08/14 15:12:19.209, 0, N/A, -, [N/A], N/A, [N/A]"
         )
         self.assertIsNone(unavailable["gpu_usage_pct"])
         self.assertIsNone(unavailable["gpu_temp_c"])
         self.assertIsNone(unavailable["gpu_power_w"])
+        self.assertIsNone(unavailable["gpu_memory_used_bytes"])
         self.assertIsNone(support.parse_nvidia_smi_line("malformed"))
+
+    def test_linux_memory_usage_uses_memavailable(self):
+        with mock.patch.object(support, "_read_text", return_value="MemTotal:       1024 kB\nMemAvailable:    256 kB"):
+            self.assertEqual((768 * 1024, 1024 * 1024), support._linux_memory_usage_bytes())
 
     def test_cpu_usage_uses_proc_stat_deltas(self):
         self.assertEqual(75.0, support.cpu_usage_percent((100, 40), (200, 65)))

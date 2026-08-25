@@ -394,7 +394,7 @@ def main(argv: list[str] | None = None) -> int:
         "vision_capable","image_transport","image_path","image_sha256","image_mime_type","image_bytes","native_vision_required","vision_skip_reason",
         "benchmark_family","category","task_id","task_name","status","verdict","grader_type","grader_version","grader_tests_passed","grader_tests_total","grader_error","grading_wall_seconds",
         "wall_seconds","timed_out","termination_reason","prompt_eval_count","eval_count","reasoning_tokens","total_token_count","api_calls","response_chars","response_bytes",
-        "max_cpu_usage_pct","avg_cpu_usage_pct","max_gpu_usage_pct","avg_gpu_usage_pct","max_gpu_temp_c","avg_gpu_temp_c","max_host_temp_c","avg_host_temp_c","max_gpu_power_w","avg_gpu_power_w","sample_count","response_preview","exit_code","error",
+        "max_cpu_usage_pct","avg_cpu_usage_pct","max_gpu_usage_pct","avg_gpu_usage_pct","max_host_memory_used_bytes","max_host_memory_pct","max_gpu_memory_used_bytes","max_gpu_temp_c","avg_gpu_temp_c","max_host_temp_c","avg_host_temp_c","max_gpu_power_w","avg_gpu_power_w","sample_count","response_preview","exit_code","error",
     ]
     campaign_baseline = read_linux_resource_snapshot()
     try:
@@ -492,7 +492,7 @@ def main(argv: list[str] | None = None) -> int:
                             "wall_seconds":wall,"timed_out":str(timed_out).lower(),"termination_reason":"timeout" if timed_out else ("completed" if status == "ok" else "error"),
                             "prompt_eval_count":usage.get("input_tokens", ""),"eval_count":usage.get("output_tokens", ""),"reasoning_tokens":usage.get("reasoning_tokens", ""),"total_token_count":usage.get("total_tokens", ""),"api_calls":usage.get("api_calls", ""),
                             "response_chars":len(stdout),"response_bytes":len(stdout.encode()),
-                            "max_cpu_usage_pct":max_field(samples,"cpu_usage_pct"),"avg_cpu_usage_pct":avg_field(samples,"cpu_usage_pct"),"max_gpu_usage_pct":max_field(samples,"gpu_usage_pct"),"avg_gpu_usage_pct":avg_field(samples,"gpu_usage_pct"),"max_gpu_temp_c":max_field(samples,"gpu_temp_c"),"avg_gpu_temp_c":avg_field(samples,"gpu_temp_c"),"max_host_temp_c":max_field(samples,"host_temp_c"),"avg_host_temp_c":avg_field(samples,"host_temp_c"),"max_gpu_power_w":max_field(samples,"gpu_power_w"),"avg_gpu_power_w":avg_field(samples,"gpu_power_w"),"sample_count":len(samples),
+                            "max_cpu_usage_pct":max_field(samples,"cpu_usage_pct"),"avg_cpu_usage_pct":avg_field(samples,"cpu_usage_pct"),"max_gpu_usage_pct":max_field(samples,"gpu_usage_pct"),"avg_gpu_usage_pct":avg_field(samples,"gpu_usage_pct"),"max_host_memory_used_bytes":max_field(samples,"host_memory_used_bytes"),"max_host_memory_pct":max_field(samples,"host_memory_pct"),"max_gpu_memory_used_bytes":max_field(samples,"gpu_memory_used_bytes"),"max_gpu_temp_c":max_field(samples,"gpu_temp_c"),"avg_gpu_temp_c":avg_field(samples,"gpu_temp_c"),"max_host_temp_c":max_field(samples,"host_temp_c"),"avg_host_temp_c":avg_field(samples,"host_temp_c"),"max_gpu_power_w":max_field(samples,"gpu_power_w"),"avg_gpu_power_w":avg_field(samples,"gpu_power_w"),"sample_count":len(samples),
                             "response_preview":stdout.replace("\n", " ")[:300],"exit_code":exit_code,"error":error,
                         }
                         writer.writerow(row); cf.flush(); rows.append(row)

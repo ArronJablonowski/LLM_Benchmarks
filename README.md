@@ -92,6 +92,8 @@ bash ops/run_standard_three_path_campaign.sh --test math500_mini
 
 Unlike the individual Python runners, the second wrapper command starts its campaign immediately. A selected task is frozen in `task-selection.txt`, receives a separate default campaign directory, and cannot reuse completion markers from an all-core campaign.
 
+Each CSV and JSONL observation now includes peak host-memory usage in bytes and percent (`max_host_memory_used_bytes`, `max_host_memory_pct`). NVIDIA runs also record aggregate peak GPU memory usage (`max_gpu_memory_used_bytes`). These values are sampled during each task; unavailable platform measurements remain blank rather than being reported as zero.
+
 Official AIME 2026 and GPQA Diamond IDs remain behind the explicit full-suite switch. List or select them from their profile, for example:
 
 ```bash

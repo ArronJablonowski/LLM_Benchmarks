@@ -3749,6 +3749,7 @@ def main(argv=None):
         'response_chars','response_bytes','thinking_chars','thinking_bytes',
         'ollama_total_seconds','ollama_load_seconds','ollama_prompt_eval_seconds','ollama_eval_seconds',
         'prompt_eval_count','eval_count','total_token_count','tokens_per_second','max_cpu_usage_pct','avg_cpu_usage_pct','max_gpu_usage_pct','avg_gpu_usage_pct',
+        'max_host_memory_used_bytes','max_host_memory_pct','max_gpu_memory_used_bytes',
         'max_cpu_temp_c','avg_cpu_temp_c','max_gpu_temp_c','avg_gpu_temp_c','max_soc_temp_c','max_host_temp_c','avg_host_temp_c',
         'max_cpu_power_w','avg_cpu_power_w','max_gpu_power_w','avg_gpu_power_w','max_system_power_w','avg_system_power_w','max_total_power_w','avg_total_power_w',
         'sample_count','response_preview','error'
@@ -4061,6 +4062,7 @@ def main(argv=None):
                         'eval_count':eval_count if eval_count is not None else '', 'total_token_count':total_token_count,'tokens_per_second':tps,
                         'max_cpu_usage_pct':max_field(samples,'cpu_usage_pct'),'avg_cpu_usage_pct':avg_field(samples,'cpu_usage_pct'),
                         'max_gpu_usage_pct':max_field(samples,'gpu_usage_pct'),'avg_gpu_usage_pct':avg_field(samples,'gpu_usage_pct'),
+                        'max_host_memory_used_bytes':max_field(samples,'host_memory_used_bytes'),'max_host_memory_pct':max_field(samples,'host_memory_pct'),'max_gpu_memory_used_bytes':max_field(samples,'gpu_memory_used_bytes'),
                         'max_cpu_temp_c':max_field(samples,'cpu_temp_c'),'avg_cpu_temp_c':avg_field(samples,'cpu_temp_c'),
                         'max_gpu_temp_c':max_field(samples,'gpu_temp_c'),'avg_gpu_temp_c':avg_field(samples,'gpu_temp_c'),
                         'max_soc_temp_c':max_field(samples,'soc_temp_c'),

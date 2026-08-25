@@ -11,6 +11,7 @@ import datetime as dt
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import threading
@@ -33,6 +34,9 @@ TELEMETRY_FIELDS = (
     "gpu_power_w",
     "system_power_w",
     "total_power_w",
+    "host_memory_used_bytes",
+    "host_memory_pct",
+    "gpu_memory_used_bytes",
 )
 
 
@@ -132,10 +136,65 @@ def _max_host_thermal_zone_temp(root: Path = Path("/sys/class/thermal")):
     return round(max(values), 3) if values else None
 
 
+def _linux_memory_usage_bytes():
+    """Return (used, total) from Linux's MemAvailable accounting."""
+    values = {}
+    for line in _read_text(Path("/proc/meminfo")).splitlines():
+        try:
+            key, raw = line.split(":", 1)
+            values[key] = int(raw.split()[0]) * 1024
+        except (ValueError, IndexError):
+            continue
+    total = values.get("MemTotal")
+    available = values.get("MemAvailable")
+    if not total or available is None:
+        return None, total
+    return max(0, total - available), total
+
+
+def _darwin_memory_usage_bytes():
+    """Return an OS-level used-memory estimate from vm_stat without psutil."""
+    raw = _cmd_text(["vm_stat"], timeout=1)
+    page_size_match = re.search(r"page size of (\d+) bytes", raw)
+    if not raw or not page_size_match:
+        return None, None
+    page_size = int(page_size_match.group(1))
+    pages = {}
+    for line in raw.splitlines():
+        match = re.match(r"Pages ([^:]+):\s+(\d+)\.", line)
+        if match:
+            pages[match.group(1).strip().lower()] = int(match.group(2))
+    total = number(_cmd_text(["sysctl", "-n", "hw.memsize"], timeout=1))
+    if not total:
+        return None, None
+    available_pages = sum(
+        pages.get(name, 0)
+        for name in ("free", "inactive", "speculative", "purgeable")
+    )
+    return max(0, int(total) - available_pages * page_size), int(total)
+
+
+def host_memory_usage_bytes():
+    """Return (used_bytes, total_bytes), or (None, None) when unavailable."""
+    if platform.system() == "Linux":
+        return _linux_memory_usage_bytes()
+    if platform.system() == "Darwin":
+        return _darwin_memory_usage_bytes()
+    return None, None
+
+
+def _memory_sample_fields():
+    used, total = host_memory_usage_bytes()
+    return {
+        "host_memory_used_bytes": used,
+        "host_memory_pct": round(100 * used / total, 3) if used is not None and total else None,
+    }
+
+
 def parse_nvidia_smi_line(line: str):
     """Parse one row emitted by the suite's persistent nvidia-smi query."""
     parts = [part.strip() for part in (line or "").split(",")]
-    if len(parts) < 6:
+    if len(parts) < 7:
         return None
     gpu_index = number(parts[1])
     return {
@@ -145,6 +204,10 @@ def parse_nvidia_smi_line(line: str):
         "gpu_temp_c": number(parts[3]),
         "gpu_power_w": number(parts[4]),
         "gpu_clock_mhz": number(parts[5]),
+        "gpu_memory_used_bytes": (
+            int(number(parts[6]) * 1024 * 1024)
+            if number(parts[6]) is not None else None
+        ),
     }
 
 
@@ -281,7 +344,9 @@ class MactopSampler(BaseSampler):
                         "gpu_power_w": number(soc.get("gpu_power")),
                         "system_power_w": number(soc.get("system_power")),
                         "total_power_w": number(soc.get("total_power")),
+                        "gpu_memory_used_bytes": None,
                     }
+                    sample.update(_memory_sample_fields())
                     with self.lock:
                         self.samples.append(sample)
                 except Exception as exc:
@@ -320,7 +385,7 @@ class NvidiaSmiSampler(BaseSampler):
             return
         command = [
             self.executable,
-            "--query-gpu=timestamp,index,utilization.gpu,temperature.gpu,power.draw,clocks.current.graphics",
+            "--query-gpu=timestamp,index,utilization.gpu,temperature.gpu,power.draw,clocks.current.graphics,memory.used",
             "--format=csv,noheader,nounits",
             f"--loop-ms={self.interval_ms}",
         ]
@@ -365,6 +430,7 @@ class NvidiaSmiSampler(BaseSampler):
             gpu_temps = [row.get("gpu_temp_c") for row in rows if row.get("gpu_temp_c") is not None]
             gpu_power = [row.get("gpu_power_w") for row in rows if row.get("gpu_power_w") is not None]
             gpu_clocks = [row.get("gpu_clock_mhz") for row in rows if row.get("gpu_clock_mhz") is not None]
+            gpu_memory = [row.get("gpu_memory_used_bytes") for row in rows if row.get("gpu_memory_used_bytes") is not None]
             sample = {
                 "t": time.monotonic(),
                 "timestamp": timestamp,
@@ -382,7 +448,11 @@ class NvidiaSmiSampler(BaseSampler):
                 "total_power_w": None,
                 "gpu_indexes": [row.get("gpu_index") for row in rows],
                 "gpu_clock_mhz": max(gpu_clocks) if gpu_clocks else None,
+                # Sum memory across cards; unlike utilization, total occupancy
+                # is the useful capacity signal for a multi-GPU benchmark.
+                "gpu_memory_used_bytes": sum(gpu_memory) if gpu_memory else None,
             }
+            sample.update(_memory_sample_fields())
             with self.lock:
                 self.samples.append(sample)
 
