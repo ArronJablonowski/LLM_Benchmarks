@@ -1,0 +1,1 @@
+{"id":"mmlu_pro_security","family":"MMLU-Pro","category":"knowledge","name":"Security knowledge MCQ","prompt":"MMLU-Pro-style security question. Which control best reduces credential stuffing risk? A) Disable TLS B) Rate limiting plus MFA C) Open inbound RDP D) Store passwords reversibly. Reply with FINAL: <letter>.","grading":{"kind":"final_answer","expected":"B"}}

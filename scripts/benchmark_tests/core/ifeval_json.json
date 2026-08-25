@@ -1,0 +1,1 @@
+{"id":"ifeval_json","family":"IFEval","category":"instruction_following","name":"Valid JSON with required fields","prompt":"Return only valid compact JSON with exactly these keys: \"verdict\", \"count\". Use verdict=\"pass\" and count=3. No markdown.","grading":{"kind":"json","expected":{"verdict":"pass","count":3},"strict_json":true,"exact_json_keys":true,"compact_json":true}}

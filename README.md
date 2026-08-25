@@ -56,6 +56,10 @@ python3 -m unittest discover -s tests -v
 
 ## List and select benchmark tests
 
+The 18 core tests are one-file-per-test components. See
+[`docs/BENCHMARK_COMPONENTS.md`](docs/BENCHMARK_COMPONENTS.md) to add, replace,
+or validate a test without changing a harness runner.
+
 All three core runners expose the same 18 task IDs. Listing is local and read-only: it does not contact Ollama, Hermes, or OpenClaw, start telemetry, mutate agent configuration, or create reports.
 
 ```bash

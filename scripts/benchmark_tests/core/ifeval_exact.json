@@ -1,0 +1,1 @@
+{"id":"ifeval_exact","family":"IFEval","category":"instruction_following","name":"Exact constrained reply","prompt":"IFEval-style instruction following. Reply with exactly this token and nothing else: LOCAL_BENCH_OK","grading":{"kind":"exact","expected":"LOCAL_BENCH_OK"}}

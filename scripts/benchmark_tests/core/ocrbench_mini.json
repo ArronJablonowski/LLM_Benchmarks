@@ -1,0 +1,1 @@
+{"id":"ocrbench_mini","family":"OCRBench/TextVQA","category":"vision_ocr","name":"OCR text-in-image reading","prompt":"OCR benchmark. Read the text in the attached image. End with FINAL: <text>.","requires_image":true,"image_text":"LOCAL OCR 42","grading":{"kind":"final_answer","expected":"LOCAL OCR 42"}}

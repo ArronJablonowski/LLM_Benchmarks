@@ -1,0 +1,1 @@
+{"id":"simple_reasoning","family":"Smoke","category":"smoke_reasoning","name":"Short reasoning answer","prompt":"Benchmark task simple_reasoning. Answer briefly: if a SOC receives 120 alerts and 25% are false positives, how many alerts remain for investigation? End with FINAL: <number>.","grading":{"kind":"final_answer","expected":"90"}}

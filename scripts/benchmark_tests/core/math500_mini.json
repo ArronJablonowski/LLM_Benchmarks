@@ -1,0 +1,1 @@
+{"id":"math500_mini","family":"MATH-500","category":"math_reasoning","name":"Algebra reasoning","prompt":"MATH-style. Solve for x: 3(x - 2) + 4 = 19. End with FINAL: <x>.","grading":{"kind":"final_answer","expected":"7"}}

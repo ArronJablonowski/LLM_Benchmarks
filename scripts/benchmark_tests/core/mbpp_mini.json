@@ -1,0 +1,1 @@
+{"id":"mbpp_mini","family":"MBPP+","category":"coding","name":"Basic Python programming","prompt":"MBPP-style. Write only Python code for function def count_unique_ips(lines): that receives a list of log lines and returns the number of unique IPv4 addresses appearing in them.","grading":{"kind":"python","fixture":"count_unique_ips"}}

@@ -23,6 +23,7 @@ from accuracy_grading import (
     PRIVATE_IPV4_GRADER,
     grade_task,
 )
+from benchmark_tests import core_task_catalog
 from platform_support import create_sampler, run_metadata
 from ollama_standardized_local_benchmarks import (
     TASKS as DIRECT_TASKS,
@@ -47,10 +48,9 @@ DEFAULT_SUBPROCESS_TIMEOUT_SECONDS = DEFAULT_OPENCLAW_TIMEOUT_SECONDS + DEFAULT_
 MAX_SUBPROCESS_TIMEOUT_SECONDS = MAX_OPENCLAW_TIMEOUT_SECONDS + MAX_SUBPROCESS_GRACE_SECONDS
 DEFAULT_RESTORE_MODEL = os.environ.get('OPENCLAW_RESTORE_MODEL', '')
 
-# Same 17 text task IDs as the Direct Ollama suite. The capability-gated OCR
-# task is appended below and sent through the supported Gateway agent RPC
-# attachment field because `openclaw agent` has no image flag.
-TASKS = [
+# Legacy descriptor snapshot retained temporarily for source-history compatibility.
+# Runtime task selection below is exclusively driven by benchmark_tests/core.
+_LEGACY_TASKS = [
     {
         'id': 'exact_reply', 'family': 'Smoke', 'category': 'smoke_instruction',
         'name': 'Exact reply smoke test',
@@ -157,7 +157,11 @@ TASKS = [
         'strict_json': True, 'exact_json_keys': True, 'compact_json': True,
     },
 ]
-TASKS.append(dict(next(task for task in DIRECT_TASKS if task.get('requires_image'))))
+_LEGACY_TASKS.append(dict(next(task for task in DIRECT_TASKS if task.get('requires_image'))))
+
+# OpenClaw receives the same registry-backed catalog as the other harnesses;
+# image transport remains a harness responsibility, not a test definition.
+TASKS = core_task_catalog()
 
 
 def agent_timeout_seconds(value):

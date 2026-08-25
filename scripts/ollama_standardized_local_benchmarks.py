@@ -9,6 +9,7 @@ from accuracy_grading import (
     PRIVATE_IPV4_GRADER,
     grade_task,
 )
+from benchmark_tests import core_task_catalog
 from platform_support import create_sampler, run_metadata
 from standard_local_tasks import (
     PROFILE_CHOICES,
@@ -78,10 +79,9 @@ class ContextCalibrationContaminationError(RuntimeError):
 class ContextCandidateCapacityError(RuntimeError):
     """A candidate was safely rejected before or during its load probe."""
 
-# Direct Ollama combined benchmark suite:
-# 3 smoke tests + 15 standardized mini tasks = 18 defined tests.
-# These are not full official dataset runs; they are local dashboard-ready proxy tasks.
-TASKS = [
+# Legacy descriptor snapshot retained temporarily for source-history compatibility.
+# Runtime task selection below is exclusively driven by benchmark_tests/core.
+_LEGACY_TASKS = [
     {
         'id': 'exact_reply', 'family': 'Smoke', 'category': 'smoke_instruction',
         'name': 'Exact reply smoke test',
@@ -196,6 +196,11 @@ TASKS = [
         'requires_image': True,
     },
 ]
+
+# Direct Ollama combined benchmark suite: 3 smoke tests plus 15 standardized
+# mini tasks.  Each descriptor is independently loadable and validated by the
+# registry, so adding or replacing a test requires no runner change.
+TASKS = core_task_catalog()
 
 PNG_B64_CACHE = None
 

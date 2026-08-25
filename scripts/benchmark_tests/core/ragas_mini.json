@@ -1,0 +1,1 @@
+{"id":"ragas_mini","family":"RAGAS/RAG","category":"rag_grounding","name":"Context-grounded answer","prompt":"RAG benchmark. Use only this context: \"Host alpha has IP 192.0.2.5. Host beta has IP 192.0.2.9.\" Question: What is beta's IP? End with FINAL: <ip>.","grading":{"kind":"final_answer","expected":"192.0.2.9"}}

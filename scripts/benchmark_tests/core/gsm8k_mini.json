@@ -1,0 +1,1 @@
+{"id":"gsm8k_mini","family":"GSM8K","category":"math_reasoning","name":"Grade-school math reasoning","prompt":"GSM8K-style. A SOC has 120 alerts. 25% are false positives. How many alerts remain? End your answer with FINAL: <number>.","grading":{"kind":"final_answer","expected":"90"}}

@@ -1,0 +1,1 @@
+{"id":"humaneval_mini","family":"HumanEval+","category":"coding","name":"Python function generation","prompt":"HumanEval-style. Write only Python code for function def is_private_ipv4(ip): returning True for RFC1918 IPv4 addresses and False otherwise. Keep under 25 lines.","grading":{"kind":"python","fixture":"private_ipv4","line_limit":25}}

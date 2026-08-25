@@ -15,6 +15,7 @@ THINKING_PAIR_SUPPORT = ROOT / "scripts" / "thinking_pair_support.py"
 STANDARD_LOCAL_TASKS = ROOT / "scripts" / "standard_local_tasks.py"
 HERMES = ROOT / "scripts" / "hermes_agent_17_test_benchmarks.py"
 VISION_SUPPORT = ROOT / "scripts" / "vision_benchmark_support.py"
+BENCHMARK_REGISTRY = ROOT / "scripts" / "benchmark_tests" / "registry.py"
 
 
 def literal_assignment(path, name):
@@ -42,6 +43,7 @@ class RepositoryTests(unittest.TestCase):
         for path in (
             DIRECT, OPENCLAW, GENERATOR, PLATFORM_SUPPORT, ACCURACY_GRADING,
             THINKING_PAIR_SUPPORT, STANDARD_LOCAL_TASKS, HERMES, VISION_SUPPORT,
+            BENCHMARK_REGISTRY,
         ):
             compile(path.read_text(encoding="utf-8"), str(path), "exec")
 

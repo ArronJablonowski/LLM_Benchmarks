@@ -16,8 +16,8 @@ import time
 from pathlib import Path
 
 from accuracy_grading import GRADING_PROFILE, grade_task
+from benchmark_tests import core_task_catalog
 from ollama_standardized_local_benchmarks import (
-    TASKS as ALL_TASKS,
     RESOURCE_GUARD_INFRASTRUCTURE_FAILURE,
     SYSTEM_PAGE_SIZE_BYTES,
     avg_field,
@@ -40,7 +40,7 @@ DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
 DEFAULT_TIMEOUT = 1800
 DEFAULT_OUT_DIR = Path.home() / ".hermes/reports/hermes_agent_benchmarks"
 DEFAULT_HERMES_HOME = Path.home() / ".hermes"
-TASKS = list(ALL_TASKS)
+TASKS = core_task_catalog()
 TEXT_TASKS = [task for task in TASKS if not task.get("requires_image")]  # compatibility for report tooling/tests
 
 

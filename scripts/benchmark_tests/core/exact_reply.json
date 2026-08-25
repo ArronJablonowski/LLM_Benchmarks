@@ -1,0 +1,1 @@
+{"id":"exact_reply","family":"Smoke","category":"smoke_instruction","name":"Exact reply smoke test","prompt":"Benchmark task exact_reply. Reply with exactly: BENCH_OK","grading":{"kind":"exact","expected":"BENCH_OK"}}
