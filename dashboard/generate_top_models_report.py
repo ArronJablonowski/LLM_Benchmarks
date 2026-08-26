@@ -42,7 +42,7 @@ HOSTS = {
         "subtitle": "macOS · Apple silicon",
         "paths": ["ollama_direct", "hermes_agent", "openclaw"],
         "minimum_tasks": {"ollama_direct": 18, "hermes_agent": 18, "openclaw": 18},
-        "source_note": "Final 2026-08-23 Studio campaign, including cloud and local recovery evidence",
+        "source_note": "2026-08-23 Studio campaign plus 2026-08-26 Qwen3.8 evidence; OpenClaw Qwen3.8 paths were safely terminally accounted at the established context limit",
     },
     "mini": {
         "name": "Mac Mini",
@@ -781,7 +781,7 @@ footer {{ color:#788397; padding:24px 0 38px; font-size:12px; }}
 </script>
 </body>
 </html>
-    '''
+    '''.rstrip() + "\n"
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(document, encoding="utf-8")
