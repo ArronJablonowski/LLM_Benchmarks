@@ -22,13 +22,15 @@ from accuracy_grading import (
     grade_task,
 )
 from benchmark_tests import core_task_catalog
+from benchmark_settings import SETTINGS
 from platform_support import create_sampler, run_metadata
 from ollama_standardized_local_benchmarks import make_text_png_base64
+from output_safety import redact_sensitive_text
 from vision_benchmark_support import materialize_ocr_asset, model_supports_vision
 
-HOME = Path.home()
-DEFAULT_OUT_DIR = HOME / '.hermes/reports/openclaw_benchmarks'
-DEFAULT_OLLAMA_URL = os.environ.get('LLM_BENCHMARK_OLLAMA_URL', 'http://127.0.0.1:11434').rstrip('/')
+HOME = SETTINGS.home
+DEFAULT_OUT_DIR = SETTINGS.report_dir('openclaw_benchmarks')
+DEFAULT_OLLAMA_URL = SETTINGS.ollama_url
 
 SUITE_VERSION = '0.2.0'
 BENCHMARK_PROFILE = 'accuracy-first-v3'
@@ -640,6 +642,13 @@ def main(argv=None):
                     grading = grade_task(task, status, text, skipped=skipped)
                     grading_wall_seconds = round(time.monotonic() - grading_started, 3)
                     verdict = grading['verdict']
+                    # Keep raw process output for parsing, timeout handling, and grading;
+                    # serialize only the redacted evidence values below.
+                    report_text = redact_sensitive_text(text)
+                    report_stdout = redact_sensitive_text(stdout)
+                    report_stderr = redact_sensitive_text(stderr)
+                    report_error = redact_sensitive_text(error)
+                    report_grader_error = redact_sensitive_text(grading.get('error') or '')
                     fallback_attempts = agent.get('fallbackAttempts') if isinstance(agent, dict) else None
                     usage = agent.get('usage') if isinstance(agent, dict) else {}
                     prompt_tokens = usage_value(usage, 'input', 'inputTokens', 'promptTokens')
@@ -691,7 +700,7 @@ def main(argv=None):
                         'vision_skip_reason':skip_error,
                         'grader_type':grading.get('grader_type',''),'grader_version':grading.get('grader_version',''),
                         'grader_tests_passed':grading.get('tests_passed',0),'grader_tests_total':grading.get('tests_total',0),
-                        'grader_error':str(grading.get('error') or '').replace('\n',' ')[:1000],
+                        'grader_error':report_grader_error.replace('\n',' ')[:1000],
                         'grading_wall_seconds':grading_wall_seconds,
                         'wall_seconds': round(wall, 3) if not skipped else 0,
                         'openclaw_duration_ms': meta.get('durationMs') if isinstance(meta, dict) else '',
@@ -712,16 +721,17 @@ def main(argv=None):
                         'max_gpu_power_w':max_field(samples,'gpu_power_w'),'avg_gpu_power_w':avg_field(samples,'gpu_power_w'),
                         'max_system_power_w':max_field(samples,'system_power_w'),'avg_system_power_w':avg_field(samples,'system_power_w'),
                         'max_total_power_w':max_field(samples,'total_power_w'),'avg_total_power_w':avg_field(samples,'total_power_w'),'sample_count':len(samples),
-                        'assistant_text_preview': (text or '').replace('\n', ' ')[:240],
+                        'assistant_text_preview': report_text.replace('\n', ' ')[:240],
                         'agent_model': agent.get('model') if isinstance(agent, dict) else '',
                         'winner_model': trace.get('winnerModel') if isinstance(trace, dict) else '',
                         'fallback_used': trace.get('fallbackUsed') if isinstance(trace, dict) else '',
                         'fallback_attempts': json.dumps(fallback_attempts, ensure_ascii=False)[:500] if fallback_attempts else '',
                         'exit_code': exit_code if exit_code is not None else '',
-                        'error': (error or '').replace('\n', ' ')[:1000],
+                        'error': report_error.replace('\n', ' ')[:1000],
                     }
                     writer.writerow(row); cf.flush()
-                    jf.write(json.dumps({'metadata':metadata,'row': row, 'grading':grading, 'telemetry_samples': samples, 'assistant_text': text, 'stdout': stdout, 'stderr': stderr}, ensure_ascii=False) + '\n'); jf.flush()
+                    report_grading = {**grading, 'error': report_grader_error}
+                    jf.write(json.dumps({'metadata':metadata,'row': row, 'grading':report_grading, 'telemetry_samples': samples, 'assistant_text': report_text, 'stdout': report_stdout, 'stderr': report_stderr}, ensure_ascii=False) + '\n'); jf.flush()
                     rows.append(row)
                     print(f"  -> {row['status']} {row['verdict']} grade={row['grader_tests_passed']}/{row['grader_tests_total']} wall={row['wall_seconds']}s gpu_max={row['max_gpu_usage_pct']}% err={(row['grader_error'] or row['error'])[:100]}", flush=True)
                     if verdict == 'grader_error':

@@ -1,3 +1,4 @@
+import importlib.util
 import json
 import subprocess
 import sys
@@ -12,6 +13,14 @@ DATA_DIR = ROOT / "data" / "top_models_report"
 
 
 class TopModelsReportTests(unittest.TestCase):
+    def test_generator_is_import_safe(self):
+        spec = importlib.util.spec_from_file_location("top_models_report", GENERATOR)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        self.assertTrue(callable(module.main))
+        self.assertFalse(hasattr(module, "ARGS"))
+
     def test_generator_builds_self_contained_interactive_report(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             output = Path(temporary_directory) / "report.html"

@@ -8,6 +8,7 @@ from accuracy_grading import (
     grade_task,
 )
 from benchmark_tests import core_task_catalog
+from benchmark_settings import SETTINGS
 from platform_support import create_sampler, run_metadata
 from standard_local_tasks import (
     PROFILE_CHOICES,
@@ -28,9 +29,9 @@ from thinking_pair_support import (
     validate_resume_plan,
 )
 
-HOME = Path.home()
-DEFAULT_OUT_DIR = HOME / '.hermes/reports/ollama_benchmarks'
-DEFAULT_OLLAMA_URL = os.environ.get('LLM_BENCHMARK_OLLAMA_URL', 'http://127.0.0.1:11434').rstrip('/')
+HOME = SETTINGS.home
+DEFAULT_OUT_DIR = SETTINGS.report_dir('ollama_benchmarks')
+DEFAULT_OLLAMA_URL = SETTINGS.ollama_url
 DEFAULT_TIMEOUT = 1800
 MAX_RESPONSE_TIMEOUT_SECONDS = 1800
 BENCHMARK_PROFILE = 'accuracy-first-v2'

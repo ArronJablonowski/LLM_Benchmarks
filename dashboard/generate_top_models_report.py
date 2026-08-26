@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description="Build the self-contained cross-system benchmark ranking report."
     )
@@ -27,12 +27,7 @@ def parse_args():
         default=ROOT / "docs" / "top_10_models_by_system.html",
         help="Destination for the generated self-contained HTML report.",
     )
-    return parser.parse_args()
-
-
-ARGS = parse_args()
-DATA_DIR = ARGS.data_dir.expanduser().resolve()
-OUTPUT = ARGS.output.expanduser().resolve()
+    return parser.parse_args(argv)
 
 HOSTS = {
     "spark": {
@@ -492,56 +487,61 @@ def ranking_table(host_key, ranking):
     )
 
 
-rankings = {}
-metadata = {}
-provenance = {}
-for host_key in HOSTS:
-    input_path = DATA_DIR / f"{host_key}_benchmark_results.csv"
-    with input_path.open(newline="", encoding="utf-8", errors="replace") as handle:
-        source_rows = list(csv.DictReader(handle))
-    provenance[host_key] = {
-        "kind": "consolidated-export",
-        "row_count": len(source_rows),
-        "export": display_path(input_path),
-        "export_sha256": sha256_file(input_path),
-        "source_files": [],
-    }
-    rankings[host_key], metadata[host_key] = build_rankings(host_key, source_rows)
+def main(argv=None):
+    args = parse_args(argv)
+    DATA_DIR = args.data_dir.expanduser().resolve()
+    OUTPUT = args.output.expanduser().resolve()
 
-generated = dt.datetime.now(dt.timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M %Z")
-sections = []
-for host_key, host in HOSTS.items():
-    ranking = rankings[host_key]
-    best = next(
-        (
-            item
-            for item in ranking
-            if not item.get("cloud", False) and not item.get("partial", False)
-        ),
-        None,
-    )
-    meta = metadata[host_key]
-    cloud_note = (
-        f' {meta["cloud_models"]} cloud models are available when Cloud mode is enabled.'
-        if meta["cloud_models"]
-        else ""
-    )
-    sections.append(
-        f'<section class="system" id="{host_key}">'
-        '<div class="section-head">'
-        '<div>'
-        f'<div class="eyebrow">{html.escape(host["subtitle"])}</div>'
-        f'<h2>{html.escape(host["name"])}</h2>'
-        f'<p>Top 10 shown by default from {meta["qualified_models"]} fully qualified local models. Verbose mode shows all {meta["local_observed_models"]} observed local models, including {meta["incomplete_models"]} partial or incompatible runs.{cloud_note} {html.escape(host["source_note"])}</p>'
-        '</div>'
-        + (f'<div class="winner"><span>Accuracy leader</span><strong class="winner-model">{html.escape(best["model"])}</strong><b class="winner-score">{pct(best["overall_accuracy"])}</b></div>' if best else "")
-        + '</div>'
-        + ranking_table(host_key, ranking)
-        + '</section>'
-    )
+    rankings = {}
+    metadata = {}
+    provenance = {}
+    for host_key in HOSTS:
+        input_path = DATA_DIR / f"{host_key}_benchmark_results.csv"
+        with input_path.open(newline="", encoding="utf-8", errors="replace") as handle:
+            source_rows = list(csv.DictReader(handle))
+        provenance[host_key] = {
+            "kind": "consolidated-export",
+            "row_count": len(source_rows),
+            "export": display_path(input_path),
+            "export_sha256": sha256_file(input_path),
+            "source_files": [],
+        }
+        rankings[host_key], metadata[host_key] = build_rankings(host_key, source_rows)
 
-data_json = json.dumps(rankings, separators=(",", ":")).replace("</", "<\\/")
-document = f'''<!doctype html>
+    generated = dt.datetime.now(dt.timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M %Z")
+    sections = []
+    for host_key, host in HOSTS.items():
+        ranking = rankings[host_key]
+        best = next(
+            (
+                item
+                for item in ranking
+                if not item.get("cloud", False) and not item.get("partial", False)
+            ),
+            None,
+        )
+        meta = metadata[host_key]
+        cloud_note = (
+            f' {meta["cloud_models"]} cloud models are available when Cloud mode is enabled.'
+            if meta["cloud_models"]
+            else ""
+        )
+        sections.append(
+            f'<section class="system" id="{host_key}">'
+            '<div class="section-head">'
+            '<div>'
+            f'<div class="eyebrow">{html.escape(host["subtitle"])}</div>'
+            f'<h2>{html.escape(host["name"])}</h2>'
+            f'<p>Top 10 shown by default from {meta["qualified_models"]} fully qualified local models. Verbose mode shows all {meta["local_observed_models"]} observed local models, including {meta["incomplete_models"]} partial or incompatible runs.{cloud_note} {html.escape(host["source_note"])}</p>'
+            '</div>'
+            + (f'<div class="winner"><span>Accuracy leader</span><strong class="winner-model">{html.escape(best["model"])}</strong><b class="winner-score">{pct(best["overall_accuracy"])}</b></div>' if best else "")
+            + '</div>'
+            + ranking_table(host_key, ranking)
+            + '</section>'
+        )
+
+    data_json = json.dumps(rankings, separators=(",", ":")).replace("</", "<\\/")
+    document = f'''<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -781,24 +781,28 @@ footer {{ color:#788397; padding:24px 0 38px; font-size:12px; }}
 </script>
 </body>
 </html>
-'''
+    '''
 
-OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-OUTPUT.write_text(document, encoding="utf-8")
-manifest = {
-    "generated": generated,
-    "report": display_path(OUTPUT),
-    "report_sha256": sha256_file(OUTPUT),
-    "hosts": provenance,
-    "metadata": metadata,
-}
-manifest_path = OUTPUT.with_suffix(".manifest.json")
-manifest_path.write_text(
-    json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
-)
-print(json.dumps({
-    "output": str(OUTPUT),
-    "manifest": str(manifest_path),
-    "rankings": {host: [{"rank": i + 1, "model": item["model"], "overall_accuracy": round(item["overall_accuracy"], 6)} for i, item in enumerate(items)] for host, items in rankings.items()},
-    "metadata": metadata,
-}, indent=2))
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT.write_text(document, encoding="utf-8")
+    manifest = {
+        "generated": generated,
+        "report": display_path(OUTPUT),
+        "report_sha256": sha256_file(OUTPUT),
+        "hosts": provenance,
+        "metadata": metadata,
+    }
+    manifest_path = OUTPUT.with_suffix(".manifest.json")
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+    )
+    print(json.dumps({
+        "output": str(OUTPUT),
+        "manifest": str(manifest_path),
+        "rankings": {host: [{"rank": i + 1, "model": item["model"], "overall_accuracy": round(item["overall_accuracy"], 6)} for i, item in enumerate(items)] for host, items in rankings.items()},
+        "metadata": metadata,
+    }, indent=2))
+
+
+if __name__ == "__main__":
+    main()

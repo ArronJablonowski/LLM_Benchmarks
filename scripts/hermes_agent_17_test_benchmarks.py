@@ -17,6 +17,7 @@ from pathlib import Path
 
 from accuracy_grading import GRADING_PROFILE, grade_task
 from benchmark_tests import core_task_catalog
+from benchmark_settings import SETTINGS
 from ollama_standardized_local_benchmarks import (
     RESOURCE_GUARD_INFRASTRUCTURE_FAILURE,
     SYSTEM_PAGE_SIZE_BYTES,
@@ -32,14 +33,15 @@ from ollama_standardized_local_benchmarks import (
     verify_paired_runtime_identity,
 )
 from platform_support import create_sampler, run_metadata
+from output_safety import redact_sensitive_text
 from vision_benchmark_support import materialize_ocr_asset, model_supports_vision
 
 SUITE_VERSION = "0.2.0"
 BENCHMARK_PROFILE = "hermes-agent-accuracy-first-v2"
-DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
+DEFAULT_OLLAMA_URL = SETTINGS.ollama_url
 DEFAULT_TIMEOUT = 1800
-DEFAULT_OUT_DIR = Path.home() / ".hermes/reports/hermes_agent_benchmarks"
-DEFAULT_HERMES_HOME = Path.home() / ".hermes"
+DEFAULT_OUT_DIR = SETTINGS.report_dir("hermes_agent_benchmarks")
+DEFAULT_HERMES_HOME = SETTINGS.home / ".hermes"
 TASKS = core_task_catalog()
 TEXT_TASKS = [task for task in TASKS if not task.get("requires_image")]  # compatibility for report tooling/tests
 
@@ -482,22 +484,29 @@ def main(argv: list[str] | None = None) -> int:
                         status = "skip" if skipped else ("timeout" if timed_out else ("ok" if exit_code == 0 and stdout.strip() else "error"))
                         grading_started = time.monotonic(); grading = grade_task(task, status, stdout, skipped=skipped)
                         grading_wall = round(time.monotonic() - grading_started, 3)
+                        # Preserve raw output for grading and safety decisions, but never
+                        # serialize a provider/CLI credential into campaign evidence.
+                        report_stdout = redact_sensitive_text(stdout)
+                        report_stderr = redact_sensitive_text(stderr)
+                        report_error = redact_sensitive_text(error)
+                        report_grader_error = redact_sensitive_text(grading.get("error") or "")
                         row = {
                             **{key: metadata.get(key, "") for key in ("run_id","suite_version","host","host_label","platform","os_version","architecture","telemetry_backend","ollama_version","benchmark_profile","grading_profile","runner_sha256","recovery_runner_sha256","hermes_version","context_plan_sha256")},
                             "provider":args.provider if external else "custom","model":model["name"],"model_digest":model.get("digest", ""),"requested_num_ctx":model.get("requested_num_ctx", ""),"native_context_length":model.get("native_context_length") or model.get("model_context_length", ""),
                             "treatment_key":treatment.get("treatment_key", ""),"treatment_role":treatment.get("treatment_role", ""),"hermes_reasoning_requested":treatment["hermes_reasoning"],
                             "vision_capable":str(vision_capable).lower(),"image_transport":"hermes_vision_analyze_local_path" if task.get("requires_image") and not skipped else "","image_path":ocr_asset["path"] if task.get("requires_image") and ocr_asset else "","image_sha256":ocr_asset["sha256"] if task.get("requires_image") and ocr_asset else "","image_mime_type":ocr_asset["mime_type"] if task.get("requires_image") and ocr_asset else "","image_bytes":ocr_asset["bytes"] if task.get("requires_image") and ocr_asset else "","native_vision_required":str(bool(task.get("requires_image"))).lower(),"vision_skip_reason":skip_reason,
                             "benchmark_family":task["family"],"category":task["category"],"task_id":task["id"],"task_name":task["name"],"status":status,"verdict":grading["verdict"],
-                            "grader_type":grading.get("grader_type", ""),"grader_version":grading.get("grader_version", ""),"grader_tests_passed":grading.get("tests_passed", 0),"grader_tests_total":grading.get("tests_total", 0),"grader_error":str(grading.get("error") or "").replace("\n", " ")[:1000],"grading_wall_seconds":grading_wall,
+                            "grader_type":grading.get("grader_type", ""),"grader_version":grading.get("grader_version", ""),"grader_tests_passed":grading.get("tests_passed", 0),"grader_tests_total":grading.get("tests_total", 0),"grader_error":report_grader_error.replace("\n", " ")[:1000],"grading_wall_seconds":grading_wall,
                             "wall_seconds":wall,"timed_out":str(timed_out).lower(),"termination_reason":"timeout" if timed_out else ("completed" if status == "ok" else "error"),
                             "prompt_eval_count":usage.get("input_tokens", ""),"eval_count":usage.get("output_tokens", ""),"reasoning_tokens":usage.get("reasoning_tokens", ""),"total_token_count":usage.get("total_tokens", ""),"api_calls":usage.get("api_calls", ""),
                             "response_chars":len(stdout),"response_bytes":len(stdout.encode()),
                             "max_cpu_usage_pct":max_field(samples,"cpu_usage_pct"),"avg_cpu_usage_pct":avg_field(samples,"cpu_usage_pct"),"max_gpu_usage_pct":max_field(samples,"gpu_usage_pct"),"avg_gpu_usage_pct":avg_field(samples,"gpu_usage_pct"),"max_host_memory_used_bytes":max_field(samples,"host_memory_used_bytes"),"max_host_memory_pct":max_field(samples,"host_memory_pct"),"max_gpu_memory_used_bytes":max_field(samples,"gpu_memory_used_bytes"),"max_gpu_temp_c":max_field(samples,"gpu_temp_c"),"avg_gpu_temp_c":avg_field(samples,"gpu_temp_c"),"max_host_temp_c":max_field(samples,"host_temp_c"),"avg_host_temp_c":avg_field(samples,"host_temp_c"),"max_gpu_power_w":max_field(samples,"gpu_power_w"),"avg_gpu_power_w":avg_field(samples,"gpu_power_w"),"sample_count":len(samples),
-                            "response_preview":stdout.replace("\n", " ")[:300],"exit_code":exit_code,"error":error,
+                            "response_preview":report_stdout.replace("\n", " ")[:300],"exit_code":exit_code,"error":report_error,
                         }
                         writer.writerow(row); cf.flush(); rows.append(row)
-                        jf.write(json.dumps({"metadata":metadata,"row":row,"grading":grading,"usage":usage,"assistant_text":stdout,"stderr":stderr,"telemetry_samples":samples,"resource_guard":evidence}, ensure_ascii=False) + "\n"); jf.flush()
-                        print(f"  -> {status} {row['verdict']} grade={row['grader_tests_passed']}/{row['grader_tests_total']} wall={wall}s tokens={row['eval_count']} err={(row['grader_error'] or error)[:90]}", flush=True)
+                        report_grading = {**grading, "error": report_grader_error}
+                        jf.write(json.dumps({"metadata":metadata,"row":row,"grading":report_grading,"usage":usage,"assistant_text":report_stdout,"stderr":report_stderr,"telemetry_samples":samples,"resource_guard":evidence}, ensure_ascii=False) + "\n"); jf.flush()
+                        print(f"  -> {status} {row['verdict']} grade={row['grader_tests_passed']}/{row['grader_tests_total']} wall={wall}s tokens={row['eval_count']} err={(row['grader_error'] or report_error)[:90]}", flush=True)
                         if grading["verdict"] == "grader_error":
                             raise RuntimeError(f"Grader failed for {model['name']} / {task['id']}")
     finally:

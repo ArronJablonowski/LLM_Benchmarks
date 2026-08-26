@@ -1,0 +1,38 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+extend-exclude = ["data", "docs"]
+
+[tool.ruff.lint]
+# Start with errors that can break imports or execution.  Additional lint
+# families can be enabled as the legacy runners are extracted and covered.
+select = ["E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# These are documented legacy findings.  Keep the exceptions narrow so new
+# modules and extracted code are checked by default; remove each entry as its
+# owning module is refactored.
+"dashboard/generate_local_llm_dashboard.py" = ["F841"]
+"scripts/hermes_agent_17_test_benchmarks.py" = ["F401", "F541"]
+"scripts/ollama_standardized_local_benchmarks.py" = ["F841"]
+"tests/test_platform_support.py" = ["F841"]
+"tests/test_qualification_runner.py" = ["F401"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.mypy]
+# The core component registry is a small, dependency-light starting point for
+# static checks.  Legacy runners are deliberately excluded until their public
+# contracts are characterized and extracted.
+files = ["scripts/benchmark_tests"]
+python_version = "3.10"
+check_untyped_defs = true
+follow_imports = "skip"
+ignore_missing_imports = true
+warn_unused_configs = true
