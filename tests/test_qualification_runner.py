@@ -495,7 +495,7 @@ class ResourceGuardV2Tests(unittest.TestCase):
         total = 128 * self.GIB
         self.assertEqual(4*self.GIB, runner.context_required_headroom(total))
         self.assertEqual(4*self.GIB, runner.context_operating_headroom(total))
-        self.assertEqual(0, runner.CONTEXT_SWAP_GROWTH_LIMIT_BYTES)
+        self.assertEqual(self.GIB, runner.CONTEXT_SWAP_GROWTH_LIMIT_BYTES)
 
     def test_mistral_native_kv_estimate_is_88_gib_and_small_buffer_rejects(self):
         model = {
@@ -749,7 +749,13 @@ class ResourceGuardV2Tests(unittest.TestCase):
         entered=threading.Event(); release=threading.Event(); stopped=threading.Event()
         request=mock.Mock()
         high=self.resource()
-        low=self.resource(swap_used=high["swap_used_bytes"]+1)
+        low=self.resource(
+            swap_used=(
+                high["swap_used_bytes"]
+                + runner.CONTEXT_SWAP_GROWTH_LIMIT_BYTES
+                + 1
+            )
+        )
 
         def resource_reader():
             return low if entered.is_set() else high
@@ -1091,7 +1097,9 @@ class ResourceGuardV2Tests(unittest.TestCase):
         self.assertTrue(any("numeric pressure evidence" in item for item in mismatches))
 
         pressure["swap_used_max_bytes"]=(
-            pressure["campaign_resource_baseline"]["swap_used_bytes"]+1
+            pressure["campaign_resource_baseline"]["swap_used_bytes"]
+            + runner.CONTEXT_SWAP_GROWTH_LIMIT_BYTES
+            + 1
         )
         mismatches=[]
         runner._validate_resume_resource_guard(
@@ -1925,7 +1933,9 @@ class QualificationExecutionIntegrationTests(unittest.TestCase):
             "watchdog_trigger_seconds":0.5,
             "watchdog_target_stop_returned":True,
             "swap_used_max_bytes":(
-                pressure["campaign_resource_baseline"]["swap_used_bytes"]+1
+                pressure["campaign_resource_baseline"]["swap_used_bytes"]
+                + runner.CONTEXT_SWAP_GROWTH_LIMIT_BYTES
+                + 1
             ),
         })
 

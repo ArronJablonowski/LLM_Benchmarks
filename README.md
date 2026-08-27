@@ -353,8 +353,9 @@ python3 scripts/ollama_standardized_local_benchmarks.py \
 
 Paired mode requires a positive `--num-ctx` or `--adaptive-native-context`.
 Adaptive calibration is restricted to loopback Ollama on Linux and only lowers
-context after clean capacity pressure with verified recovery; an OOM, unsafe
-memory/swap growth, unhealthy runtime, or external GPU work is a hard stop.
+context after clean capacity pressure with verified recovery; an OOM, swap
+growth beyond the frozen 1 GiB allowance, unhealthy runtime, or external GPU
+work is a hard stop.
 
 Resume only with the original frozen plan and matching calibration artifact:
 
