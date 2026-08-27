@@ -30,6 +30,7 @@ from ollama_standardized_local_benchmarks import (
     start_paired_task_resource_guard,
     stop_model,
     verify_empty_paired_residency,
+    verify_paired_live_residency,
     verify_paired_runtime_identity,
 )
 from platform_support import create_sampler, run_metadata
@@ -469,6 +470,7 @@ def main(argv: list[str] | None = None) -> int:
                                     stop_model(model["name"], base_url)
                         wall = round(time.monotonic() - started, 3)
                         if not external and not skipped:
+                            verify_paired_live_residency(model, base_url)
                             stop_model(model["name"], base_url); verify_empty_paired_residency(model["name"], base_url)
                         if not external and use_frozen_context and not skipped:
                             evidence = finish_paired_task_resource_guard(guard, model["name"], base_url, campaign_baseline=campaign_baseline)

@@ -24,7 +24,12 @@ from accuracy_grading import (
 from benchmark_tests import core_task_catalog
 from benchmark_settings import SETTINGS
 from platform_support import create_sampler, run_metadata
-from ollama_standardized_local_benchmarks import make_text_png_base64
+from ollama_standardized_local_benchmarks import (
+    make_text_png_base64,
+    stop_model,
+    verify_empty_paired_residency,
+    verify_paired_live_residency,
+)
 from output_safety import redact_sensitive_text
 from vision_benchmark_support import materialize_ocr_asset, model_supports_vision
 
@@ -287,12 +292,6 @@ def require_openclaw_provider_auth(models):
             'OpenClaw has no Ollama auth profile for the active agent. Add a local placeholder '
             'profile with `openclaw models auth paste-api-key --provider ollama` before benchmarking.'
         )
-
-def stop_model(model, base_url=DEFAULT_OLLAMA_URL):
-    env = dict(os.environ)
-    env['OLLAMA_HOST'] = base_url
-    try: subprocess.run(['ollama', 'stop', model], text=True, capture_output=True, timeout=30, env=env)
-    except Exception: pass
 
 def safe_model_id(model):
     return re.sub(r'[^A-Za-z0-9_.-]+', '-', model).strip('-')[:80]
@@ -593,6 +592,7 @@ def main(argv=None):
                 time.sleep(5)
                 if not model.get('external'):
                     stop_model(model['name'], base_url)
+                    verify_empty_paired_residency(model['name'], base_url)
                 vision_capable = model_supports_vision(model)
                 _, thinking_cli_value, thinking_resolved = thinking_plan[model['name']]
                 for ti, task in enumerate(tasks, 1):
@@ -623,6 +623,8 @@ def main(argv=None):
                             stderr = text_value(e.stderr)
                             error = f'outer_timeout_after_{args.subprocess_timeout}s'
                     wall = time.monotonic() - t0
+                    if not model.get('external') and not skipped:
+                        verify_paired_live_residency(model, base_url)
                     samples = sampler.get_since(sample_start)
                     reported_status = data.get('status') if isinstance(data, dict) else ''
                     if not reported_status and isinstance(data, dict) and data.get('result') is not None:
@@ -740,6 +742,7 @@ def main(argv=None):
                         )
                     if not model.get('external'):
                         stop_model(model['name'], base_url)
+                        verify_empty_paired_residency(model['name'], base_url)
                     time.sleep(2)
     finally:
         print('Stopping telemetry sampler and restoring OpenClaw config...', flush=True)

@@ -356,6 +356,24 @@ class AdaptiveContextCalibrationTests(unittest.TestCase):
                 )
         sleeper.assert_not_called()
 
+    def test_cold_paired_residency_retries_only_expected_model_stop(self):
+        stop_request = mock.Mock(return_value=True)
+        sleeper = mock.Mock()
+        states = [
+            {"models": [{"name": self.MODEL["name"]}]},
+            {"models": [{"name": self.MODEL["name"]}]},
+            {"models": []},
+        ]
+        with mock.patch.object(runner, "req_json", side_effect=states):
+            self.assertTrue(runner.verify_empty_paired_residency(
+                self.MODEL["name"], "http://fixture:11434",
+                stop_request=stop_request, sleeper=sleeper,
+            ))
+
+        self.assertEqual(2, stop_request.call_count)
+        self.assertTrue(all(call.args[0] == self.MODEL["name"] for call in stop_request.call_args_list))
+        self.assertEqual(2, sleeper.call_count)
+
     def test_contamination_is_persisted_as_infrastructure_failure(self):
         model = {
             **self.MODEL, "digest": "sha256:fixture",
@@ -1206,6 +1224,38 @@ class RuntimeIdentityTests(unittest.TestCase):
                  self.assertRaisesRegex(RuntimeError, error):
                 runner.verify_paired_runtime_identity(
                     self.PLAN, self.MODEL, "http://fixture:11434"
+                )
+
+    def test_post_task_live_residency_accepts_exact_or_already_unloaded_model(self):
+        responses = (
+            {"models": []},
+            {"models": [{
+                "name": self.MODEL["name"], "digest": self.MODEL["digest"],
+            }]},
+        )
+        for response in responses:
+            with self.subTest(response=response), mock.patch.object(
+                runner, "req_json", return_value=response,
+            ):
+                self.assertTrue(runner.verify_paired_live_residency(
+                    self.MODEL, "http://fixture:11434"
+                ))
+
+    def test_post_task_live_residency_rejects_wrong_model_digest_or_multiplicity(self):
+        cases = (
+            ({"models": [{"name": "wrong:latest", "digest": "sha256:wrong"}]}, "expected"),
+            ({"models": [{"name": self.MODEL["name"], "digest": "sha256:wrong"}]}, "digest changed"),
+            ({"models": [
+                {"name": self.MODEL["name"], "digest": self.MODEL["digest"]},
+                {"name": "other:latest", "digest": "sha256:other"},
+            ]}, "multiple models"),
+        )
+        for response, error in cases:
+            with self.subTest(error=error), mock.patch.object(
+                runner, "req_json", return_value=response,
+            ), self.assertRaisesRegex(RuntimeError, error):
+                runner.verify_paired_live_residency(
+                    self.MODEL, "http://fixture:11434"
                 )
 
 

@@ -244,9 +244,14 @@ def verify_empty_paired_residency(
     model_name, base_url=DEFAULT_OLLAMA_URL, *,
     timeout=RESIDENCY_VERIFY_TIMEOUT_SECONDS,
     interval=RESIDENCY_VERIFY_INTERVAL_SECONDS,
+    stop_request=None,
     clock=time.monotonic, sleeper=time.sleep,
 ):
-    """Require a cold paired target to unload without touching other models."""
+    """Require a cold paired target to unload, retrying only its stop request."""
+    if stop_request is None:
+        # Resolve at call time so test doubles and operational wrappers can
+        # replace the transport without this helper retaining a stale binding.
+        stop_request=stop_model
     deadline=clock()+float(timeout)
     while True:
         try:
@@ -264,6 +269,10 @@ def verify_empty_paired_residency(
             )
         if not residents:
             return True
+        # Ollama stop is asynchronous and a completed client process can race
+        # the first unload request. Reissue only the frozen target's stop; an
+        # unrelated resident model still fails closed above and is never touched.
+        stop_request(model_name, base_url)
         remaining=deadline-clock()
         if remaining <= 0:
             raise RuntimeError(
@@ -271,6 +280,50 @@ def verify_empty_paired_residency(
                 f'within {timeout}s'
             )
         sleeper(min(float(interval), remaining))
+
+
+def verify_paired_live_residency(model, base_url=DEFAULT_OLLAMA_URL):
+    """Reject post-call evidence when Ollama shows the wrong live model/digest.
+
+    A model using keep_alive=0 may already be absent when queried; absence is
+    acceptable because the frozen tag/digest was checked immediately pre-task.
+    Any model that is still resident must be the one planned for this result.
+    """
+    expected_name=str(model.get('name') or '')
+    expected_digest=str(model.get('digest') or '')
+    if not expected_name or not expected_digest:
+        raise RuntimeError('Paired plan lacks complete model identity for live residency verification')
+    try:
+        state=req_json(base_url.rstrip('/') + '/api/ps', timeout=30)
+    except Exception as exc:
+        raise RuntimeError(
+            'Unable to verify live paired model residency after inference: '
+            + _request_exception_detail(exc)
+        ) from exc
+    residents=(state or {}).get('models')
+    if not isinstance(residents, list) or not all(isinstance(entry, dict) for entry in residents):
+        raise RuntimeError('Live paired model residency response lacked a valid models list')
+    if not residents:
+        return True
+    if len(residents) != 1:
+        raise RuntimeError(
+            'Live paired model residency contained multiple models: '
+            + ', '.join(_resident_model_names(state))
+        )
+    entry=residents[0]
+    actual_name=str(entry.get('name') or entry.get('model') or '')
+    actual_digest=str(entry.get('digest') or '')
+    if actual_name != expected_name:
+        raise RuntimeError(
+            f'Live paired model provenance mismatch: expected {expected_name!r}, '
+            f'found {actual_name or "<missing>"!r}'
+        )
+    if actual_digest != expected_digest:
+        raise RuntimeError(
+            f'Live paired model provenance mismatch: {expected_name!r} digest changed '
+            f'from {expected_digest!r} to {actual_digest or "<missing>"!r}'
+        )
+    return True
 
 
 def verify_paired_runtime_identity(plan, model, base_url=DEFAULT_OLLAMA_URL):
