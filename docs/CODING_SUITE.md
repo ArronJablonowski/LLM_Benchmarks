@@ -102,6 +102,23 @@ BENCH_CLI_HARNESSES="pi goose openhands" \
 ops/run_coding_agent_campaign.sh
 ```
 
+To compare the same frozen Ollama checkpoints through the built-in direct
+workspace agent, Hermes, and OpenClaw, use the resumable project wrapper:
+
+```bash
+BENCH_CAMPAIGN_DIR="$HOME/.hermes/reports/campaigns/project-three-path" \
+BENCH_MODELS_FILE="$HOME/.hermes/reports/campaigns/project-three-path/models.tsv" \
+BENCH_PROJECT_SUITES="coding" \
+BENCH_PROJECT_HARNESSES="ollama-direct hermes openclaw" \
+ops/run_ollama_project_three_path_campaign.sh
+```
+
+`ollama-direct` is the repository's bounded workspace tool loop and is recorded
+as its own harness. Hermes uses an isolated state directory and a restricted
+terminal/file/code-execution tool surface. OpenClaw uses a unique benchmark
+session and an explicit Ollama model override. None of these paths is relabeled
+as Pi, Goose, or OpenHands.
+
 The coding runner is plan-only unless `--run` is supplied. For Ollama it verifies
 frozen digests and cold-unloads between projects. For persistent server runners
 (`llama.cpp`, vLLM, and TensorRT-LLM), the wrapper records and monitors the exact

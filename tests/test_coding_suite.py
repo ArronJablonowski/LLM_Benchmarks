@@ -57,6 +57,13 @@ class CodingSuiteTests(unittest.TestCase):
                 self.assertGreater(payload["total"], 0)
 
     def test_agent_commands_enable_real_coding_tools_and_bound_turns(self):
+        direct_agent = coding.harness_command("ollama-direct", "fixture", "prompt", Path("/tmp/work"), "python")
+        self.assertIn("ollama_workspace_agent.py", " ".join(direct_agent))
+        hermes = coding.harness_command("hermes", "fixture", "prompt", Path("/tmp/work"), "python")
+        self.assertIn("terminal,file,code_execution", hermes)
+        self.assertIn("--ignore-user-config", hermes)
+        openclaw = coding.harness_command("openclaw", "fixture", "prompt", Path("/tmp/work"), "python")
+        self.assertIn("ollama/fixture", openclaw)
         pi = coding.harness_command("pi", "fixture", "prompt", Path("/tmp/work"), "python")
         self.assertNotIn("--no-tools", pi)
         goose = coding.harness_command("goose", "fixture", "prompt", Path("/tmp/work"), "python")

@@ -40,7 +40,11 @@ FIELDS = [
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--suite", choices=("creative",), default="creative")
-    parser.add_argument("--harness", choices=("pi", "goose", "openhands"), required=True)
+    parser.add_argument(
+        "--harness",
+        choices=("ollama-direct", "hermes", "openclaw", "pi", "goose", "openhands"),
+        required=True,
+    )
     parser.add_argument("--model-runner", choices=("ollama", "llama.cpp", "vllm", "tensorrt-llm"), default="ollama")
     parser.add_argument("--base-url", default="http://127.0.0.1:11434/v1")
     parser.add_argument("--api-key", default="ollama")
@@ -89,6 +93,8 @@ def validate_existing_records(records: list[dict]) -> None:
 
 def main(argv=None) -> int:
     args = parse_args(argv)
+    if args.harness in {"ollama-direct", "hermes", "openclaw"} and args.model_runner != "ollama":
+        raise SystemExit(f"--harness {args.harness} currently requires --model-runner ollama")
     tasks = suite_task_catalog("creative")
     if args.tasks:
         wanted = set(args.tasks); tasks = [task for task in tasks if task["id"] in wanted]
@@ -120,7 +126,12 @@ def main(argv=None) -> int:
     if args.harness == "pi":
         if args.model_runner == "ollama": pi_configuration(config_dir, models)
         else: provider_configuration(config_dir, models, args.base_url, args.api_key)
-    harness_version = command_output([args.openhands_python, "-c", "import importlib.metadata as m; print(m.version('openhands-ai'))"]) if args.harness == "openhands" else command_output([args.harness, "--version"])
+    if args.harness == "openhands":
+        harness_version = command_output([args.openhands_python, "-c", "import importlib.metadata as m; print(m.version('openhands-ai'))"])
+    elif args.harness == "ollama-direct":
+        harness_version = "ollama-workspace-agent-v1"
+    else:
+        harness_version = command_output([args.harness, "--version"])
     runner_version = args.runner_version or (command_output(["ollama", "--version"]) if args.model_runner == "ollama" else "unreported")
     jsonl_path = args.output_dir / f"{args.harness}_creative.jsonl"; csv_path = args.output_dir / f"{args.harness}_creative.csv"
     records = [json.loads(line) for line in jsonl_path.read_text(encoding="utf-8").splitlines()] if jsonl_path.exists() else []
@@ -148,8 +159,15 @@ def main(argv=None) -> int:
                     + "\n\nWork only inside: " + str(workspace)
                 )
                 provider = "ollama" if args.model_runner == "ollama" else "openai"
-                command = harness_command(args.harness, model["name"], prompt, workspace, args.openhands_python, "ollama" if args.model_runner == "ollama" else "benchmark", args.base_url, args.api_key)
+                command = harness_command(
+                    args.harness, model["name"], prompt, workspace,
+                    args.openhands_python,
+                    "ollama" if args.model_runner == "ollama" else "benchmark",
+                    args.base_url, args.api_key, args.timeout,
+                )
                 env = {**os.environ, "PI_CODING_AGENT_DIR": str(config_dir), "PI_TELEMETRY": "0", "GOOSE_PROVIDER": provider, "GOOSE_MODEL": model["name"], "GOOSE_TELEMETRY_ENABLED": "false", "GOOSE_PROVIDER__HOST": args.base_url, "GOOSE_PROVIDER__API_KEY": args.api_key, "OPENAI_HOST": args.base_url, "OPENAI_API_KEY": args.api_key, "XDG_CONFIG_HOME": str(config_dir / "xdg-config"), "XDG_DATA_HOME": str(config_dir / "xdg-data")}
+                if args.harness == "hermes":
+                    env["HERMES_HOME"] = str(config_dir / "hermes-home")
                 sample_start = sampler.snapshot_len(); started = time.monotonic()
                 if args.model_runner == "ollama":
                     result = run_guarded(command, env, workspace, model["name"], args.timeout, baseline)

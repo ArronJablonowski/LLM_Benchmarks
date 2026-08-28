@@ -25,6 +25,7 @@ CYBERSECURITY_RUNNER = ROOT / "scripts" / "cybersecurity_agent_benchmarks.py"
 CYBERSECURITY_REPORT = ROOT / "dashboard" / "generate_cybersecurity_report.py"
 CYBERSECURITY_GRADER = ROOT / "cyber_tasks" / "grader.py"
 EXPLOITGYM_RUNNER = ROOT / "scripts" / "exploitgym_benchmarks.py"
+OLLAMA_WORKSPACE_AGENT = ROOT / "scripts" / "ollama_workspace_agent.py"
 
 
 def literal_assignment(path, name):
@@ -55,7 +56,7 @@ class RepositoryTests(unittest.TestCase):
             BENCHMARK_REGISTRY, CODING_RUNNER, CODING_REPORT,
             OPENHANDS_CODING_AGENT, CREATIVE_RUNNER, CREATIVE_REPORT,
             CYBERSECURITY_RUNNER, CYBERSECURITY_REPORT, CYBERSECURITY_GRADER,
-            EXPLOITGYM_RUNNER,
+            EXPLOITGYM_RUNNER, OLLAMA_WORKSPACE_AGENT,
         ):
             compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
@@ -78,6 +79,7 @@ class RepositoryTests(unittest.TestCase):
                 OPENHANDS_CODING_AGENT, CREATIVE_RUNNER, CREATIVE_REPORT,
                 CYBERSECURITY_RUNNER, CYBERSECURITY_REPORT,
                 CYBERSECURITY_GRADER, EXPLOITGYM_RUNNER,
+                OLLAMA_WORKSPACE_AGENT,
             )
         )
         self.assertNotIn("/Users/", source)

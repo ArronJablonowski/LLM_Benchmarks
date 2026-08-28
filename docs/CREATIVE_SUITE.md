@@ -76,6 +76,17 @@ The same `BENCH_SUITE=creative` selection is supported by the guarded
 llama.cpp, vLLM, and TensorRT-LLM campaign wrappers. Task timeouts default to two
 hours and remain capped at four hours.
 
+The direct-Ollama, Hermes→Ollama, and OpenClaw→Ollama comparison uses the same
+guarded wrapper as Coding while preserving a separate Creative report:
+
+```bash
+BENCH_CAMPAIGN_DIR="$HOME/.hermes/reports/campaigns/project-three-path" \
+BENCH_MODELS_FILE="$HOME/.hermes/reports/campaigns/project-three-path/models.tsv" \
+BENCH_PROJECT_SUITES="creative" \
+BENCH_PROJECT_HARNESSES="ollama-direct hermes openclaw" \
+ops/run_ollama_project_three_path_campaign.sh
+```
+
 Generate or refresh the review workspace:
 
 ```bash

@@ -156,7 +156,7 @@ complete model × runner × harness combination.
 |---|---|---|
 | Model runners | Ollama, llama.cpp, vLLM, TensorRT-LLM | Direct Standard runs; Ollama or an OpenAI-compatible server beneath tool-agent suites |
 | Standard agent paths | Hermes Agent, OpenClaw, DeepSeek Harness evidence | The 18-task Standard comparison; DeepSeek Harness is currently a preserved completed campaign/report source |
-| Tool-agent harnesses | Pi Agent, Goose, OpenHands | Coding, Creative, and Cybersecurity project/fixture campaigns |
+| Tool-agent harnesses | Ollama workspace agent, Hermes, OpenClaw, Pi Agent, Goose, OpenHands | Coding and Creative project/artifact campaigns; Pi, Goose, and OpenHands also support Cybersecurity |
 | Orchestration check | Gas Town | Disposable operational smoke test only; not accuracy-comparable |
 | External published harness | ExploitGym with Codex, Claude Code, or Gemini CLI | Isolated opt-in Cybersecurity profile using ExploitGym's provider proxy |
 
@@ -168,6 +168,7 @@ The guarded NVIDIA/DGX wrappers are:
 | `ops/run_vllm_campaign.sh` | Start a pinned Hugging Face checkpoint with vLLM |
 | `ops/run_tensorrt_llm_campaign.sh` | Start a pinned checkpoint in a pinned TensorRT-LLM container |
 | `ops/run_cli_agent_campaign.sh` | Run configured Pi/Goose/OpenHands paths over frozen Ollama models |
+| `ops/run_ollama_project_three_path_campaign.sh` | Run Coding/Creative through direct Ollama tools, Hermes→Ollama, and OpenClaw→Ollama |
 | `ops/run_gastown_operational_smoke.sh` | Verify Gas Town, Beads, Dolt, Git, and fixture-rig orchestration without assigning an accuracy score |
 
 All three direct-server wrappers enforce a frozen 32,768-token context, verify
@@ -189,6 +190,24 @@ BENCH_BOOTSTRAP_DIR="$HOME/.hermes/reports/bootstrap/spark-harnesses" \
 
 Review that script and its pinned versions before running it; it downloads
 packages and model artifacts and is not required for Ollama-only benchmarks.
+
+For an all-model Ollama project campaign, freeze one tag and digest per unique
+checkpoint in `models.tsv`, preview individual runners, then launch the guarded
+three-path wrapper:
+
+```bash
+BENCH_CAMPAIGN_DIR="$HOME/.hermes/reports/campaigns/project-three-path" \
+BENCH_MODELS_FILE="$HOME/.hermes/reports/campaigns/project-three-path/models.tsv" \
+BENCH_PROJECT_SUITES="coding creative" \
+BENCH_PROJECT_HARNESSES="ollama-direct hermes openclaw" \
+  ops/run_ollama_project_three_path_campaign.sh
+```
+
+The direct path is a bounded local workspace-editing tool loop over Ollama; it
+is not Pi under another label. Hermes runs with an isolated `HERMES_HOME`,
+rules/user configuration disabled, and only terminal/file/code-execution
+toolsets. OpenClaw uses unique benchmark sessions and an explicit per-run
+`ollama/<model>` override. All three paths remain cold-unloaded between tasks.
 
 ## Choose a harness
 
