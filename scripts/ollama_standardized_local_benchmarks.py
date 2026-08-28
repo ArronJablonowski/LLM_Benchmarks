@@ -7,7 +7,7 @@ from accuracy_grading import (
     GRADING_PROFILE,
     grade_task,
 )
-from benchmark_tests import core_task_catalog
+from benchmark_tests import DEFAULT_SUITE, SUITE_CHOICES, core_task_catalog, suite_task_catalog
 from benchmark_settings import SETTINGS
 from platform_support import create_sampler, run_metadata
 from standard_local_tasks import (
@@ -3434,6 +3434,7 @@ def paired_comparison_integrity(model, model_rows, tasks):
 
 def main(argv=None):
     ap=argparse.ArgumentParser(description='Run cross-platform direct Ollama local benchmark profiles.')
+    ap.add_argument('--suite', choices=SUITE_CHOICES, default=DEFAULT_SUITE, help='Named benchmark suite (default: %(default)s).')
     ap.add_argument('--models', nargs='*', help='Exact installed model tags. Default plan includes all installed models.')
     ap.add_argument('--full-suite', '--full_suite', dest='full_suite', action='store_true', help='Opt in to the long 228-item AIME 2026 + GPQA Diamond suite. Without this switch, the default remains the 18-task core suite.')
     ap.add_argument('--task-profile', choices=PROFILE_CHOICES, default=None, help='Task set. Official profiles require --full-suite; omit this option to select core normally or standard-local with --full-suite.')
@@ -3468,7 +3469,7 @@ def main(argv=None):
     elif args.full_suite and args.task_profile == 'core':
         ap.error('--full-suite cannot be combined with --task-profile core')
 
-    profile_tasks = TASKS if args.task_profile == 'core' else load_standard_local_tasks(args.task_profile)
+    profile_tasks = suite_task_catalog(args.suite) if args.task_profile == 'core' else load_standard_local_tasks(args.task_profile)
     if args.tasks:
         wanted=set(args.tasks)
         selected=[task for task in profile_tasks if task['id'] in wanted]

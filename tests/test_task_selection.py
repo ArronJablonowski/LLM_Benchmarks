@@ -38,11 +38,16 @@ class TaskSelectionTests(unittest.TestCase):
     def test_listing_all_core_tasks_is_consistent(self):
         listings = []
         for runner in (direct, hermes, openclaw):
-            lines = self.capture(runner.main, ["--list-tasks"])
+            lines = self.capture(runner.main, ["--suite", "standard", "--list-tasks"])
             listings.append([line.split("\t", 1)[0] for line in lines])
         self.assertEqual(18, len(listings[0]))
         self.assertEqual(listings[0], listings[1])
         self.assertEqual(listings[0], listings[2])
+
+    def test_unknown_suite_fails_before_runtime_contact(self):
+        for runner in (direct, hermes, openclaw):
+            with self.subTest(runner=runner.__name__), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                runner.main(["--suite", "coding", "--list-tasks"])
 
     def test_unknown_task_fails_before_runtime_contact(self):
         for runner in (direct, hermes):
@@ -55,7 +60,7 @@ class TaskSelectionTests(unittest.TestCase):
         env = dict(os.environ)
         env["BENCH_REPO_DIR"] = str(ROOT)
         proc = subprocess.run(
-            ["bash", str(ROOT / "ops" / "run_standard_three_path_campaign.sh"), "--list-tests"],
+            ["bash", str(ROOT / "ops" / "run_standard_three_path_campaign.sh"), "--suite", "standard", "--list-tests"],
             text=True, capture_output=True, timeout=30, env=env,
         )
         self.assertEqual(0, proc.returncode, proc.stderr)
@@ -67,6 +72,14 @@ class TaskSelectionTests(unittest.TestCase):
         )
         self.assertEqual(0, selected.returncode, selected.stderr)
         self.assertEqual("math500_mini", selected.stdout.split("\t", 1)[0])
+
+        unknown = subprocess.run(
+            ["bash", str(ROOT / "ops" / "run_standard_three_path_campaign.sh"),
+             "--suite", "coding", "--list-tests"],
+            text=True, capture_output=True, timeout=30, env=env,
+        )
+        self.assertEqual(2, unknown.returncode)
+        self.assertIn("Unknown benchmark suite", unknown.stderr)
 
     def test_campaign_wrapper_discovers_managed_openclaw_in_service_path(self):
         with tempfile.TemporaryDirectory() as directory:

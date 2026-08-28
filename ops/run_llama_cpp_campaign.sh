@@ -63,6 +63,7 @@ printf '%s\n' "$server_pid" >"$campaign_dir/server.pid"
 "$llama_server" --version >"$campaign_dir/runner-version.txt" 2>&1 || true
 
 python3 "$repo_dir/scripts/openai_compatible_benchmarks.py" \
+  --suite "${BENCH_SUITE:-standard}" \
   --endpoint "http://127.0.0.1:$port/v1/chat/completions" \
   --model "$model_id" --model-digest "$model_digest" \
   --model-runner "llama.cpp" \

@@ -83,6 +83,7 @@ server_pid=$!
 printf '%s\n' "$server_pid" >"$campaign_dir/server.pid"
 
 python3 "$repo_dir/scripts/openai_compatible_benchmarks.py" \
+  --suite "${BENCH_SUITE:-standard}" \
   --endpoint "http://127.0.0.1:$port/v1/chat/completions" \
   --model "$model_id" --model-digest "$model_digest" \
   --model-runner "vLLM" --runner-version "$(head -1 "$campaign_dir/runner-version.txt")" \

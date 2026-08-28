@@ -15,7 +15,7 @@ import urllib.request
 from pathlib import Path
 
 from accuracy_grading import GRADING_PROFILE, grade_task
-from benchmark_tests import core_task_catalog
+from benchmark_tests import DEFAULT_SUITE, SUITE_CHOICES, suite_task_catalog
 from ollama_standardized_local_benchmarks import (
     CONTEXT_SWAP_GROWTH_LIMIT_BYTES,
     read_linux_resource_snapshot,
@@ -37,6 +37,7 @@ FIELDS = [
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser()
+    parser.add_argument("--suite", choices=SUITE_CHOICES, default=DEFAULT_SUITE)
     parser.add_argument("--endpoint", required=True)
     parser.add_argument("--model", required=True)
     parser.add_argument("--model-digest", required=True)
@@ -204,7 +205,7 @@ def main(argv=None):
         startup_guard.stop()
     if startup_guard.reason:
         raise RuntimeError("Resource safety guard during model load: " + startup_guard.reason)
-    tasks = [task for task in core_task_catalog() if not task.get("requires_image")]
+    tasks = [task for task in suite_task_catalog(args.suite) if not task.get("requires_image")]
     if args.tasks:
         selected = set(args.tasks)
         tasks = [task for task in tasks if task["id"] in selected]

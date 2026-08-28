@@ -17,6 +17,8 @@ from accuracy_grading import COUNT_UNIQUE_IPS_GRADER, PRIVATE_IPV4_GRADER
 
 
 COMPONENT_DIRECTORY = Path(__file__).with_name("core")
+DEFAULT_SUITE = "standard"
+SUITE_CHOICES = (DEFAULT_SUITE,)
 REQUIRED_FIELDS = {"id", "family", "category", "name", "prompt", "grading"}
 CORE_TASK_ORDER = (
     "exact_reply", "simple_reasoning", "coding_micro", "ifeval_exact",
@@ -120,6 +122,20 @@ def _core_tasks() -> tuple[dict[str, Any], ...]:
 def core_task_catalog() -> list[dict[str, Any]]:
     """Return fresh task mappings so callers cannot mutate the registry."""
     return copy.deepcopy(list(_core_tasks()))
+
+
+def suite_task_catalog(suite: str = DEFAULT_SUITE) -> list[dict[str, Any]]:
+    """Return fresh task mappings for a named benchmark suite.
+
+    ``standard`` is the public name for the existing 18-task suite. Routing
+    selection here allows future suites to coexist without changing it.
+    """
+    if suite == DEFAULT_SUITE:
+        return core_task_catalog()
+    choices = ", ".join(SUITE_CHOICES)
+    raise BenchmarkComponentError(
+        f"unknown benchmark suite: {suite}; choose from: {choices}"
+    )
 
 
 def get_core_task(task_id: str) -> dict[str, Any]:

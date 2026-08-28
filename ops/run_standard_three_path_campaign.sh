@@ -27,31 +27,36 @@ export PATH
 
 selected_task=""
 list_tasks=0
+suite_name="standard"
 while (($#)); do
   case "$1" in
+    --suite)
+      [[ $# -ge 2 ]] || { echo "$1 requires a suite name" >&2; exit 2; }
+      suite_name="$2"; shift 2 ;;
     --list-tasks|--list-tests)
       list_tasks=1; shift ;;
     --test|--task)
       [[ $# -ge 2 ]] || { echo "$1 requires one task ID" >&2; exit 2; }
       selected_task="$2"; shift 2 ;;
     -h|--help)
-      echo "Usage: $0 [--list-tasks] [--test TASK_ID]"
+      echo "Usage: $0 [--suite standard] [--list-tasks] [--test TASK_ID]"
       echo "--list-tasks is read-only. Without --test, campaign execution runs all 18 core tasks."
       exit 0 ;;
     *)
       echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done
+[[ "$suite_name" == "standard" ]] || { echo "Unknown benchmark suite: $suite_name (available: standard)" >&2; exit 2; }
 task_selection="all-core"
 if [[ -n "$selected_task" ]]; then
-  "$python_bin" "$repo_dir/scripts/ollama_standardized_local_benchmarks.py" --test "$selected_task" --list-tasks >/dev/null
+  "$python_bin" "$repo_dir/scripts/ollama_standardized_local_benchmarks.py" --suite "$suite_name" --test "$selected_task" --list-tasks >/dev/null
   task_selection="$selected_task"
 fi
 if ((list_tasks)); then
   if [[ -n "$selected_task" ]]; then
-    exec "$python_bin" "$repo_dir/scripts/ollama_standardized_local_benchmarks.py" --test "$selected_task" --list-tasks
+    exec "$python_bin" "$repo_dir/scripts/ollama_standardized_local_benchmarks.py" --suite "$suite_name" --test "$selected_task" --list-tasks
   fi
-  exec "$python_bin" "$repo_dir/scripts/ollama_standardized_local_benchmarks.py" --list-tasks
+  exec "$python_bin" "$repo_dir/scripts/ollama_standardized_local_benchmarks.py" --suite "$suite_name" --list-tasks
 fi
 
 # Validate the complete deployed runner set before creating campaign evidence.
@@ -85,6 +90,7 @@ campaign_dir="${BENCH_CAMPAIGN_DIR:-$HOME/.hermes/reports/campaigns/$campaign_id
 mkdir -p "$campaign_dir" "$campaign_dir/logs" "$campaign_dir/markers"
 
 selection_file="$campaign_dir/task-selection.txt"
+suite_file="$campaign_dir/suite-selection.txt"
 if [[ ! -f "$selection_file" ]] && compgen -G "$campaign_dir/markers/*.done" >/dev/null; then
   printf '%s\n' "all-core" >"$selection_file"
 fi
@@ -93,6 +99,11 @@ if [[ -f "$selection_file" ]] && [[ "$(<"$selection_file")" != "$task_selection"
   exit 2
 fi
 [[ -f "$selection_file" ]] || printf '%s\n' "$task_selection" >"$selection_file"
+if [[ -f "$suite_file" ]] && [[ "$(<"$suite_file")" != "$suite_name" ]]; then
+  echo "Campaign directory is frozen for benchmark suite $(<"$suite_file"); requested $suite_name" >&2
+  exit 2
+fi
+[[ -f "$suite_file" ]] || printf '%s\n' "$suite_name" >"$suite_file"
 
 exec >>"$campaign_dir/campaign.log" 2>&1
 echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] campaign start/resume host=$(hostname) repo=$repo_dir"
@@ -318,13 +329,13 @@ while IFS=$'\t' read -r model digest _aliases; do
   if [[ -n "$DIRECT_NUM_CTX" ]]; then
     run_model direct "$model" "$digest" \
       "$python_bin" "$repo_dir/scripts/ollama_standardized_local_benchmarks.py" \
-        --models "$model" --thinking auto --timeout 1800 --run \
+        --suite "$suite_name" --models "$model" --thinking auto --timeout 1800 --run \
         --num-ctx "$DIRECT_NUM_CTX" \
         --output-dir "$campaign_dir/direct/$digest"
   else
     run_model direct "$model" "$digest" \
       "$python_bin" "$repo_dir/scripts/ollama_standardized_local_benchmarks.py" \
-        --models "$model" --thinking auto --timeout 1800 --run \
+        --suite "$suite_name" --models "$model" --thinking auto --timeout 1800 --run \
         --output-dir "$campaign_dir/direct/$digest"
   fi
 done <"$campaign_dir/models.tsv"
@@ -337,7 +348,7 @@ while IFS=$'\t' read -r model digest _aliases; do
   fi
   run_model hermes "$model" "$digest" \
     "$python_bin" "$repo_dir/scripts/hermes_agent_17_test_benchmarks.py" \
-      --models "$model" --timeout 1800 --run \
+      --suite "$suite_name" --models "$model" --timeout 1800 --run \
       --output-dir "$campaign_dir/hermes/$digest"
 done <"$campaign_dir/models.tsv"
 
@@ -346,7 +357,7 @@ if [[ -n "${BENCH_HERMES_CLOUD_MODELS:-}" ]]; then
     digest="$(printf '%s' "hermes-cloud:$model" | shasum -a 256 | awk '{print $1}')"
     run_model hermes-cloud "$model" "$digest" \
       "$python_bin" "$repo_dir/scripts/hermes_agent_17_test_benchmarks.py" \
-        --external-models "$model" --provider openai-codex --timeout 1800 --run \
+        --suite "$suite_name" --external-models "$model" --provider openai-codex --timeout 1800 --run \
         --output-dir "$campaign_dir/hermes-cloud/$digest"
   done
 fi
@@ -378,7 +389,7 @@ while IFS=$'\t' read -r model digest _aliases; do
   fi
   run_model openclaw "$model" "$digest" \
     "$python_bin" "$repo_dir/scripts/openclaw_18_test_benchmarks.py" \
-      --models "$model" --thinking auto --timeout 1800 --run \
+      --suite "$suite_name" --models "$model" --thinking auto --timeout 1800 --run \
       --output-dir "$campaign_dir/openclaw/$digest" --gateway-restart-command "$gateway_restart_override"
 done <"$campaign_dir/models.tsv"
 
@@ -387,7 +398,7 @@ if [[ -n "${BENCH_OPENCLAW_CLOUD_MODELS:-}" ]]; then
     digest="$(printf '%s' "openclaw-cloud:$model" | shasum -a 256 | awk '{print $1}')"
     run_model openclaw-cloud "$model" "$digest" \
       "$python_bin" "$repo_dir/scripts/openclaw_18_test_benchmarks.py" \
-        --external-models "openai/$model" --thinking auto --timeout 1800 --run \
+        --suite "$suite_name" --external-models "openai/$model" --thinking auto --timeout 1800 --run \
         --output-dir "$campaign_dir/openclaw-cloud/$digest" --gateway-restart-command "$gateway_restart_override"
   done
 fi

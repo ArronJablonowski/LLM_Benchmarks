@@ -53,6 +53,7 @@ systemctl --user stop hermes-gateway.service openclaw-gateway.service comfyui.se
 
 for harness in ${BENCH_CLI_HARNESSES:-pi goose}; do
   "$python_bin" "$repo_dir/scripts/cli_agent_benchmarks.py" \
+    --suite "${BENCH_SUITE:-standard}" \
     --harness "$harness" \
     --models-file "$models_file" \
     --output-dir "$campaign_dir/$harness" \

@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 
 from accuracy_grading import GRADING_PROFILE, grade_task
-from benchmark_tests import core_task_catalog
+from benchmark_tests import DEFAULT_SUITE, SUITE_CHOICES, core_task_catalog, suite_task_catalog
 from benchmark_settings import SETTINGS
 from ollama_standardized_local_benchmarks import (
     RESOURCE_GUARD_INFRASTRUCTURE_FAILURE,
@@ -242,6 +242,7 @@ def _load_resume_records(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--suite", choices=SUITE_CHOICES, default=DEFAULT_SUITE, help="Named benchmark suite (default: %(default)s).")
     parser.add_argument(
         "--context-plan", type=Path,
         help="Frozen paired/context plan. Omit to benchmark every unique local checkpoint at the Ollama runtime context default.",
@@ -278,7 +279,7 @@ def main(argv: list[str] | None = None) -> int:
     unknown_external_vision = set(args.external_vision_models) - set(args.external_models)
     if unknown_external_vision:
         parser.error("--external-vision-models must be a subset of --external-models")
-    tasks = TASKS
+    tasks = suite_task_catalog(args.suite)
     if args.tasks:
         wanted = set(args.tasks)
         tasks = [task for task in tasks if task["id"] in wanted]

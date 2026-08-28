@@ -56,10 +56,14 @@ compute work.
 ### 2. Discover the tasks
 
 This is read-only: it does not contact Ollama or an agent, start telemetry, or
-write files.
+write files. The existing 18-task evaluation is named `standard`; select it
+explicitly with `--suite standard`. This stable suite name keeps its results
+separate from future suites such as a dedicated coding evaluation.
 
 ```bash
-python3 scripts/ollama_standardized_local_benchmarks.py --list-tasks
+python3 scripts/ollama_standardized_local_benchmarks.py \
+  --suite standard \
+  --list-tasks
 ```
 
 ### 3. Preview a small run
@@ -68,6 +72,7 @@ Every runner is **plan-only by default**. Start with one model and one task:
 
 ```bash
 python3 scripts/ollama_standardized_local_benchmarks.py \
+  --suite standard \
   --models qwen3.6:35b \
   --test math500_mini
 ```
@@ -81,15 +86,17 @@ Add `--run` only after reviewing the plan:
 
 ```bash
 python3 scripts/ollama_standardized_local_benchmarks.py \
+  --suite standard \
   --models qwen3.6:35b \
   --test math500_mini \
   --run
 ```
 
-To run the full 18-task core profile for one model, omit `--test`:
+To run the full 18-task `standard` suite for one model, omit `--test`:
 
 ```bash
 python3 scripts/ollama_standardized_local_benchmarks.py \
+  --suite standard \
   --models qwen3.6:35b \
   --run
 ```
@@ -255,10 +262,20 @@ the full upstream benchmark datasets.
 List task IDs from any runner:
 
 ```bash
-python3 scripts/ollama_standardized_local_benchmarks.py --list-tasks
-python3 scripts/hermes_agent_17_test_benchmarks.py --list-tasks
-python3 scripts/openclaw_18_test_benchmarks.py --list-tasks
+python3 scripts/ollama_standardized_local_benchmarks.py --suite standard --list-tasks
+python3 scripts/hermes_agent_17_test_benchmarks.py --suite standard --list-tasks
+python3 scripts/openclaw_18_test_benchmarks.py --suite standard --list-tasks
 ```
+
+The resumable three-path campaign accepts the same selector and records it in
+the campaign directory:
+
+```bash
+ops/run_standard_three_path_campaign.sh --suite standard
+```
+
+Only `standard` is currently available. A future coding suite will receive a
+separate name and task catalog rather than modifying the standard score.
 
 See [`docs/BENCHMARK_COMPONENTS.md`](docs/BENCHMARK_COMPONENTS.md) to review,
 add, or replace a core component.

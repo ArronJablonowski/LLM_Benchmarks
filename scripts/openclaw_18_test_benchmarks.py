@@ -21,7 +21,7 @@ from accuracy_grading import (
     GRADING_PROFILE,
     grade_task,
 )
-from benchmark_tests import core_task_catalog
+from benchmark_tests import DEFAULT_SUITE, SUITE_CHOICES, core_task_catalog, suite_task_catalog
 from benchmark_settings import SETTINGS
 from platform_support import create_sampler, run_metadata
 from ollama_standardized_local_benchmarks import (
@@ -338,10 +338,11 @@ def restore_openclaw(model, fallbacks, restart_command):
     if list(restored.get('fallbacks') or []) != list(fallbacks or []):
         raise RuntimeError('OpenClaw fallback restore verification failed')
 
-def task_subset(task_ids):
-    if not task_ids: return TASKS
+def task_subset(task_ids, catalog=None):
+    catalog = TASKS if catalog is None else catalog
+    if not task_ids: return catalog
     wanted = set(task_ids)
-    out = [t for t in TASKS if t['id'] in wanted]
+    out = [t for t in catalog if t['id'] in wanted]
     missing = sorted(wanted - {t['id'] for t in out})
     if missing:
         raise RuntimeError('Unknown task ids: ' + ', '.join(missing))
@@ -398,6 +399,7 @@ def write_summary(rows, md_path, metadata):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description='Run OpenClaw benchmarks with the same 18 core task IDs as Direct Ollama.')
+    ap.add_argument('--suite', choices=SUITE_CHOICES, default=DEFAULT_SUITE, help='Named benchmark suite (default: %(default)s).')
     ap.add_argument('--models', nargs='*', help='Exact local Ollama model tags to benchmark. Default: all installed text models except x/flux*.')
     ap.add_argument(
         '--external-models', nargs='*', default=[],
@@ -454,7 +456,8 @@ def main(argv=None):
             f'{MAX_SUBPROCESS_GRACE_SECONDS} seconds'
         )
 
-    tasks = task_subset(args.tasks)
+    suite_tasks = suite_task_catalog(args.suite)
+    tasks = task_subset(args.tasks, suite_tasks)
     if args.list_tasks:
         for task in tasks:
             print(f"{task['id']}\t{task['family']}\t{task['category']}\t{task['name']}")
@@ -511,7 +514,7 @@ def main(argv=None):
     for model in models:
         _, _, resolved = thinking_plan[model['name']]
         print(f" - {model['name']} (thinking={resolved})")
-    print(f'Tasks: {len(tasks)} / {len(TASKS)} defined')
+    print(f'Tasks: {len(tasks)} / {len(suite_tasks)} defined')
     for t in tasks:
         print(f" - {t['id']} ({t['family']})")
     print('Gateway restart:', shlex.join(restart_command) if restart_command else 'not configured')

@@ -41,6 +41,22 @@ class CliAgentBenchmarksTests(unittest.TestCase):
             "--output-dir", "out", "--workspace", "work", "--timeout", "1800",
         ])
         self.assertEqual(1800, args.timeout)
+        self.assertEqual("standard", args.suite)
+
+    def test_named_standard_suite_is_accepted_by_generic_runners(self):
+        cli_args = runner.parse_args([
+            "--suite", "standard", "--harness", "pi",
+            "--models-file", "models.tsv", "--output-dir", "out",
+            "--workspace", "work",
+        ])
+        self.assertEqual("standard", cli_args.suite)
+        api_args = openai_runner.parse_args([
+            "--suite", "standard", "--endpoint", "http://127.0.0.1:1",
+            "--model", "fixture", "--model-digest", "digest",
+            "--model-runner", "fixture", "--runner-version", "1",
+            "--output-dir", "out", "--server-pid", "1",
+        ])
+        self.assertEqual("standard", api_args.suite)
 
     def test_openai_request_is_non_streaming_and_deterministic(self):
         command = openai_runner.request_command(

@@ -8,7 +8,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from benchmark_tests import BenchmarkComponentError, core_task_catalog, list_core_components
+from benchmark_tests import (
+    BenchmarkComponentError,
+    core_task_catalog,
+    list_core_components,
+    suite_task_catalog,
+)
 from benchmark_tests import registry
 import hermes_agent_17_test_benchmarks as hermes
 import ollama_standardized_local_benchmarks as direct
@@ -16,6 +21,11 @@ import openclaw_18_test_benchmarks as openclaw
 
 
 class BenchmarkComponentTests(unittest.TestCase):
+    def test_standard_suite_is_the_existing_core_catalog(self):
+        self.assertEqual(core_task_catalog(), suite_task_catalog("standard"))
+        with self.assertRaisesRegex(BenchmarkComponentError, "unknown benchmark suite"):
+            suite_task_catalog("coding")
+
     def test_every_core_test_has_its_own_component(self):
         tasks = core_task_catalog()
         components = list_core_components()
