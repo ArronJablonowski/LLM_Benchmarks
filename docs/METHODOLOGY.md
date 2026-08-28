@@ -108,6 +108,15 @@ Candidate code may be plain Python or one complete Python code fence. It is pars
 
 Each task is still sampled once by default. These small proxy tasks are useful for local regression, functional correctness, formatting compliance, tool routing, and rough performance measurements, but are not statistically rigorous or substitutes for full official datasets. Repeated, counterbalanced runs are required before making strong claims about small accuracy differences.
 
+## COH Ollama text path
+
+The COH runner executes the 17 non-image core tasks through COH's durable
+model-surface projection, inference admission seal, qualified provider gateway,
+and strict loopback Ollama adapter. Each row binds the frozen model digest and
+records COH capability, surface-binding, response-provenance, and token-usage
+evidence. The local benchmark qualification is ephemeral and test-only; it is
+not evidence of production qualification or independent security approval.
+
 ## Cross-host comparison
 
 Keep result histories separate by host. Before comparing performance, align:

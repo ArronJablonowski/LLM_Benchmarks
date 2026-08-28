@@ -35,17 +35,6 @@ class CliAgentBenchmarksTests(unittest.TestCase):
             "/tmp/openhands-workspace", command[command.index("--workspace") + 1]
         )
 
-    def test_coh_command_uses_identity_bound_invocation_surface(self):
-        command = runner.harness_command(
-            "coh", "fixture:latest", "prompt", Path("/tmp/config"),
-            coh_binary="/tmp/cohollamabench", timeout=900,
-        )
-        self.assertEqual("/tmp/cohollamabench", command[0])
-        self.assertEqual("--invoke", command[1])
-        self.assertEqual("fixture:latest", command[command.index("--model") + 1])
-        self.assertEqual("900s", command[command.index("--timeout") + 1])
-        self.assertEqual("prompt", command[command.index("--prompt") + 1])
-
     def test_timeout_cannot_exceed_suite_limit(self):
         args = runner.parse_args([
             "--harness", "pi", "--models-file", "models.tsv",

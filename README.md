@@ -15,8 +15,10 @@ The original deterministic Standard suite can run through Direct Ollama,
 Hermes Agent, and OpenClaw. DGX Spark integrations also compare direct
 llama.cpp, vLLM, and TensorRT-LLM inference, and tool-capable Pi, Goose, and
 OpenHands agent paths. The checked-in cross-system report additionally includes
-completed DeepSeek Harness evidence. Gas Town is represented separately as an
-orchestration health check rather than an accuracy benchmark.
+completed DeepSeek Harness evidence. COH Ollama measures the 17 Standard text
+tasks through COH model-surface admission and its qualified, identity-bound
+local Ollama gateway. Gas Town is represented separately as an orchestration
+health check rather than an accuracy benchmark.
 
 The suite is designed for macOS on Apple silicon and NVIDIA Linux, including
 the DGX Spark. It favors reproducible accuracy and evidence preservation over
@@ -211,8 +213,25 @@ toolsets. OpenClaw uses unique benchmark sessions and an explicit per-run
 
 ## Choose a harness
 
-All three runners use the same 18 core task IDs. Run each path separately so
+The runners use the same core task registry. Run each path separately so
 their scores remain attributable to their actual transport and agent behavior.
+
+### COH Ollama
+
+COH's benchmark-only command must be built from the reviewed COH checkout. The
+runner excludes the OCR task because the current COH benchmark surface accepts
+text only, validates the frozen Ollama model digest, and requires per-response
+COH capability, binding, and provenance digests.
+
+```bash
+python3 scripts/coh_ollama_benchmarks.py \
+  --binary /path/to/cohollamabench \
+  --model muse-glimmer:30b-mlx \
+  --model-digest <64-hex-digest> \
+  --output-dir ~/.hermes/reports/coh_ollama_benchmarks
+
+# Add --run after reviewing the plan.
+```
 
 ### Direct Ollama
 

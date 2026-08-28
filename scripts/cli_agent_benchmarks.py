@@ -28,7 +28,6 @@ from ollama_standardized_local_benchmarks import (
     verify_no_external_gpu_compute,
 )
 from platform_support import create_sampler
-from platform_support import prepend_standard_paths
 
 
 FIELDS = [
@@ -46,7 +45,7 @@ FIELDS = [
 def parse_args(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--suite", choices=SUITE_CHOICES, default=DEFAULT_SUITE)
-    parser.add_argument("--harness", choices=("pi", "goose", "openhands", "coh"), required=True)
+    parser.add_argument("--harness", choices=("pi", "goose", "openhands"), required=True)
     parser.add_argument("--models-file", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--workspace", type=Path, required=True)
@@ -54,11 +53,6 @@ def parse_args(argv=None):
     parser.add_argument(
         "--openhands-python",
         default=str(Path.home() / ".local/venvs/openhands-1.11.0/bin/python"),
-    )
-    parser.add_argument(
-        "--coh-binary",
-        default=str(Path.home() / "Developer/COH-toolchains/bin/cohollamabench"),
-        help="COH test-only Ollama invocation surface built from the COH repository",
     )
     parser.add_argument("--tasks", nargs="*")
     parser.add_argument("--run", action="store_true")
@@ -151,10 +145,7 @@ def pi_configuration(config_dir, models):
     (config_dir / "models.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
-def harness_command(
-    harness, model, prompt, config_dir, openhands_python=None, workspace=None,
-    coh_binary=None, timeout=1800,
-):
+def harness_command(harness, model, prompt, config_dir, openhands_python=None, workspace=None):
     if harness == "pi":
         return [
             "pi", "--provider", "ollama", "--model", model, "--api-key", "ollama",
@@ -166,13 +157,6 @@ def harness_command(
         "goose", "run", "--provider", "ollama", "--model", model,
         "--no-session", "--no-profile", "--max-turns", "1", "--quiet",
         "--output-format", "text", "--text", prompt,
-        ]
-    if harness == "coh":
-        if not coh_binary:
-            raise RuntimeError("COH requires its invocation binary")
-        return [
-            coh_binary, "--invoke", "--model", model, "--prompt", prompt,
-            "--timeout", f"{timeout}s", "--max-output-tokens", "8192",
         ]
     if not openhands_python or not workspace:
         raise RuntimeError("OpenHands requires its Python runtime and workspace")
@@ -186,22 +170,6 @@ def harness_command(
 
 
 def run_guarded(command, env, workspace, model, timeout, baseline):
-    # The Linux runner has kernel OOM, swap, and unrelated-GPU-process guards.
-    # macOS has no equivalent /proc surface; retain strict wall timeout and
-    # target-only cold unload there while platform telemetry records memory and
-    # temperature for the external campaign watchdog.
-    if baseline is None:
-        proc = subprocess.Popen(
-            command, cwd=workspace, env=env, text=True, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, start_new_session=True,
-        )
-        try:
-            stdout, stderr = proc.communicate(timeout=timeout)
-            return proc.returncode, stdout or "", stderr or "", False, ""
-        except subprocess.TimeoutExpired:
-            terminate_group(proc)
-            stdout, stderr = proc.communicate()
-            return proc.returncode, stdout or "", stderr or "", True, ""
     verify_no_external_gpu_compute()
     current = read_linux_resource_snapshot()
     if int(current["oom_kill"]) != int(baseline["oom_kill"]):
@@ -251,7 +219,6 @@ def run_guarded(command, env, workspace, model, timeout, baseline):
 
 def main(argv=None):
     args = parse_args(argv)
-    prepend_standard_paths()
     if args.suite == "coding":
         from coding_agent_benchmarks import main as coding_main
         return coding_main(argv)
@@ -287,8 +254,6 @@ def main(argv=None):
             args.openhands_python, "-c",
             "import importlib.metadata as m; print(m.version('openhands-ai'))",
         ])
-    elif args.harness == "coh":
-        harness_version = command_output([args.coh_binary, "--version"])
     else:
         harness_version = command_output([args.harness, "--version"])
     jsonl_path = args.output_dir / f"{args.harness}_core_text.jsonl"
@@ -324,7 +289,7 @@ def main(argv=None):
                 task_workspace.mkdir(parents=True, exist_ok=True)
                 command = harness_command(
                     args.harness, model["name"], task["prompt"], config_dir,
-                    args.openhands_python, task_workspace, args.coh_binary, args.timeout,
+                    args.openhands_python, task_workspace,
                 )
                 sample_start = sampler.snapshot_len()
                 started = time.monotonic()
