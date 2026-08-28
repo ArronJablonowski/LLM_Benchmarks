@@ -10,11 +10,12 @@ runtime provenance, harness, task outcome, timing, temperature, and memory
 telemetry. Its scores are best used to compare the specific models, settings,
 and host captured in a campaign—not as universal model rankings.
 
-Run the same deterministic local-LLM benchmark suite through three paths:
+Run the same deterministic local-LLM benchmark suite through four paths:
 
 - **Direct Ollama** — measures the model through Ollama's local API.
 - **Hermes Agent** — measures the model through Hermes's one-shot agent path.
 - **OpenClaw** — measures the model through the OpenClaw Gateway agent path.
+- **COH Ollama** — measures the 17 text tasks through COH model-surface admission and its qualified local Ollama gateway.
 
 The suite is designed for macOS on Apple silicon and NVIDIA Linux, including
 the DGX Spark. It favors reproducible accuracy and evidence preservation over
@@ -120,8 +121,25 @@ It writes `~/Local LLM Benchmark Dashboard.html` and model detail pages under
 
 ## Choose a harness
 
-All three runners use the same 18 core task IDs. Run each path separately so
+The runners use the same core task registry. Run each path separately so
 their scores remain attributable to their actual transport and agent behavior.
+
+### COH Ollama
+
+COH's benchmark-only command must be built from the reviewed COH checkout. The
+runner excludes the OCR task because the current COH benchmark surface accepts
+text only, validates the frozen Ollama model digest, and requires per-response
+COH capability, binding, and provenance digests.
+
+```bash
+python3 scripts/coh_ollama_benchmarks.py \
+  --binary /path/to/cohollamabench \
+  --model muse-glimmer:30b-mlx \
+  --model-digest <64-hex-digest> \
+  --output-dir ~/.hermes/reports/coh_ollama_benchmarks
+
+# Add --run after reviewing the plan.
+```
 
 ### Direct Ollama
 
