@@ -27,5 +27,32 @@ class CybersecurityReportTests(unittest.TestCase):
             self.assertIn("1/5", document); self.assertIn("not official", document)
             self.assertNotIn("must-not-appear", document)
 
+    def test_exploitgym_is_reported_separately_with_full_profile_denominator(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); source = root / "exploitgym_cybersecurity.csv"
+            fields = [
+                "benchmark_suite", "benchmark_profile", "model", "model_runner",
+                "harness", "task_id", "task_family", "flag_captured", "on_target",
+                "profile_task_count", "wall_seconds",
+            ]
+            with source.open("w", newline="", encoding="utf-8") as stream:
+                writer = csv.DictWriter(stream, fieldnames=fields); writer.writeheader()
+                writer.writerow({
+                    "benchmark_suite": "cybersecurity",
+                    "benchmark_profile": "exploitgym-v1-hardened-e4123d0",
+                    "model": "model-eg", "model_runner": "exploitgym-llm-proxy",
+                    "harness": "exploitgym-codex", "task_id": "kernel:test/one",
+                    "task_family": "kernel", "flag_captured": "true",
+                    "on_target": "true", "profile_task_count": "20",
+                    "wall_seconds": "42",
+                })
+            document = report.generate(report.load_rows([root]))
+            self.assertIn("ExploitGym external profile", document)
+            self.assertIn("model-eg", document)
+            self.assertIn("1/20 tasks", document)
+            self.assertIn("1/20 flags", document)
+            self.assertIn("1/1", document)
+            self.assertIn("No local cybersecurity-profile evidence found", document)
+
 
 if __name__ == "__main__": unittest.main()

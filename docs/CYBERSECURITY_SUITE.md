@@ -163,3 +163,111 @@ python3 dashboard/generate_cybersecurity_report.py \
 Evidence files are named `*_cybersecurity.csv` and
 `*_cybersecurity.jsonl`. The report accepts only rows whose
 `benchmark_suite` is exactly `cybersecurity`.
+
+## ExploitGym external profile
+
+[ExploitGym](https://github.com/sunblaze-ucb/exploitgym) is available as a
+separate, explicitly opt-in profile. It evaluates real exploit development
+across userspace programs, V8, and the Linux kernel. It is never folded into
+the 24-task `cybersecurity-agent-v1` score.
+
+The integration pins upstream commit
+`e4123d043774623b2274e6bbe0155a423d631f0a` and verifies the commit, task-list
+hashes, source license, data-license notice, and item counts before listing,
+running, or importing results. The repository does **not** redistribute
+ExploitGym's task corpus: its code is Apache-2.0, while its task artifacts keep
+their individual upstream licenses.
+
+Two task profiles are exposed:
+
+| Profile | Instances | Purpose |
+|---|---:|---|
+| `sample` | 20 | Integration and infrastructure qualification |
+| `v1` | 869 | Full published ExploitGym v1 corpus; requires `--full-suite` |
+
+Evidence profile IDs also include the selected task profile and family (for
+example, `exploitgym-v1-hardened-e4123d0:sample:all`) so qualification,
+family-only, and full runs cannot be merged accidentally.
+
+ExploitGym currently supplies Codex, Claude Code, and Gemini CLI agents. This
+adapter therefore records its harness as `exploitgym-codex`,
+`exploitgym-claude_code`, or `exploitgym-gemini_cli` and its model runner as
+`exploitgym-llm-proxy`. It does not pretend that the upstream runner supports
+Ollama, llama.cpp, vLLM, TensorRT-LLM, Pi, Goose, or OpenHands.
+
+### Prepare the pinned upstream checkout
+
+On an isolated Linux evaluation host:
+
+```bash
+git clone https://github.com/sunblaze-ucb/exploitgym.git \
+  "$HOME/gitRepo/exploitgym"
+git -C "$HOME/gitRepo/exploitgym" checkout \
+  e4123d043774623b2274e6bbe0155a423d631f0a
+
+cd "$HOME/gitRepo/exploitgym"
+uv sync --extra proxy
+bash scripts/setup/setup_data.sh
+bash scripts/setup/validate.sh
+docker pull ubuntu/squid:latest
+uv run scripts/setup/pull_images.py data/task_ids/sample.txt
+uv run scripts/setup/pre_run.py data/task_ids/sample.txt --hardened
+```
+
+`pre_run.py` prints fresh controller and proxy environment variables. Keep
+those values out of repositories, reports, shell history, and agent-visible
+directories.
+
+### Safety controls
+
+The adapter refuses execution unless all of these controls remain enabled:
+
+- hardened userspace images, strict V8 mode, and strict kernel defenses;
+- the upstream API-only internal run network and separate install network;
+- both upstream firewall containers running;
+- the upstream LLM proxy, which blocks provider-side web retrieval;
+- private literal-IP or loopback controller/proxy endpoints;
+- one worker, no retained agent container, a bounded timeout and budget;
+- four fresh controller/proxy secrets; and
+- an exact command-line acknowledgement that this runs real exploit work.
+
+The setup phase can download packages through ExploitGym's separate install
+proxy. Before the agent starts, upstream moves the task container to the
+API-only run network. Run this profile only on a dedicated, isolated host; do
+not launch it on a workstation or network that contains sensitive services.
+
+### Preview, run, and import
+
+Listing is read-only and does not contact Docker or inference services:
+
+```bash
+EXPLOITGYM_MODEL="gpt-5.6-sol" \
+ops/run_exploitgym_campaign.sh --list-tasks
+```
+
+The wrapper is plan-only unless `--run` is supplied. Execute the 20-instance
+qualification profile only after reviewing the plan and exporting the secrets
+printed by upstream `pre_run.py`:
+
+```bash
+EXPLOITGYM_MODEL="gpt-5.6-sol" \
+ops/run_exploitgym_campaign.sh \
+  --run \
+  --acknowledge-real-exploit-evaluation \
+  I-understand-this-runs-real-exploit-development
+```
+
+For the complete profile, set `EXPLOITGYM_TASK_PROFILE=v1`; the wrapper adds
+the mandatory `--full-suite` switch. Existing upstream results can be imported
+without starting a model or container:
+
+```bash
+EXPLOITGYM_MODEL="gpt-5.6-sol" \
+ops/run_exploitgym_campaign.sh --import-only
+```
+
+The importer summarizes only upstream `result.json`, `scorer_result.json`, and
+usage metadata. It does not copy agent transcripts, exploits, flags, secrets,
+or target artifacts into this repository's evidence. The cybersecurity HTML
+report displays ExploitGym in its own table, with coverage, flags captured,
+scorer-confirmed on-target results, runtime, and kernel/V8/userspace splits.

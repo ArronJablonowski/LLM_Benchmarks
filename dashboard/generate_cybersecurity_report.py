@@ -85,8 +85,57 @@ def summarize(rows):
     return sorted(summaries, key=lambda item: (-item["coverage_pct"], -item["resolved_pct"], -item["quality_pct"], item["avg_seconds"], item["model"], item["runner"], item["harness"]))
 
 
+def summarize_exploitgym(rows):
+    grouped = defaultdict(list)
+    for row in rows:
+        if not row.get("benchmark_profile", "").startswith("exploitgym-"):
+            continue
+        key = (
+            row.get("benchmark_profile", "unversioned"), row.get("model", "unknown"),
+            row.get("model_runner", "unknown"), row.get("harness", "unknown"),
+        )
+        grouped[key].append(row)
+    summaries = []
+    for (profile, model, runner, harness), raw_items in grouped.items():
+        by_task = {row.get("task_id", "unknown"): row for row in raw_items}
+        items = list(by_task.values())
+        if not items:
+            continue
+        expected = max(
+            len(items),
+            max(int(number(row.get("profile_task_count"), len(items))) for row in items),
+        )
+        flags = sum(row.get("flag_captured") == "true" for row in items)
+        on_target = sum(row.get("on_target") == "true" for row in items)
+        judged = sum(row.get("on_target") in {"true", "false"} for row in items)
+        families = {}
+        for family in ("kernel", "v8", "user"):
+            family_rows = [row for row in items if row.get("task_family") == family]
+            if family_rows:
+                families[family] = {
+                    "observed": len(family_rows),
+                    "flags": sum(row.get("flag_captured") == "true" for row in family_rows),
+                }
+        summaries.append({
+            "profile": profile, "model": model, "runner": runner, "harness": harness,
+            "tasks": len(items), "expected_tasks": expected,
+            "coverage_pct": 100 * len(items) / expected if expected else 0,
+            "flags": flags, "flag_pct": 100 * flags / expected if expected else 0,
+            "on_target": on_target, "judged": judged,
+            "avg_seconds": sum(number(row.get("wall_seconds")) for row in items) / len(items),
+            "families": families,
+        })
+    return sorted(
+        summaries,
+        key=lambda item: (
+            -item["coverage_pct"], -item["flag_pct"], -item["on_target"],
+            item["avg_seconds"], item["model"], item["harness"],
+        ),
+    )
+
+
 def generate(rows: list[dict[str, str]]) -> str:
-    summaries = summarize(rows); body = []
+    summaries = summarize(rows); exploitgym = summarize_exploitgym(rows); body = []
     for index, item in enumerate(summaries, 1):
         track_cells = "".join(
             f"<span><b>{html.escape(track)}</b> {values['passes']}/{values['expected']} · {values['quality']:.0f}% checks</span>"
@@ -103,12 +152,27 @@ def generate(rows: list[dict[str, str]]) -> str:
             f"<td>{item['avg_seconds']:.1f}s</td><td><div class=tracks>{track_cells}</div></td>"
             f"<td>{html.escape(', '.join(item['failures']) if item['failures'] else 'None')}</td></tr>"
         )
+    exploitgym_body = []
+    for index, item in enumerate(exploitgym, 1):
+        family_cells = "".join(
+            f"<span><b>{html.escape(family)}</b> {values['flags']}/{values['observed']} flags</span>"
+            for family, values in item["families"].items()
+        )
+        exploitgym_body.append(
+            "<tr>" f"<td>{index}</td><td><strong>{html.escape(item['model'])}</strong></td>"
+            f"<td>{html.escape(item['profile'])}</td><td>{html.escape(item['runner'])}</td>"
+            f"<td>{html.escape(item['harness'])}</td>"
+            f"<td><strong>{item['coverage_pct']:.1f}%</strong><small>{item['tasks']}/{item['expected_tasks']} tasks</small></td>"
+            f"<td><strong>{item['flag_pct']:.1f}%</strong><small>{item['flags']}/{item['expected_tasks']} flags</small></td>"
+            f"<td>{item['on_target']}/{item['judged']}<small>scorer-confirmed</small></td>"
+            f"<td>{item['avg_seconds']:.1f}s</td><td><div class=tracks>{family_cells}</div></td></tr>"
+        )
     generated = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
-    data = json.dumps(summaries, separators=(",", ":")).replace("</", "<\\/")
+    data = json.dumps({"local": summaries, "exploitgym": exploitgym}, separators=(",", ":")).replace("</", "<\\/")
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cybersecurity Agent Benchmark Report</title><style>
 :root{{--bg:#071018;--card:#101d27;--ink:#eef7f5;--muted:#9eb4b8;--line:#263945;--accent:#55e6b1;--warn:#ffbd66}}*{{box-sizing:border-box}}body{{margin:0;background:radial-gradient(circle at top right,#143542,var(--bg) 45%);color:var(--ink);font:14px/1.5 system-ui,-apple-system,sans-serif}}main{{max-width:1700px;margin:28px auto;padding:0 20px}}header{{padding:32px;border:1px solid var(--line);border-radius:18px;background:#0c1821dd}}h1{{margin:0 0 8px;font-size:34px}}header p,.note,small{{color:var(--muted)}}section{{margin-top:18px;border:1px solid var(--line);border-radius:16px;overflow:auto;background:var(--card)}}table{{width:100%;border-collapse:collapse;min-width:1580px}}th,td{{padding:14px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}}th{{color:var(--accent);font-size:11px;letter-spacing:.08em;text-transform:uppercase;background:#0b1720}}small{{display:block}}.tracks{{display:grid;gap:5px;min-width:300px}}.tracks span{{display:block;color:var(--muted)}}.tracks b{{color:var(--ink)}}.note{{padding:18px}}code{{color:var(--accent)}}
-</style></head><body><main><header><h1>Cybersecurity Agent Benchmark Report</h1><p>Separate <code>cybersecurity</code> suite · 24 isolated tasks · eight capability tracks · generated {html.escape(generated)}</p></header><section><table><thead><tr><th>Rank</th><th>Model</th><th>Profile</th><th>Model runner</th><th>Agent harness</th><th>Coverage</th><th>Tasks resolved</th><th>Quality score</th><th>Avg runtime</th><th>Track results</th><th>Unresolved</th></tr></thead><tbody>{''.join(body) if body else '<tr><td colspan="11">No cybersecurity-suite CSV evidence found.</td></tr>'}</tbody></table><p class="note">Strict resolution requires every deterministic task check to pass. Coverage uses the complete 24-task denominator, preventing partial campaigns from ranking like complete runs. Tasks use original offline fixtures inspired by published standards and benchmarks; these scores are not official MITRE, NIST, OWASP, CyberSecEval, Cybench, or other upstream leaderboard results.</p></section><script type="application/json" id="cybersecurity-report-data">{data}</script></main></body></html>"""
+</style></head><body><main><header><h1>Cybersecurity Agent Benchmark Report</h1><p>Separate <code>cybersecurity</code> suite · original local profile plus isolated published profiles · generated {html.escape(generated)}</p></header><section><h2>Original 24-task local profile</h2><table><thead><tr><th>Rank</th><th>Model</th><th>Profile</th><th>Model runner</th><th>Agent harness</th><th>Coverage</th><th>Tasks resolved</th><th>Quality score</th><th>Avg runtime</th><th>Track results</th><th>Unresolved</th></tr></thead><tbody>{''.join(body) if body else '<tr><td colspan="11">No local cybersecurity-profile evidence found.</td></tr>'}</tbody></table><p class="note">Strict resolution requires every deterministic task check to pass. Coverage uses the complete 24-task denominator, preventing partial campaigns from ranking like complete runs. These local scores are not official MITRE, NIST, OWASP, CyberSecEval, Cybench, or other upstream leaderboard results.</p></section><section><h2>ExploitGym external profile</h2><table><thead><tr><th>Rank</th><th>Model</th><th>Profile</th><th>Model runner</th><th>Agent</th><th>Coverage</th><th>Flags captured</th><th>On-target</th><th>Avg runtime</th><th>Family results</th></tr></thead><tbody>{''.join(exploitgym_body) if exploitgym_body else '<tr><td colspan="10">No ExploitGym evidence found.</td></tr>'}</tbody></table><p class="note">ExploitGym remains a pinned external benchmark. Flag capture and scorer-confirmed on-target exploitation are reported separately, and its scores are never merged with the original local profile.</p></section><script type="application/json" id="cybersecurity-report-data">{data}</script></main></body></html>"""
 
 
 def main(argv=None) -> int:

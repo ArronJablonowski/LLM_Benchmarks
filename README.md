@@ -338,6 +338,13 @@ and never contribute to Standard, Coding, or Creative results. See
 [`docs/CYBERSECURITY_SUITE.md`](docs/CYBERSECURITY_SUITE.md) for the task map,
 standards lineage, safety boundaries, scoring, and execution instructions.
 
+The suite also includes a pinned, opt-in adapter for the published
+[ExploitGym](https://github.com/sunblaze-ucb/exploitgym) benchmark. Its 20-task
+qualification and 869-task v1 profiles retain upstream licensing and run only
+with hardened targets, isolated firewall networks, provider-retrieval blocking,
+and explicit real-exploitation acknowledgement. ExploitGym evidence is shown
+separately from the original local profile.
+
 See [`docs/BENCHMARK_COMPONENTS.md`](docs/BENCHMARK_COMPONENTS.md) to review,
 add, or replace a core component.
 
