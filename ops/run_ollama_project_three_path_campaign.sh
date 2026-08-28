@@ -56,10 +56,33 @@ restore_services() {
   [[ "${OPENCLAW_GATEWAY_WAS_ACTIVE:-0}" == 1 ]] && systemctl --user start openclaw-gateway.service || true
   [[ "${COMFYUI_WAS_ACTIVE:-0}" == 1 ]] && systemctl --user start comfyui.service || true
 }
-trap restore_services EXIT
+
+finish_campaign() {
+  local status=$?
+  trap - EXIT
+  restore_services
+  echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] project campaign process exit status=$status"
+  exit "$status"
+}
+trap finish_campaign EXIT
+
+wait_for_gpu_exclusivity() {
+  local processes=""
+  for _attempt in $(seq 1 60); do
+    if processes="$(timeout 5 nvidia-smi \
+      --query-compute-apps=pid,process_name,used_gpu_memory \
+      --format=csv,noheader,nounits 2>/dev/null)" && [[ -z "$processes" ]]; then
+      return 0
+    fi
+    sleep 2
+  done
+  echo "Unable to establish stable, empty NVIDIA compute exclusivity: ${processes:-query unavailable}" >&2
+  return 1
+}
 
 systemctl --user stop hermes-gateway.service openclaw-gateway.service comfyui.service
 stop_model_residency
+wait_for_gpu_exclusivity
 curl -fsS http://127.0.0.1:11434/api/version >"$campaign_dir/ollama-version.json"
 
 for suite in $suite_list; do
