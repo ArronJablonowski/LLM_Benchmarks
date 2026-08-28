@@ -222,6 +222,12 @@ def main(argv=None):
             completed.add(task["id"])
             write_csv(csv_path, records)
             print(f"  -> {status} {grading['verdict']} wall={wall}s", flush=True)
+            if status != "ok":
+                # A COH transport/provenance failure is generally model-path
+                # wide. Stop after one preserved observation so the campaign
+                # wrapper can terminally account or perform one bounded retry
+                # without manufacturing 17 duplicate false failures.
+                return 1
     finally:
         sampler.stop()
         stop_model(args.model)
