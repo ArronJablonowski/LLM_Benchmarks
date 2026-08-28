@@ -1,6 +1,7 @@
 # Coding agent suite
 
-The `coding` suite is a separate, project-level evaluation. It never contributes
+The `coding` suite is a separate, project-level evaluation. The web-expanded
+profile is `coding-agent-v2-web`. It never contributes
 rows or scores to the 18-task `standard` suite. Coding campaigns write
 `*_coding.csv`, `*_coding.jsonl`, isolated workspaces, and a dedicated
 `coding_agent_report.html`.
@@ -20,6 +21,9 @@ runs hidden functional and engineering-quality checks.
 | `bigcodebench_log_pipeline` | BigCodeBench-style | Complex instructions, multiple APIs, streaming data processing |
 | `featurebench_job_service` | FeatureBench-style | Full project construction from a specification |
 | `terminalbench_release_hardening` | Terminal-Bench-style | Long-horizon terminal work, security, packaging, reproducibility |
+| `web_accessible_incident_dashboard` | WebDev accessibility | Semantic HTML, responsive CSS, filters, theme/state, accessible interaction |
+| `web_component_storefront` | Web components | Custom elements, state architecture, persistence, accessible cart behavior |
+| `web_fullstack_kanban` | Full-stack WebDev | SQLite, WSGI APIs, HTTP concurrency, safe static serving, responsive frontend |
 
 The fixtures are original and intentionally do not reuse `coding_micro`,
 `humaneval_mini`, `mbpp_mini`, or any prompt from `standard`. The names above
@@ -48,9 +52,21 @@ Two metrics are reported:
 
 Checks cover behavior, edge cases, input validation, algorithmic complexity,
 backward compatibility, regression tests, modularity, type-aware interfaces,
-SQL and subprocess safety, documentation, packaging, and reproducible output.
+SQL and subprocess safety, documentation, packaging, reproducible output,
+semantic HTML, accessibility, responsive layout, safe DOM construction,
+component state, HTTP semantics, and optimistic concurrency.
 Timing, timeouts, changed-file counts, test-file counts, telemetry, temperatures,
 and peak memory remain separate diagnostic fields and never improve accuracy.
+
+The three web tasks run offline without a frontend build system. Their hidden
+graders execute both Python and Node tests where applicable and inspect browser
+contracts such as landmarks, labels, live regions, focus treatment, responsive
+breakpoints, reduced-motion behavior, safe DOM APIs, component encapsulation,
+loading/error/empty states, and frontend conflict handling. This avoids adding
+network or third-party package availability as a model-scoring variable.
+The runner preflights Node before any inference when a web task is selected and
+records its version in every web observation, preventing a missing grader
+runtime from being misclassified as a model failure.
 
 ## Run it
 
@@ -104,4 +120,8 @@ python3 dashboard/generate_coding_report.py \
 ```
 
 The generator only accepts rows whose `benchmark_suite` is exactly `coding`, so
-standard results cannot leak into the coding rankings.
+standard results cannot leak into the coding rankings. It groups incompatible
+profile versions separately, ranks complete coverage ahead of partial evidence,
+and reports an additional web-project resolution rate alongside the overall
+project and quality scores. Use a new campaign/output directory when moving
+from the six-task `coding-agent-v1` profile to `coding-agent-v2-web`.

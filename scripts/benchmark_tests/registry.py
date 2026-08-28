@@ -35,6 +35,9 @@ CODING_TASK_ORDER = (
     "bigcodebench_log_pipeline",
     "featurebench_job_service",
     "terminalbench_release_hardening",
+    "web_accessible_incident_dashboard",
+    "web_component_storefront",
+    "web_fullstack_kanban",
 )
 
 

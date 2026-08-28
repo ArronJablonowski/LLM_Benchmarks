@@ -4,6 +4,7 @@ from __future__ import annotations
 import ast
 import importlib.util
 import json
+import shutil
 import subprocess
 import sys
 import traceback
@@ -70,3 +71,29 @@ def python_files_parse(workspace: Path) -> tuple[bool, str]:
 def has_student_tests(workspace: Path) -> bool:
     tests = workspace / "tests"
     return tests.is_dir() and any(path.name.startswith("test") for path in tests.rglob("*.py"))
+
+
+def run_node_tests(workspace: Path) -> tuple[bool, str]:
+    node = shutil.which("node")
+    if node is None:
+        return False, "node executable is unavailable"
+    tests = sorted((workspace / "tests").glob("*.test.mjs"))
+    if not tests:
+        return False, "no JavaScript test files found"
+    proc = subprocess.run(
+        [node, "--test", *(str(path) for path in tests)],
+        cwd=workspace, text=True, capture_output=True, timeout=120, check=False,
+    )
+    output = (proc.stdout + "\n" + proc.stderr).strip()
+    return proc.returncode == 0, output[-2000:]
+
+
+def count_web_tests(workspace: Path) -> int:
+    tests = workspace / "tests"
+    if not tests.is_dir():
+        return 0
+    suffixes = {".js", ".mjs", ".cjs", ".ts", ".tsx"}
+    return sum(
+        1 for path in tests.rglob("*")
+        if path.is_file() and path.suffix in suffixes and "test" in path.name.lower()
+    )

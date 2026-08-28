@@ -20,13 +20,23 @@ class CodingSuiteTests(unittest.TestCase):
     def test_coding_suite_is_separate_and_complete(self):
         standard = suite_task_catalog("standard")
         tasks = suite_task_catalog("coding")
-        self.assertEqual(6, len(tasks))
+        self.assertEqual(9, len(tasks))
         self.assertFalse({task["id"] for task in standard} & {task["id"] for task in tasks})
         self.assertFalse({task["prompt"] for task in standard} & {task["prompt"] for task in tasks})
-        self.assertEqual(
-            {"SWE-bench", "RepoBench", "LiveCodeBench", "BigCodeBench", "FeatureBench", "Terminal-Bench"},
-            {task["benchmark_origin"] for task in tasks},
+        self.assertTrue(
+            {"SWE-bench", "RepoBench", "LiveCodeBench", "BigCodeBench", "FeatureBench", "Terminal-Bench", "WebDev Accessibility", "Web Components", "Full-Stack Web"}
+            <= {task["benchmark_origin"] for task in tasks}
         )
+
+    def test_web_extension_covers_frontend_components_and_fullstack(self):
+        web_tasks = [task for task in suite_task_catalog("coding") if task["category"].startswith("web_")]
+        self.assertEqual(3, len(web_tasks))
+        self.assertEqual(
+            {"web_frontend_accessibility", "web_component_architecture", "web_fullstack_application"},
+            {task["category"] for task in web_tasks},
+        )
+        self.assertTrue(all(any("tests" in practice for practice in task["best_practices"]) for task in web_tasks))
+        self.assertIn("web_runtime_version", coding.FIELDS)
 
     def test_every_task_has_an_isolated_fixture_and_hidden_grader(self):
         for task in suite_task_catalog("coding"):
@@ -61,7 +71,7 @@ class CodingSuiteTests(unittest.TestCase):
             output = io.StringIO()
             with contextlib.redirect_stdout(output):
                 self.assertEqual(0, coding.main(args + ["--list-tasks"]))
-            self.assertEqual(6, len(output.getvalue().strip().splitlines()))
+            self.assertEqual(9, len(output.getvalue().strip().splitlines()))
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(0, coding.main(args))
             self.assertEqual([], list(root.iterdir()))
@@ -69,6 +79,18 @@ class CodingSuiteTests(unittest.TestCase):
     def test_prompt_response_direct_runner_rejects_coding_suite(self):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             direct.main(["--suite", "coding", "--list-tasks"])
+
+    def test_student_test_counter_includes_python_and_web_tests(self):
+        with tempfile.TemporaryDirectory() as directory:
+            tests = Path(directory) / "tests"; tests.mkdir()
+            (tests / "test_api.py").touch(); (tests / "cart.test.mjs").touch()
+            (tests / "helper.txt").touch()
+            self.assertEqual(2, coding.count_student_tests(Path(directory)))
+
+    def test_expanded_profile_rejects_legacy_resume_evidence(self):
+        with self.assertRaisesRegex(RuntimeError, "new output directory"):
+            coding.validate_existing_records([{"row": {"benchmark_profile": "coding-agent-v1"}}])
+        coding.validate_existing_records([{"row": {"benchmark_profile": coding.PROFILE}}])
 
 
 if __name__ == "__main__":

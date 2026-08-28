@@ -1,0 +1,5 @@
+[
+  {"id":"trail-lamp","name":"Trail lamp","priceCents":3900,"description":"Weatherproof rechargeable lamp"},
+  {"id":"field-mug","name":"Field mug","priceCents":1800,"description":"Insulated steel mug"},
+  {"id":"repair-kit","name":"Repair kit","priceCents":2400,"description":"Compact trail repair essentials"}
+]

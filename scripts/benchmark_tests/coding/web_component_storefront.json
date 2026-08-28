@@ -1,0 +1,13 @@
+{
+  "id": "web_component_storefront",
+  "family": "WebDev components",
+  "category": "web_component_architecture",
+  "name": "Build a stateful component-based storefront",
+  "prompt": "Complete the dependency-free storefront. Implement the documented CartStore contract with immutable snapshots, quantity validation, subscriptions and persistence; implement an encapsulated product-card custom element; load products with visible loading, empty, and error states; and build an accessible cart dialog with correct totals and keyboard behavior. Use safe DOM APIs rather than HTML string injection, responsive CSS, ES modules, and meaningful Node tests. The application must work from a static HTTP server without a build step. Do not edit benchmark infrastructure.",
+  "fixture": "coding_tasks/web_component_storefront/workspace",
+  "grader": "coding_tasks/web_component_storefront/grader.py",
+  "time_class": "long",
+  "benchmark_origin": "Web Components",
+  "best_practices": ["component encapsulation", "immutable state", "accessible dialogs", "safe DOM updates", "progressive states", "tests"],
+  "grading": {"kind": "workspace"}
+}

@@ -24,11 +24,11 @@ from platform_support import create_sampler
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PROFILE = "coding-agent-v1"
+PROFILE = "coding-agent-v2-web"
 FIELDS = [
     "run_id", "benchmark_suite", "benchmark_profile", "harness",
     "harness_version", "model_runner", "model_runner_version", "model", "model_digest", "task_id",
-    "task_name", "category", "benchmark_origin", "time_class", "status",
+    "task_name", "category", "benchmark_origin", "time_class", "web_runtime_version", "status",
     "verdict", "checks_passed", "checks_total", "wall_seconds", "exit_code",
     "timed_out", "files_changed", "student_test_files", "response_chars",
     "response_sha256", "max_gpu_temp_c", "max_host_temp_c",
@@ -110,6 +110,17 @@ def fingerprint_tree(root: Path) -> dict[str, str]:
     return result
 
 
+def count_student_tests(workspace: Path) -> int:
+    tests = workspace / "tests"
+    if not tests.is_dir():
+        return 0
+    suffixes = {".py", ".js", ".mjs", ".cjs", ".ts", ".tsx"}
+    return sum(
+        1 for path in tests.rglob("*")
+        if path.is_file() and path.suffix in suffixes and "test" in path.name.lower()
+    )
+
+
 def prepare_workspace(base: Path, harness: str, model: str, task: dict) -> Path:
     safe_model = model.replace("/", "_").replace(":", "_")
     target = base / harness / safe_model / task["id"]
@@ -143,6 +154,19 @@ def write_csv(path: Path, records: list[dict]) -> None:
             writer.writerow({field: record["row"].get(field, "") for field in FIELDS})
 
 
+def validate_existing_records(records: list[dict]) -> None:
+    incompatible = {
+        record.get("row", {}).get("benchmark_profile", "unversioned")
+        for record in records
+        if record.get("row", {}).get("benchmark_profile") != PROFILE
+    }
+    if incompatible:
+        raise RuntimeError(
+            "Existing evidence uses a different coding profile "
+            f"({', '.join(sorted(incompatible))}); use a new output directory for {PROFILE}"
+        )
+
+
 def main(argv=None) -> int:
     args = parse_args(argv)
     tasks = suite_task_catalog("coding")
@@ -161,6 +185,12 @@ def main(argv=None) -> int:
         return 0
     if not 1 <= args.timeout <= 14_400:
         raise SystemExit("--timeout must be between 1 and 14400 seconds")
+    web_runtime_version = ""
+    if any(task["category"].startswith("web_") for task in tasks):
+        node = shutil.which("node")
+        if node is None:
+            raise RuntimeError("The coding web profile requires a Node.js runtime for hidden tests")
+        web_runtime_version = command_output([node, "--version"])
     models = load_models(args.models_file)
     if args.model_runner == "ollama":
         installed = {item["name"]: item for item in ollama_json("/api/tags").get("models", [])}
@@ -178,6 +208,7 @@ def main(argv=None) -> int:
     runner_version = args.runner_version or (command_output(["ollama", "--version"]) if args.model_runner == "ollama" else "unreported")
     jsonl_path = args.output_dir / f"{args.harness}_coding.jsonl"; csv_path = args.output_dir / f"{args.harness}_coding.csv"
     records = [json.loads(line) for line in jsonl_path.read_text(encoding="utf-8").splitlines()] if jsonl_path.exists() else []
+    validate_existing_records(records)
     completed = {(record["row"]["model"], record["row"]["task_id"]) for record in records}
     if len(completed) != len(records): raise RuntimeError("Existing coding evidence contains duplicate model/task keys")
     baseline = read_linux_resource_snapshot(); sampler = create_sampler("auto", interval_ms=1000); sampler.start()
@@ -212,7 +243,7 @@ def main(argv=None) -> int:
                     if before.get(name) != after.get(name)
                 )
                 status = "timeout" if timed_out else ("error" if pressure_error or exit_code else "ok")
-                row = {"run_id": run_id, "benchmark_suite": "coding", "benchmark_profile": PROFILE, "harness": f"{args.harness}-coding-agent", "harness_version": harness_version, "model_runner": args.model_runner, "model_runner_version": runner_version, "model": model["name"], "model_digest": model["digest"], "task_id": task["id"], "task_name": task["name"], "category": task["category"], "benchmark_origin": task["benchmark_origin"], "time_class": task["time_class"], "status": status, "verdict": grading.get("verdict", "grader_error"), "checks_passed": grading.get("passed", 0), "checks_total": grading.get("total", 0), "wall_seconds": wall, "exit_code": 124 if timed_out else exit_code, "timed_out": str(timed_out).lower(), "files_changed": len(changed), "student_test_files": len(list((workspace / "tests").glob("test*.py"))) if (workspace / "tests").is_dir() else 0, "response_chars": len(stdout), "response_sha256": hashlib.sha256(stdout.encode()).hexdigest(), "max_gpu_temp_c": maximum(samples, "gpu_temp_c"), "max_host_temp_c": maximum(samples, "host_temp_c"), "max_host_memory_used_bytes": maximum(samples, "host_memory_used_bytes"), "max_host_memory_pct": maximum(samples, "host_memory_pct"), "max_gpu_usage_pct": maximum(samples, "gpu_usage_pct"), "sample_count": len(samples), "error": (pressure_error or grader_error or stderr)[-2000:]}
+                row = {"run_id": run_id, "benchmark_suite": "coding", "benchmark_profile": PROFILE, "harness": f"{args.harness}-coding-agent", "harness_version": harness_version, "model_runner": args.model_runner, "model_runner_version": runner_version, "model": model["name"], "model_digest": model["digest"], "task_id": task["id"], "task_name": task["name"], "category": task["category"], "benchmark_origin": task["benchmark_origin"], "time_class": task["time_class"], "web_runtime_version": web_runtime_version, "status": status, "verdict": grading.get("verdict", "grader_error"), "checks_passed": grading.get("passed", 0), "checks_total": grading.get("total", 0), "wall_seconds": wall, "exit_code": 124 if timed_out else exit_code, "timed_out": str(timed_out).lower(), "files_changed": len(changed), "student_test_files": count_student_tests(workspace), "response_chars": len(stdout), "response_sha256": hashlib.sha256(stdout.encode()).hexdigest(), "max_gpu_temp_c": maximum(samples, "gpu_temp_c"), "max_host_temp_c": maximum(samples, "host_temp_c"), "max_host_memory_used_bytes": maximum(samples, "host_memory_used_bytes"), "max_host_memory_pct": maximum(samples, "host_memory_pct"), "max_gpu_usage_pct": maximum(samples, "gpu_usage_pct"), "sample_count": len(samples), "error": (pressure_error or grader_error or stderr)[-2000:]}
                 record = {"row": row, "assistant_text": stdout, "stderr": stderr, "grading": grading, "changed_files": changed, "telemetry_samples": samples, "command": command}
                 with jsonl_path.open("a", encoding="utf-8") as stream: stream.write(json.dumps(record, ensure_ascii=False) + "\n")
                 records.append(record); completed.add(key); write_csv(csv_path, records)

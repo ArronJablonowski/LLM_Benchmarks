@@ -281,8 +281,10 @@ work uses the separate `coding` task catalog described below.
 
 The separate `coding` suite evaluates repository-level coding agents on issue
 repair, architectural refactoring, efficient implementation, complex data
-pipelines, full project construction, and long-horizon hardening. It uses
+pipelines, full project construction, long-horizon hardening, accessible
+frontend development, component architecture, and full-stack web work. It uses
 isolated project workspaces and hidden functional plus best-practice checks.
+The current expanded profile is `coding-agent-v2-web` with nine projects.
 
 ```bash
 python3 scripts/coding_agent_benchmarks.py \

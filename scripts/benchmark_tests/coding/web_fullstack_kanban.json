@@ -1,0 +1,13 @@
+{
+  "id": "web_fullstack_kanban",
+  "family": "Full-stack WebDev",
+  "category": "web_fullstack_application",
+  "name": "Build a persistent full-stack Kanban application",
+  "prompt": "Build the Kanban application described in SPEC.md. Implement the standard-library Python package, SQLite-backed BoardStore, WSGI JSON API, optimistic concurrency with ETags and If-Match, input validation, safe static-file serving, and the responsive accessible frontend. The frontend must render with safe DOM APIs, expose loading/error/empty states, and support keyboard operation. Use parameterized SQL, add backend and JavaScript tests, run all checks, and keep the project offline-runnable with no runtime dependencies. Do not edit benchmark infrastructure.",
+  "fixture": "coding_tasks/web_fullstack_kanban/workspace",
+  "grader": "coding_tasks/web_fullstack_kanban/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Full-Stack Web",
+  "best_practices": ["HTTP semantics", "optimistic concurrency", "parameterized SQL", "accessible frontend", "safe static serving", "backend and frontend tests"],
+  "grading": {"kind": "workspace"}
+}

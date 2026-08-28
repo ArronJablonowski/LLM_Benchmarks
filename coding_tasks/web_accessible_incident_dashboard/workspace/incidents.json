@@ -1,0 +1,6 @@
+[
+  {"id":"INC-104","title":"Checkout latency","service":"payments","status":"open","severity":"critical","updated":"2026-08-28T15:00:00Z"},
+  {"id":"INC-103","title":"Delayed notifications","service":"messaging","status":"monitoring","severity":"major","updated":"2026-08-28T14:15:00Z"},
+  {"id":"INC-102","title":"Search index lag","service":"catalog","status":"resolved","severity":"minor","updated":"2026-08-28T12:40:00Z"},
+  {"id":"INC-101","title":"Elevated API errors","service":"gateway","status":"open","severity":"major","updated":"2026-08-28T11:30:00Z"}
+]

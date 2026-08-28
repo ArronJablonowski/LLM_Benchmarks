@@ -1,0 +1,13 @@
+{
+  "id": "web_accessible_incident_dashboard",
+  "family": "WebDev accessibility",
+  "category": "web_frontend_accessibility",
+  "name": "Build an accessible responsive incident dashboard",
+  "prompt": "Complete the incident dashboard as a production-quality vanilla web application. Render and filter the supplied incident data by search text and status, update the visible summary, persist the theme, and keep URL filter state shareable. Use semantic HTML, associated form labels, a skip link, useful live-region announcements, keyboard-visible focus, reduced-motion support, safe DOM construction, responsive layouts at narrow widths, and no external dependencies. Preserve the documented pure JavaScript API, add meaningful Node tests, and run them. Do not edit benchmark infrastructure.",
+  "fixture": "coding_tasks/web_accessible_incident_dashboard/workspace",
+  "grader": "coding_tasks/web_accessible_incident_dashboard/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "WebDev Accessibility",
+  "best_practices": ["semantic HTML", "WCAG-oriented accessibility", "responsive CSS", "safe DOM updates", "deterministic state", "tests"],
+  "grading": {"kind": "workspace"}
+}
