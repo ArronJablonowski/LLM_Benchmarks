@@ -17,7 +17,7 @@ from cli_agent_benchmarks import (
 )
 from coding_agent_benchmarks import (
     fingerprint_tree, harness_command, prepare_workspace,
-    provider_configuration, run_guarded_server,
+    hermes_configuration, provider_configuration, run_guarded_server,
 )
 from ollama_standardized_local_benchmarks import read_linux_resource_snapshot
 from platform_support import create_sampler
@@ -126,6 +126,8 @@ def main(argv=None) -> int:
     if args.harness == "pi":
         if args.model_runner == "ollama": pi_configuration(config_dir, models)
         else: provider_configuration(config_dir, models, args.base_url, args.api_key)
+    if args.harness == "hermes":
+        hermes_configuration(config_dir, models[0]["name"], args.base_url)
     if args.harness == "openhands":
         harness_version = command_output([args.openhands_python, "-c", "import importlib.metadata as m; print(m.version('openhands-ai'))"])
     elif args.harness == "ollama-direct":

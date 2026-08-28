@@ -77,10 +77,10 @@ def harness_command(
     if harness == "hermes":
         return [
             "hermes", "chat", "--query", prompt, "--model", model,
-            "--provider", "ollama", "--toolsets", "terminal,file,code_execution",
+            "--provider", "custom", "--toolsets", "terminal,file,code_execution",
             "--in", str(workspace), "--no-restore-cwd", "--max-turns", "150",
             "--run-budget", str(timeout), "--yolo", "--ignore-rules",
-            "--ignore-user-config", "--source", "tool", "--quiet",
+            "--source", "tool", "--quiet",
         ]
     if harness == "openclaw":
         return [
@@ -111,6 +111,26 @@ def provider_configuration(config_dir: Path, models: list[dict], base_url: str, 
     config_dir.mkdir(parents=True, exist_ok=True)
     payload = {"providers": {"benchmark": {"baseUrl": base_url, "api": "openai-completions", "apiKey": api_key, "compat": {"supportsDeveloperRole": False, "supportsReasoningEffort": False}, "models": [{"id": row["name"]} for row in models]}}}
     (config_dir / "models.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def hermes_configuration(config_dir: Path, model: str, base_url: str) -> Path:
+    """Write a campaign-local Hermes config that cannot fall back to cloud."""
+    hermes_home = config_dir / "hermes-home"
+    hermes_home.mkdir(parents=True, exist_ok=True)
+    config = (
+        "model:\n"
+        f"  default: {json.dumps(model)}\n"
+        "  provider: custom\n"
+        f"  base_url: {json.dumps(base_url.rstrip('/'))}\n"
+        "  context_length: 32768\n"
+        "agent:\n"
+        "  max_turns: 150\n"
+        "  reasoning_effort: none\n"
+        "auxiliary:\n"
+        "  free_only: true\n"
+    )
+    (hermes_home / "config.yaml").write_text(config, encoding="utf-8")
+    return hermes_home
 
 
 def run_guarded_server(command, env, workspace, timeout, baseline, server_pid, stop_command):
@@ -235,6 +255,8 @@ def main(argv=None) -> int:
     if args.harness == "pi":
         if args.model_runner == "ollama": pi_configuration(config_dir, models)
         else: provider_configuration(config_dir, models, args.base_url, args.api_key)
+    if args.harness == "hermes":
+        hermes_configuration(config_dir, models[0]["name"], args.base_url)
     if args.harness == "openhands":
         harness_version = command_output([args.openhands_python, "-c", "import importlib.metadata as m; print(m.version('openhands-ai'))"])
     elif args.harness == "ollama-direct":
