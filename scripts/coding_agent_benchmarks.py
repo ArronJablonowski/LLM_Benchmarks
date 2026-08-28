@@ -122,7 +122,9 @@ def hermes_configuration(config_dir: Path, model: str, base_url: str) -> Path:
         f"  default: {json.dumps(model)}\n"
         "  provider: custom\n"
         f"  base_url: {json.dumps(base_url.rstrip('/'))}\n"
-        "  context_length: 32768\n"
+        # Hermes enforces a 64K minimum for agent sessions. Use the minimum so
+        # campaign context remains comparable without reserving needless KV cache.
+        "  context_length: 65536\n"
         "agent:\n"
         "  max_turns: 150\n"
         "  reasoning_effort: none\n"
