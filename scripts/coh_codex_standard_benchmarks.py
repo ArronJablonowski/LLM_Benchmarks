@@ -51,6 +51,7 @@ def parse_args(argv=None):
     parser.add_argument("--max-retries", type=int, default=2)
     parser.add_argument("--retry-delay", type=float, default=10.0)
     parser.add_argument("--telemetry", choices=("auto", "mactop", "nvidia-smi", "none"), default="auto")
+    parser.add_argument("--force", action="store_true", help="rerun selected successful model-task rows")
     parser.add_argument("--run", action="store_true")
     return parser.parse_args(argv)
 
@@ -180,7 +181,7 @@ def main(argv=None):
         for model in args.models:
             for task in tasks:
                 key = (model, task["id"])
-                if key in successful:
+                if key in successful and not args.force:
                     continue
                 ordinal += 1
                 for retry in range(args.max_retries + 1):

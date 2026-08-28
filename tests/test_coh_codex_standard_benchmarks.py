@@ -39,6 +39,12 @@ class COHCodexStandardTests(unittest.TestCase):
         records = [json.loads(line) for line in payload.split("\n") if line]
         self.assertEqual(records, [{"assistant_text": "before\u2028after"}])
 
+    def test_force_flag_is_explicit(self):
+        args = module.parse_args(["--binary", "/tmp/coh", "--codex-binary", "/tmp/codex",
+                                  "--codex-home", "/tmp/home", "--workspace", "/tmp/work",
+                                  "--output-dir", "/tmp/out", "--force"])
+        self.assertTrue(args.force)
+
 
 if __name__ == "__main__":
     unittest.main()
