@@ -125,6 +125,7 @@ def hermes_configuration(config_dir: Path, model: str, base_url: str) -> Path:
         # Hermes enforces a 64K minimum for agent sessions. Use the minimum so
         # campaign context remains comparable without reserving needless KV cache.
         "  context_length: 65536\n"
+        "  ollama_num_ctx: 65536\n"
         "agent:\n"
         "  max_turns: 150\n"
         "  reasoning_effort: none\n"
