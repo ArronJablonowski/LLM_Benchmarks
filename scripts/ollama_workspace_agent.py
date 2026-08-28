@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 import time
 import urllib.request
 from pathlib import Path
@@ -197,4 +198,8 @@ def main(argv=None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except TimeoutError as exc:
+        print(f"TIMEOUT: {exc}", file=sys.stderr)
+        raise SystemExit(124)

@@ -174,6 +174,7 @@ def main(argv=None) -> int:
                 else:
                     result = run_guarded_server(command, env, workspace, args.timeout, baseline, args.server_pid, args.stop_command)
                 exit_code, stdout, stderr, timed_out, pressure_error = result
+                timed_out = timed_out or exit_code == 124
                 wall = round(time.monotonic() - started, 3)
                 if args.model_runner == "ollama": stop_model(model["name"])
                 samples = sampler.get_since(sample_start); after = fingerprint_tree(workspace)
