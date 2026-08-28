@@ -3,18 +3,20 @@
 ## About
 
 Local LLM Benchmark Suite is a reproducible evaluation toolkit for comparing
-local and cloud-connected models on your own hardware. It runs the same
-deterministically graded tasks through Direct Ollama, Hermes Agent, and
-OpenClaw, while preserving the evidence needed to explain a result: model and
-runtime provenance, harness, task outcome, timing, temperature, and memory
-telemetry. Its scores are best used to compare the specific models, settings,
-and host captured in a campaign—not as universal model rankings.
+local and cloud-connected models on your own hardware. It contains four
+isolated suites—Standard, Coding, Creative, and Cybersecurity—plus guarded,
+opt-in published profiles. Each campaign preserves the evidence needed to
+explain a result: model and runtime provenance, agent harness, task outcome,
+response timing, temperature, and peak-memory telemetry. Scores compare the
+specific model, model runner, harness, settings, and host captured in a
+campaign; they are not universal model rankings.
 
-Run the same deterministic local-LLM benchmark suite through three paths:
-
-- **Direct Ollama** — measures the model through Ollama's local API.
-- **Hermes Agent** — measures the model through Hermes's one-shot agent path.
-- **OpenClaw** — measures the model through the OpenClaw Gateway agent path.
+The original deterministic Standard suite can run through Direct Ollama,
+Hermes Agent, and OpenClaw. DGX Spark integrations also compare direct
+llama.cpp, vLLM, and TensorRT-LLM inference, and tool-capable Pi, Goose, and
+OpenHands agent paths. The checked-in cross-system report additionally includes
+completed DeepSeek Harness evidence. Gas Town is represented separately as an
+orchestration health check rather than an accuracy benchmark.
 
 The suite is designed for macOS on Apple silicon and NVIDIA Linux, including
 the DGX Spark. It favors reproducible accuracy and evidence preservation over
@@ -26,6 +28,24 @@ provenance, response timing, temperatures, and peak memory use.
 > GSM8K, MATH-500, HumanEval, and MMLU-Pro describe the style of one small
 > task; they do **not** mean the complete upstream benchmark was run. Use the
 > opt-in official profiles for full AIME 2026 or GPQA Diamond evaluation.
+
+## Suite map
+
+The suite name is part of every evidence row and report filter, preventing
+results from unlike evaluations from being merged.
+
+| Suite/profile | Scope | Evaluation | Dedicated output |
+|---|---|---|---|
+| `standard` | 18 fixed prompt/response tasks | Deterministic local graders | CSV, canonical JSONL, Markdown, and the cross-system HTML report |
+| `coding` | 9 repository projects, including 3 web-development projects | Hidden functional and engineering-quality checks | `coding_agent_report.html` |
+| `creative` | 6 design briefs, including Three.js and animated Next.js | Subjective human review; no automated aesthetic score | `creative_human_review.html` |
+| `cybersecurity` | 24 original tasks across 8 security tracks | Deterministic hidden checks on isolated local fixtures | `cybersecurity_agent_report.html` |
+| `aime2026`, `gpqa-diamond`, `standard-local` | 30, 198, or 228 official offline items | Exact-answer local grading | Standard evidence files, labeled by profile |
+| ExploitGym `sample` / `v1` | 20 / 869 published exploit-development instances | Upstream flag and on-target scoring | Separate section in `cybersecurity_agent_report.html` |
+
+Start with `standard` below. The [Coding](#coding-agent-suite),
+[Creative](#creative-suite), and [Cybersecurity](#cybersecurity-suite) sections
+link to their complete task maps and execution guides.
 
 ## Quick start
 
@@ -56,9 +76,9 @@ compute work.
 ### 2. Discover the tasks
 
 This is read-only: it does not contact Ollama or an agent, start telemetry, or
-write files. The existing 18-task evaluation is named `standard`; select it
-explicitly with `--suite standard`. This stable suite name keeps its results
-separate from future suites such as a dedicated coding evaluation.
+write files. The original 18-task evaluation is named `standard`; select it
+explicitly with `--suite standard`. The stable suite name keeps its results
+separate from the Coding, Creative, and Cybersecurity suites.
 
 ```bash
 python3 scripts/ollama_standardized_local_benchmarks.py \
@@ -124,6 +144,51 @@ python3 dashboard/generate_local_llm_dashboard.py
 
 It writes `~/Local LLM Benchmark Dashboard.html` and model detail pages under
 `~/Local LLM Model Research/` by default.
+
+## Model runners and agent harnesses
+
+A **model runner** hosts inference. An **agent harness** decides how a task is
+presented, which tools are available, and how the model's work is executed.
+Both identities and versions are recorded so a result is attributable to the
+complete model × runner × harness combination.
+
+| Layer | Supported integrations | Where they are used |
+|---|---|---|
+| Model runners | Ollama, llama.cpp, vLLM, TensorRT-LLM | Direct Standard runs; Ollama or an OpenAI-compatible server beneath tool-agent suites |
+| Standard agent paths | Hermes Agent, OpenClaw, DeepSeek Harness evidence | The 18-task Standard comparison; DeepSeek Harness is currently a preserved completed campaign/report source |
+| Tool-agent harnesses | Pi Agent, Goose, OpenHands | Coding, Creative, and Cybersecurity project/fixture campaigns |
+| Orchestration check | Gas Town | Disposable operational smoke test only; not accuracy-comparable |
+| External published harness | ExploitGym with Codex, Claude Code, or Gemini CLI | Isolated opt-in Cybersecurity profile using ExploitGym's provider proxy |
+
+The guarded NVIDIA/DGX wrappers are:
+
+| Command | Purpose |
+|---|---|
+| `ops/run_llama_cpp_campaign.sh` | Start a pinned GGUF with `llama-server` and benchmark its OpenAI-compatible endpoint |
+| `ops/run_vllm_campaign.sh` | Start a pinned Hugging Face checkpoint with vLLM |
+| `ops/run_tensorrt_llm_campaign.sh` | Start a pinned checkpoint in a pinned TensorRT-LLM container |
+| `ops/run_cli_agent_campaign.sh` | Run configured Pi/Goose/OpenHands paths over frozen Ollama models |
+| `ops/run_gastown_operational_smoke.sh` | Verify Gas Town, Beads, Dolt, Git, and fixture-rig orchestration without assigning an accuracy score |
+
+All three direct-server wrappers enforce a frozen 32,768-token context, verify
+the exact model and runner provenance, stop conflicting agent/GPU services,
+monitor the live server process, and restore only services that were active
+before the campaign. Set `BENCH_SUITE=coding`, `creative`, or `cybersecurity`
+to route an alternative runner through Pi, Goose, and OpenHands instead of the
+Standard prompt/response client. Runner-specific model paths and campaign
+variables are documented directly in each wrapper; Spark setup and telemetry
+are covered in [`docs/DGX_SPARK.md`](docs/DGX_SPARK.md).
+
+The optional Spark bootstrap records versions and installs isolated runtimes
+for vLLM, TensorRT-LLM, OpenHands, Beads, and Dolt:
+
+```bash
+BENCH_BOOTSTRAP_DIR="$HOME/.hermes/reports/bootstrap/spark-harnesses" \
+  ops/bootstrap_spark_harness_runtimes.sh
+```
+
+Review that script and its pinned versions before running it; it downloads
+packages and model artifacts and is not required for Ollama-only benchmarks.
 
 ## Choose a harness
 
@@ -296,7 +361,8 @@ python3 scripts/coding_agent_benchmarks.py \
 Coding evidence and rankings are never merged into the standard HTML report.
 Coding campaigns produce their own `coding_agent_report.html`. See
 [`docs/CODING_SUITE.md`](docs/CODING_SUITE.md) for tasks, scoring, safety,
-methodology, and execution instructions.
+methodology, web-development checks, runner/harness combinations, and execution
+instructions.
 
 ## Creative suite
 
@@ -343,7 +409,12 @@ The suite also includes a pinned, opt-in adapter for the published
 qualification and 869-task v1 profiles retain upstream licensing and run only
 with hardened targets, isolated firewall networks, provider-retrieval blocking,
 and explicit real-exploitation acknowledgement. ExploitGym evidence is shown
-separately from the original local profile.
+separately from the original local profile. It currently uses ExploitGym's
+Codex, Claude Code, or Gemini CLI agents and provider proxy; it does not claim
+support for local Ollama, llama.cpp, vLLM, TensorRT-LLM, Pi, Goose, or
+OpenHands. Run it only on a dedicated isolated Linux host after following the
+preparation and safety procedure in
+[`docs/CYBERSECURITY_SUITE.md`](docs/CYBERSECURITY_SUITE.md#exploitgym-external-profile).
 
 See [`docs/BENCHMARK_COMPONENTS.md`](docs/BENCHMARK_COMPONENTS.md) to review,
 add, or replace a core component.
@@ -406,7 +477,13 @@ than being represented as zero.
 The checked-in cross-system ranking is available at
 [`docs/top_10_models_by_system.html`](docs/top_10_models_by_system.html).
 It shows the top ten by default; **Verbose** reveals all observed models and
-**Cloud** includes or excludes cloud runs while recalculating ranks.
+**Cloud** includes or excludes cloud runs while recalculating ranks. Each path
+cell shows its accuracy, strict pass count, average response time, and local
+model runner. The DGX Spark view includes completed Ollama Direct, Hermes,
+OpenClaw, DeepSeek Harness, llama.cpp Direct, vLLM Direct, TensorRT-LLM Direct,
+Pi, Goose, and OpenHands observations. New runner/harness columns remain
+additional evidence until equivalent model coverage makes them suitable for
+the primary ranking denominator.
 
 Regenerate that report from its curated inputs with:
 
@@ -462,6 +539,19 @@ Run the repository test suite:
 ```bash
 python3 -m unittest discover -s tests -v
 ```
+
+Useful project references:
+
+| Document | Contents |
+|---|---|
+| [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) | Scoring, comparability, timing, and evidence rules |
+| [`docs/PROVENANCE.md`](docs/PROVENANCE.md) | Source, model, runtime, and artifact provenance |
+| [`docs/BENCHMARK_COMPONENTS.md`](docs/BENCHMARK_COMPONENTS.md) | Standard task-component structure and extension workflow |
+| [`docs/CODING_SUITE.md`](docs/CODING_SUITE.md) | Coding and web-development projects, hidden checks, and execution |
+| [`docs/CREATIVE_SUITE.md`](docs/CREATIVE_SUITE.md) | Creative briefs and human-review protocol |
+| [`docs/CYBERSECURITY_SUITE.md`](docs/CYBERSECURITY_SUITE.md) | Security tracks, standards, safety, and ExploitGym |
+| [`docs/DGX_SPARK.md`](docs/DGX_SPARK.md) | Spark preflight, telemetry, context, and resource safeguards |
+| [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) | Development and testing workflow |
 
 Only synchronize source and documentation between systems. Keep raw
 `.hermes/reports`, generated host dashboards, and model-detail pages local so
