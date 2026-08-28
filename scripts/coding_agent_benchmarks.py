@@ -86,7 +86,7 @@ def harness_command(
         return [
             "openclaw", "agent", "--session-key",
             f"agent:main:benchmark-{uuid.uuid4().hex}", "--message", prompt,
-            "--model", f"ollama/{model}", "--timeout", str(timeout), "--json",
+            "--timeout", str(timeout), "--json",
         ]
     if harness == "pi":
         return [
@@ -134,6 +134,32 @@ def hermes_configuration(config_dir: Path, model: str, base_url: str) -> Path:
     )
     (hermes_home / "config.yaml").write_text(config, encoding="utf-8")
     return hermes_home
+
+
+def select_openclaw_model(model: str) -> None:
+    """Select one local model with no fallbacks and restart the user gateway."""
+    from openclaw_18_test_benchmarks import checked_run, restart_openclaw_gateway
+    checked_run(["openclaw", "models", "set", f"ollama/{model}"], 90, f"unable to select OpenClaw model {model}")
+    checked_run(["openclaw", "models", "fallbacks", "clear"], 60, "unable to clear OpenClaw fallbacks")
+    restart_openclaw_gateway(["systemctl", "--user", "restart", "openclaw-gateway.service"])
+    time.sleep(5)
+
+
+def openclaw_original_state() -> dict | None:
+    if shutil.which("openclaw") is None:
+        return None
+    from openclaw_18_test_benchmarks import openclaw_model_state
+    return openclaw_model_state()
+
+
+def restore_openclaw_state(state: dict | None) -> None:
+    if not state:
+        return
+    from openclaw_18_test_benchmarks import restore_openclaw
+    restore_openclaw(
+        state.get("model", ""), state.get("fallbacks", []),
+        ["systemctl", "--user", "restart", "openclaw-gateway.service"],
+    )
 
 
 def run_guarded_server(command, env, workspace, timeout, baseline, server_pid, stop_command):
@@ -273,10 +299,13 @@ def main(argv=None) -> int:
     completed = {(record["row"]["model"], record["row"]["task_id"]) for record in records}
     if len(completed) != len(records): raise RuntimeError("Existing coding evidence contains duplicate model/task keys")
     baseline = read_linux_resource_snapshot(); sampler = create_sampler("auto", interval_ms=1000); sampler.start()
+    original_openclaw = openclaw_original_state() if args.harness == "openclaw" else None
     run_id = records[0]["row"]["run_id"] if records else time.strftime("%Y%m%d_%H%M%S")
     try:
         total = len(models) * len(tasks)
         for model in models:
+            if args.harness == "openclaw" and any((model["name"], task["id"]) not in completed for task in tasks):
+                select_openclaw_model(model["name"])
             for task in tasks:
                 key = (model["name"], task["id"])
                 if key in completed: continue
@@ -321,6 +350,8 @@ def main(argv=None) -> int:
         sampler.stop()
         if args.model_runner == "ollama":
             for model in models: stop_model(model["name"])
+        if args.harness == "openclaw":
+            restore_openclaw_state(original_openclaw)
     return 0
 
 

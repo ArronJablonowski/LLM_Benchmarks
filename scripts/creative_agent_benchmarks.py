@@ -17,7 +17,8 @@ from cli_agent_benchmarks import (
 )
 from coding_agent_benchmarks import (
     fingerprint_tree, harness_command, prepare_workspace,
-    hermes_configuration, provider_configuration, run_guarded_server,
+    hermes_configuration, openclaw_original_state, provider_configuration,
+    restore_openclaw_state, run_guarded_server, select_openclaw_model,
 )
 from ollama_standardized_local_benchmarks import read_linux_resource_snapshot
 from platform_support import create_sampler
@@ -142,10 +143,13 @@ def main(argv=None) -> int:
     if len(completed) != len(records):
         raise RuntimeError("Existing creative evidence contains duplicate model/task keys")
     baseline = read_linux_resource_snapshot(); sampler = create_sampler("auto", interval_ms=1000); sampler.start()
+    original_openclaw = openclaw_original_state() if args.harness == "openclaw" else None
     run_id = records[0]["row"]["run_id"] if records else time.strftime("%Y%m%d_%H%M%S")
     try:
         total = len(models) * len(tasks)
         for model in models:
+            if args.harness == "openclaw" and any((model["name"], task["id"]) not in completed for task in tasks):
+                select_openclaw_model(model["name"])
             for task in tasks:
                 key = (model["name"], task["id"])
                 if key in completed: continue
@@ -193,6 +197,8 @@ def main(argv=None) -> int:
         sampler.stop()
         if args.model_runner == "ollama":
             for model in models: stop_model(model["name"])
+        if args.harness == "openclaw":
+            restore_openclaw_state(original_openclaw)
     return 0
 
 
