@@ -16,7 +16,9 @@ server_pid=""
 mkdir -p "$campaign_dir"
 [[ -f "$model_file" ]] || { echo "GGUF model is missing: $model_file" >&2; exit 1; }
 [[ -x "$llama_server" ]] || { echo "llama-server is missing: $llama_server" >&2; exit 1; }
-(( timeout >= 1 && timeout <= 1800 )) || { echo "Invalid task timeout" >&2; exit 1; }
+max_timeout=1800
+[[ "${BENCH_SUITE:-standard}" == "coding" ]] && max_timeout=14400
+(( timeout >= 1 && timeout <= max_timeout )) || { echo "Invalid task timeout for ${BENCH_SUITE:-standard}" >&2; exit 1; }
 (( context_size == 32768 )) || { echo "This campaign requires the frozen 32768 context" >&2; exit 1; }
 
 if [[ ! -e "$state_file" ]]; then
@@ -62,13 +64,32 @@ server_pid=$!
 printf '%s\n' "$server_pid" >"$campaign_dir/server.pid"
 "$llama_server" --version >"$campaign_dir/runner-version.txt" 2>&1 || true
 
-python3 "$repo_dir/scripts/openai_compatible_benchmarks.py" \
-  --suite "${BENCH_SUITE:-standard}" \
-  --endpoint "http://127.0.0.1:$port/v1/chat/completions" \
-  --model "$model_id" --model-digest "$model_digest" \
-  --model-runner "llama.cpp" \
-  --runner-version "$(head -1 "$campaign_dir/runner-version.txt")" \
-  --output-dir "$campaign_dir/results" --server-pid "$server_pid" \
-  --startup-timeout 900 --timeout "$timeout" --run
+if [[ "${BENCH_SUITE:-standard}" == "coding" ]]; then
+  ready=0
+  for _attempt in $(seq 1 900); do
+    kill -0 "$server_pid" 2>/dev/null || { echo "llama.cpp server exited during startup" >&2; exit 1; }
+    if curl -fsS "http://127.0.0.1:$port/v1/models" >/dev/null; then ready=1; break; fi
+    sleep 1
+  done
+  (( ready == 1 )) || { echo "llama.cpp server did not become ready" >&2; exit 1; }
+  models_file="$campaign_dir/coding-models.tsv"
+  [[ -f "$models_file" ]] || printf '%s\t%s\n' "$model_id" "$model_digest" >"$models_file"
+  for agent_harness in ${BENCH_CLI_HARNESSES:-pi goose openhands}; do
+    python3 "$repo_dir/scripts/coding_agent_benchmarks.py" \
+      --suite coding --harness "$agent_harness" --model-runner llama.cpp \
+      --base-url "http://127.0.0.1:$port/v1" --api-key benchmark \
+      --runner-version "$(head -1 "$campaign_dir/runner-version.txt")" --server-pid "$server_pid" \
+      --models-file "$models_file" --output-dir "$campaign_dir/coding/$agent_harness" \
+      --workspace "$campaign_dir/coding-workspace" --timeout "${BENCH_TASK_TIMEOUT:-7200}" --run
+  done
+  python3 "$repo_dir/dashboard/generate_coding_report.py" --input-root "$campaign_dir" --output "$campaign_dir/coding_agent_report.html"
+else
+  python3 "$repo_dir/scripts/openai_compatible_benchmarks.py" \
+    --suite standard --endpoint "http://127.0.0.1:$port/v1/chat/completions" \
+    --model "$model_id" --model-digest "$model_digest" \
+    --model-runner "llama.cpp" --runner-version "$(head -1 "$campaign_dir/runner-version.txt")" \
+    --output-dir "$campaign_dir/results" --server-pid "$server_pid" \
+    --startup-timeout 900 --timeout "$timeout" --run
+fi
 
 touch "$campaign_dir/campaign.done"

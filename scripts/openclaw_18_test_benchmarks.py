@@ -443,6 +443,9 @@ def main(argv=None):
     ap.add_argument('--list-tasks', '--list-tests', dest='list_tasks', action='store_true', help='List selected task IDs without contacting Ollama or OpenClaw.')
     args = ap.parse_args(argv)
 
+    if args.suite != DEFAULT_SUITE:
+        ap.error('--suite coding requires the isolated coding-agent runner; this OpenClaw runner is prompt/response only')
+
     unknown_external_vision = set(args.external_vision_models) - set(args.external_models)
     if unknown_external_vision:
         ap.error('--external-vision-models must be a subset of --external-models')

@@ -1,0 +1,13 @@
+{
+  "id": "repobench_dependency_refactor",
+  "family": "RepoBench-style",
+  "category": "repository_refactor",
+  "name": "Refactor a cross-module dependency graph",
+  "prompt": "Refactor the provided event-processing package to remove the import cycle between routing, formatting, and delivery while preserving behavior. Add a typed delivery abstraction, keep the existing public send_event entry point compatible, reject unknown channels clearly, and add tests for the refactor. Run all tests and keep modules cohesive; do not edit benchmark infrastructure.",
+  "fixture": "coding_tasks/repobench_dependency_refactor/workspace",
+  "grader": "coding_tasks/repobench_dependency_refactor/grader.py",
+  "time_class": "long",
+  "benchmark_origin": "RepoBench",
+  "best_practices": ["dependency inversion", "type annotations", "backward compatibility", "unit tests"],
+  "grading": {"kind": "workspace"}
+}

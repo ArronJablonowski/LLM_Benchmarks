@@ -1,0 +1,8 @@
+[build-system]
+requires = []
+build-backend = "job_service_build"
+
+[project]
+name = "job-service-benchmark"
+version = "0.1.0"
+requires-python = ">=3.10"

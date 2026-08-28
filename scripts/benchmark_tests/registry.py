@@ -17,8 +17,9 @@ from accuracy_grading import COUNT_UNIQUE_IPS_GRADER, PRIVATE_IPV4_GRADER
 
 
 COMPONENT_DIRECTORY = Path(__file__).with_name("core")
+CODING_COMPONENT_DIRECTORY = Path(__file__).with_name("coding")
 DEFAULT_SUITE = "standard"
-SUITE_CHOICES = (DEFAULT_SUITE,)
+SUITE_CHOICES = (DEFAULT_SUITE, "coding")
 REQUIRED_FIELDS = {"id", "family", "category", "name", "prompt", "grading"}
 CORE_TASK_ORDER = (
     "exact_reply", "simple_reasoning", "coding_micro", "ifeval_exact",
@@ -26,6 +27,14 @@ CORE_TASK_ORDER = (
     "arc_challenge_mini", "hellaswag_mini", "truthfulqa_mini",
     "humaneval_mini", "mbpp_mini", "bfcl_mini", "ragas_mini",
     "prompt_injection_mini", "cyber_soc_mini", "ocrbench_mini",
+)
+CODING_TASK_ORDER = (
+    "swe_issue_config_merge",
+    "repobench_dependency_refactor",
+    "livecodebench_schedule_optimizer",
+    "bigcodebench_log_pipeline",
+    "featurebench_job_service",
+    "terminalbench_release_hardening",
 )
 
 
@@ -119,6 +128,48 @@ def _core_tasks() -> tuple[dict[str, Any], ...]:
     return tuple(by_id[task_id] for task_id in CORE_TASK_ORDER)
 
 
+@lru_cache(maxsize=1)
+def _coding_tasks() -> tuple[dict[str, Any], ...]:
+    paths = sorted(CODING_COMPONENT_DIRECTORY.glob("*.json"))
+    if not paths:
+        raise BenchmarkComponentError("no coding benchmark components found")
+    tasks = [_load_descriptor(path) for path in paths]
+    required = {
+        "fixture", "grader", "time_class", "benchmark_origin",
+        "best_practices",
+    }
+    for path, task in zip(paths, tasks):
+        missing = required - task.keys()
+        if missing:
+            raise _fail(path, "missing coding fields: " + ", ".join(sorted(missing)))
+        if task["grading"].get("kind") != "workspace":
+            raise _fail(path, "coding grading.kind must be workspace")
+        for field in ("fixture", "grader", "time_class", "benchmark_origin"):
+            if not isinstance(task[field], str) or not task[field]:
+                raise _fail(path, f"{field} must be a non-empty string")
+        if not isinstance(task["best_practices"], list) or not all(
+            isinstance(item, str) and item for item in task["best_practices"]
+        ):
+            raise _fail(path, "best_practices must be a non-empty string list")
+    task_ids = [task["id"] for task in tasks]
+    if len(task_ids) != len(set(task_ids)):
+        raise BenchmarkComponentError("duplicate coding benchmark component ids")
+    overlap = set(task_ids) & set(CORE_TASK_ORDER)
+    if overlap:
+        raise BenchmarkComponentError(
+            "coding tasks overlap standard task ids: " + ", ".join(sorted(overlap))
+        )
+    actual_ids = set(task_ids)
+    expected_ids = set(CODING_TASK_ORDER)
+    if actual_ids != expected_ids:
+        missing = sorted(expected_ids - actual_ids)
+        extra = sorted(actual_ids - expected_ids)
+        details = (["missing " + ", ".join(missing)] if missing else []) + (["unlisted " + ", ".join(extra)] if extra else [])
+        raise BenchmarkComponentError("coding task order is out of sync: " + "; ".join(details))
+    by_id = {task["id"]: task for task in tasks}
+    return tuple(by_id[task_id] for task_id in CODING_TASK_ORDER)
+
+
 def core_task_catalog() -> list[dict[str, Any]]:
     """Return fresh task mappings so callers cannot mutate the registry."""
     return copy.deepcopy(list(_core_tasks()))
@@ -132,6 +183,8 @@ def suite_task_catalog(suite: str = DEFAULT_SUITE) -> list[dict[str, Any]]:
     """
     if suite == DEFAULT_SUITE:
         return core_task_catalog()
+    if suite == "coding":
+        return copy.deepcopy(list(_coding_tasks()))
     choices = ", ".join(SUITE_CHOICES)
     raise BenchmarkComponentError(
         f"unknown benchmark suite: {suite}; choose from: {choices}"

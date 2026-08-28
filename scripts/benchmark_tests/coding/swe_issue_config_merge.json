@@ -1,0 +1,13 @@
+{
+  "id": "swe_issue_config_merge",
+  "family": "SWE-bench-style",
+  "category": "issue_resolution",
+  "name": "Resolve a multi-file configuration merge regression",
+  "prompt": "Work as a coding agent in the provided repository. Resolve the reported configuration merge regression: nested mappings must merge recursively, lists must replace rather than concatenate, null in an overlay must explicitly clear a value, and neither input may be mutated. Preserve the public API, add focused regression tests, run the project tests, and leave the repository in a maintainable state. Do not edit or bypass benchmark infrastructure.",
+  "fixture": "coding_tasks/swe_issue_config_merge/workspace",
+  "grader": "coding_tasks/swe_issue_config_merge/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "SWE-bench",
+  "best_practices": ["regression tests", "no input mutation", "public API compatibility", "focused change"],
+  "grading": {"kind": "workspace"}
+}

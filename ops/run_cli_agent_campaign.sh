@@ -7,6 +7,7 @@ models_file="${BENCH_MODELS_FILE:-$campaign_dir/models.tsv}"
 workspace="$campaign_dir/workspace"
 python_bin="${BENCH_PYTHON:-python3}"
 timeout="${BENCH_TASK_TIMEOUT:-1800}"
+suite="${BENCH_SUITE:-standard}"
 state_file="$campaign_dir/pre-campaign-services.env"
 
 export PATH="$HOME/.local/bin:$PATH"
@@ -16,8 +17,10 @@ if [[ ! -s "$models_file" ]]; then
   echo "Frozen models file is missing or empty: $models_file" >&2
   exit 1
 fi
-if (( timeout < 1 || timeout > 1800 )); then
-  echo "BENCH_TASK_TIMEOUT must be between 1 and 1800" >&2
+max_timeout=1800
+[[ "$suite" == "coding" ]] && max_timeout=14400
+if (( timeout < 1 || timeout > max_timeout )); then
+  echo "BENCH_TASK_TIMEOUT must be between 1 and $max_timeout for suite $suite" >&2
   exit 1
 fi
 if systemctl --user is-active --quiet download-qwen38-flash-next-quants-20260828.service; then
@@ -53,7 +56,7 @@ systemctl --user stop hermes-gateway.service openclaw-gateway.service comfyui.se
 
 for harness in ${BENCH_CLI_HARNESSES:-pi goose}; do
   "$python_bin" "$repo_dir/scripts/cli_agent_benchmarks.py" \
-    --suite "${BENCH_SUITE:-standard}" \
+    --suite "$suite" \
     --harness "$harness" \
     --models-file "$models_file" \
     --output-dir "$campaign_dir/$harness" \
@@ -61,5 +64,11 @@ for harness in ${BENCH_CLI_HARNESSES:-pi goose}; do
     --timeout "$timeout" \
     --run
 done
+
+if [[ "$suite" == "coding" ]]; then
+  "$python_bin" "$repo_dir/dashboard/generate_coding_report.py" \
+    --input-root "$campaign_dir" \
+    --output "$campaign_dir/coding_agent_report.html"
+fi
 
 touch "$campaign_dir/campaign.done"

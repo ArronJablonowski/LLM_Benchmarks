@@ -220,6 +220,9 @@ def run_guarded(command, env, workspace, model, timeout, baseline):
 
 def main(argv=None):
     args = parse_args(argv)
+    if args.suite == "coding":
+        from coding_agent_benchmarks import main as coding_main
+        return coding_main(argv)
     if not args.run:
         raise SystemExit("Plan only. Pass --run to execute benchmark observations.")
     if args.timeout < 1 or args.timeout > 1800:

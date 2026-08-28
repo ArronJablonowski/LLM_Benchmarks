@@ -1,0 +1,13 @@
+{
+  "id": "livecodebench_schedule_optimizer",
+  "family": "LiveCodeBench-style",
+  "category": "algorithmic_project",
+  "name": "Implement a deterministic weighted schedule optimizer",
+  "prompt": "Complete the schedule optimizer package and CLI. Given JSON jobs with id, start, end, and value, select non-overlapping jobs maximizing total value. Invalid intervals must produce useful errors. Ties must prefer fewer jobs, then lexicographically smaller job-id sequences. Support stdin and --input, emit compact JSON, preserve integer precision, add tests, and run them. Use an efficient algorithm suitable for 10,000 jobs. Do not edit benchmark infrastructure.",
+  "fixture": "coding_tasks/livecodebench_schedule_optimizer/workspace",
+  "grader": "coding_tasks/livecodebench_schedule_optimizer/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "LiveCodeBench",
+  "best_practices": ["asymptotic efficiency", "deterministic tie-breaking", "input validation", "CLI tests"],
+  "grading": {"kind": "workspace"}
+}

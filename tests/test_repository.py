@@ -16,6 +16,9 @@ STANDARD_LOCAL_TASKS = ROOT / "scripts" / "standard_local_tasks.py"
 HERMES = ROOT / "scripts" / "hermes_agent_17_test_benchmarks.py"
 VISION_SUPPORT = ROOT / "scripts" / "vision_benchmark_support.py"
 BENCHMARK_REGISTRY = ROOT / "scripts" / "benchmark_tests" / "registry.py"
+CODING_RUNNER = ROOT / "scripts" / "coding_agent_benchmarks.py"
+CODING_REPORT = ROOT / "dashboard" / "generate_coding_report.py"
+OPENHANDS_CODING_AGENT = ROOT / "scripts" / "openhands_coding_agent.py"
 
 
 def literal_assignment(path, name):
@@ -43,7 +46,8 @@ class RepositoryTests(unittest.TestCase):
         for path in (
             DIRECT, OPENCLAW, GENERATOR, PLATFORM_SUPPORT, ACCURACY_GRADING,
             THINKING_PAIR_SUPPORT, STANDARD_LOCAL_TASKS, HERMES, VISION_SUPPORT,
-            BENCHMARK_REGISTRY,
+            BENCHMARK_REGISTRY, CODING_RUNNER, CODING_REPORT,
+            OPENHANDS_CODING_AGENT,
         ):
             compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
@@ -62,7 +66,8 @@ class RepositoryTests(unittest.TestCase):
             for path in (
                 DIRECT, OPENCLAW, GENERATOR, PLATFORM_SUPPORT,
                 ACCURACY_GRADING, THINKING_PAIR_SUPPORT, STANDARD_LOCAL_TASKS,
-                HERMES, VISION_SUPPORT,
+                HERMES, VISION_SUPPORT, CODING_RUNNER, CODING_REPORT,
+                OPENHANDS_CODING_AGENT,
             )
         )
         self.assertNotIn("/Users/", source)

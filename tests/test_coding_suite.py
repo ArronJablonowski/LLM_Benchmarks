@@ -1,0 +1,75 @@
+import contextlib
+import io
+import json
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from benchmark_tests import suite_task_catalog
+import coding_agent_benchmarks as coding
+import ollama_standardized_local_benchmarks as direct
+
+
+class CodingSuiteTests(unittest.TestCase):
+    def test_coding_suite_is_separate_and_complete(self):
+        standard = suite_task_catalog("standard")
+        tasks = suite_task_catalog("coding")
+        self.assertEqual(6, len(tasks))
+        self.assertFalse({task["id"] for task in standard} & {task["id"] for task in tasks})
+        self.assertFalse({task["prompt"] for task in standard} & {task["prompt"] for task in tasks})
+        self.assertEqual(
+            {"SWE-bench", "RepoBench", "LiveCodeBench", "BigCodeBench", "FeatureBench", "Terminal-Bench"},
+            {task["benchmark_origin"] for task in tasks},
+        )
+
+    def test_every_task_has_an_isolated_fixture_and_hidden_grader(self):
+        for task in suite_task_catalog("coding"):
+            with self.subTest(task=task["id"]):
+                fixture = ROOT / task["fixture"]
+                grader = ROOT / task["grader"]
+                self.assertTrue(fixture.is_dir())
+                self.assertTrue(grader.is_file())
+                self.assertNotIn(grader.resolve(), fixture.resolve().parents)
+                proc = subprocess.run(
+                    [sys.executable, str(grader), str(fixture)],
+                    text=True, capture_output=True, timeout=30,
+                    env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": "/usr/bin:/bin"},
+                )
+                self.assertEqual(0, proc.returncode, proc.stderr)
+                payload = json.loads(proc.stdout.strip().splitlines()[-1])
+                self.assertEqual("fail", payload["verdict"], "broken baseline must not pass")
+                self.assertGreater(payload["total"], 0)
+
+    def test_agent_commands_enable_real_coding_tools_and_bound_turns(self):
+        pi = coding.harness_command("pi", "fixture", "prompt", Path("/tmp/work"), "python")
+        self.assertNotIn("--no-tools", pi)
+        goose = coding.harness_command("goose", "fixture", "prompt", Path("/tmp/work"), "python")
+        self.assertEqual("100", goose[goose.index("--max-turns") + 1])
+        openhands = coding.harness_command("openhands", "fixture", "prompt", Path("/tmp/work"), "python")
+        self.assertIn("openhands_coding_agent.py", " ".join(openhands))
+
+    def test_listing_and_plan_are_read_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            args = ["--suite", "coding", "--harness", "pi", "--models-file", str(root / "missing.tsv"), "--output-dir", str(root / "out"), "--workspace", str(root / "work")]
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(0, coding.main(args + ["--list-tasks"]))
+            self.assertEqual(6, len(output.getvalue().strip().splitlines()))
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(0, coding.main(args))
+            self.assertEqual([], list(root.iterdir()))
+
+    def test_prompt_response_direct_runner_rejects_coding_suite(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            direct.main(["--suite", "coding", "--list-tasks"])
+
+
+if __name__ == "__main__":
+    unittest.main()

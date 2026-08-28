@@ -1,0 +1,13 @@
+{
+  "id": "terminalbench_release_hardening",
+  "family": "Terminal-Bench-style",
+  "category": "long_horizon_hardening",
+  "name": "Harden and package a release automation tool",
+  "prompt": "Audit and harden the provided release automation project. Eliminate shell injection and path traversal, make archives byte-for-byte reproducible, preserve executable bits, add dry-run support, produce a valid offline-installable package, update usage documentation, and add regression tests. Run all checks and leave no generated artifacts in source control. Do not edit benchmark infrastructure.",
+  "fixture": "coding_tasks/terminalbench_release_hardening/workspace",
+  "grader": "coding_tasks/terminalbench_release_hardening/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Terminal-Bench",
+  "best_practices": ["secure subprocess use", "path validation", "reproducible builds", "packaging", "documentation", "tests"],
+  "grading": {"kind": "workspace"}
+}

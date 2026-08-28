@@ -1,0 +1,13 @@
+{
+  "id": "bigcodebench_log_pipeline",
+  "family": "BigCodeBench-style",
+  "category": "complex_implementation",
+  "name": "Build a streaming log normalization pipeline",
+  "prompt": "Implement the incomplete streaming log pipeline across the repository. It must accept iterables without materializing them, parse JSON-lines and common-text records, normalize timestamps to UTC, redact configured secret fields recursively, aggregate per-service severity counts, and write deterministic JSON-lines. Malformed records must be reported without stopping the stream. Preserve the documented API, add meaningful tests, and run the suite. Standard library only; do not edit benchmark infrastructure.",
+  "fixture": "coding_tasks/bigcodebench_log_pipeline/workspace",
+  "grader": "coding_tasks/bigcodebench_log_pipeline/grader.py",
+  "time_class": "long",
+  "benchmark_origin": "BigCodeBench",
+  "best_practices": ["streaming behavior", "separation of concerns", "recursive redaction", "error handling", "tests"],
+  "grading": {"kind": "workspace"}
+}

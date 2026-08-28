@@ -26,7 +26,9 @@ docker image inspect "$image" >/dev/null 2>&1 || {
   echo "TensorRT-LLM image is missing: $image" >&2
   exit 1
 }
-(( timeout >= 1 && timeout <= 1800 )) || { echo "Invalid task timeout" >&2; exit 1; }
+max_timeout=1800
+[[ "${BENCH_SUITE:-standard}" == "coding" ]] && max_timeout=14400
+(( timeout >= 1 && timeout <= max_timeout )) || { echo "Invalid task timeout for ${BENCH_SUITE:-standard}" >&2; exit 1; }
 (( context_size == 32768 )) || { echo "This campaign requires the frozen 32768 context" >&2; exit 1; }
 python3 - "$kv_cache_fraction" <<'PY'
 import sys
@@ -101,12 +103,33 @@ server_pid="$(docker inspect --format '{{.State.Pid}}' "$container_name")"
 [[ "$server_pid" =~ ^[1-9][0-9]*$ ]] || { echo "Could not resolve container server PID" >&2; exit 1; }
 printf '%s\n' "$server_pid" >"$campaign_dir/server.pid"
 
-python3 "$repo_dir/scripts/openai_compatible_benchmarks.py" \
-  --suite "${BENCH_SUITE:-standard}" \
-  --endpoint "http://127.0.0.1:$port/v1/chat/completions" \
-  --model "$model_id" --model-digest "$model_digest" \
-  --model-runner "TensorRT-LLM" --runner-version "$(tr '\n' ' ' <"$campaign_dir/runner-version.txt")" \
-  --output-dir "$campaign_dir/results" --server-pid "$server_pid" \
-  --startup-timeout 900 --timeout "$timeout" --run
+if [[ "${BENCH_SUITE:-standard}" == "coding" ]]; then
+  ready=0
+  for _attempt in $(seq 1 900); do
+    docker inspect --format '{{.State.Running}}' "$container_name" 2>/dev/null | grep -qx true || { echo "TensorRT-LLM server exited during startup" >&2; exit 1; }
+    if curl -fsS "http://127.0.0.1:$port/v1/models" >/dev/null; then ready=1; break; fi
+    sleep 1
+  done
+  (( ready == 1 )) || { echo "TensorRT-LLM server did not become ready" >&2; exit 1; }
+  models_file="$campaign_dir/coding-models.tsv"
+  [[ -f "$models_file" ]] || printf '%s\t%s\n' "$model_id" "$model_digest" >"$models_file"
+  for agent_harness in ${BENCH_CLI_HARNESSES:-pi goose openhands}; do
+    python3 "$repo_dir/scripts/coding_agent_benchmarks.py" \
+      --suite coding --harness "$agent_harness" --model-runner tensorrt-llm \
+      --base-url "http://127.0.0.1:$port/v1" --api-key benchmark \
+      --runner-version "$(tr '\n' ' ' <"$campaign_dir/runner-version.txt")" --server-pid "$server_pid" \
+      --models-file "$models_file" --output-dir "$campaign_dir/coding/$agent_harness" \
+      --workspace "$campaign_dir/coding-workspace" --timeout "${BENCH_TASK_TIMEOUT:-7200}" --run \
+      --stop-command docker stop "$container_name"
+  done
+  python3 "$repo_dir/dashboard/generate_coding_report.py" --input-root "$campaign_dir" --output "$campaign_dir/coding_agent_report.html"
+else
+  python3 "$repo_dir/scripts/openai_compatible_benchmarks.py" \
+    --suite standard --endpoint "http://127.0.0.1:$port/v1/chat/completions" \
+    --model "$model_id" --model-digest "$model_digest" \
+    --model-runner "TensorRT-LLM" --runner-version "$(tr '\n' ' ' <"$campaign_dir/runner-version.txt")" \
+    --output-dir "$campaign_dir/results" --server-pid "$server_pid" \
+    --startup-timeout 900 --timeout "$timeout" --run
+fi
 
 touch "$campaign_dir/campaign.done"

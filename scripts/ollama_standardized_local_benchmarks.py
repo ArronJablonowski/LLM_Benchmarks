@@ -3459,6 +3459,9 @@ def main(argv=None):
     ap.add_argument('--list-tasks', '--list-tests', dest='list_tasks', action='store_true', help='List selected/profile task IDs without contacting Ollama.')
     args=ap.parse_args(argv)
 
+    if args.suite != DEFAULT_SUITE:
+        ap.error('--suite coding requires scripts/coding_agent_benchmarks.py and a tool-capable coding harness')
+
     if args.task_profile is None:
         args.task_profile = 'standard-local' if args.full_suite else 'core'
     elif args.task_profile != 'core' and not args.full_suite:

@@ -1,0 +1,13 @@
+{
+  "id": "featurebench_job_service",
+  "family": "FeatureBench-style",
+  "category": "full_project_build",
+  "name": "Build a persistent job service from a specification",
+  "prompt": "Build the complete Python job-service project described in SPEC.md. Implement the package, SQLite persistence, idempotent job creation, valid state transitions, retry scheduling, a JSON CLI, and tests. The project must install and run offline using the standard library, use parameterized SQL, provide clear errors and type hints, and pass its full test suite. Do not weaken the specification or edit benchmark infrastructure.",
+  "fixture": "coding_tasks/featurebench_job_service/workspace",
+  "grader": "coding_tasks/featurebench_job_service/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "FeatureBench",
+  "best_practices": ["project structure", "transaction safety", "parameterized SQL", "state-machine validation", "tests", "documentation"],
+  "grading": {"kind": "workspace"}
+}

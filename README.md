@@ -274,8 +274,27 @@ the campaign directory:
 ops/run_standard_three_path_campaign.sh --suite standard
 ```
 
-Only `standard` is currently available. A future coding suite will receive a
-separate name and task catalog rather than modifying the standard score.
+`standard` remains frozen as the prompt/response suite. Project-level coding
+work uses the separate `coding` task catalog described below.
+
+## Coding-agent suite
+
+The separate `coding` suite evaluates repository-level coding agents on issue
+repair, architectural refactoring, efficient implementation, complex data
+pipelines, full project construction, and long-horizon hardening. It uses
+isolated project workspaces and hidden functional plus best-practice checks.
+
+```bash
+python3 scripts/coding_agent_benchmarks.py \
+  --suite coding --harness pi \
+  --models-file models.tsv --output-dir reports/pi --workspace work \
+  --list-tasks
+```
+
+Coding evidence and rankings are never merged into the standard HTML report.
+Coding campaigns produce their own `coding_agent_report.html`. See
+[`docs/CODING_SUITE.md`](docs/CODING_SUITE.md) for tasks, scoring, safety,
+methodology, and execution instructions.
 
 See [`docs/BENCHMARK_COMPONENTS.md`](docs/BENCHMARK_COMPONENTS.md) to review,
 add, or replace a core component.
