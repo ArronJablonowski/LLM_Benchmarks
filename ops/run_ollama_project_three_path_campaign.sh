@@ -4,6 +4,8 @@ set -euo pipefail
 repo_dir="${BENCH_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 campaign_dir="${BENCH_CAMPAIGN_DIR:?BENCH_CAMPAIGN_DIR is required}"
 models_file="${BENCH_MODELS_FILE:-$campaign_dir/models.tsv}"
+runnable_models_file="$campaign_dir/models-runnable.tsv"
+terminal_paths_file="$campaign_dir/terminal-model-paths.tsv"
 python_bin="${BENCH_PYTHON:-python3}"
 timeout="${BENCH_TASK_TIMEOUT:-7200}"
 state_file="$campaign_dir/pre-campaign-services.env"
@@ -27,6 +29,44 @@ for harness in $harness_list; do
     echo "Unsupported project harness: $harness" >&2; exit 1;
   }
 done
+
+if [[ ! -e "$runnable_models_file" || ! -e "$terminal_paths_file" ]]; then
+  rm -f "$runnable_models_file" "$terminal_paths_file"
+  "$python_bin" - "$models_file" "$runnable_models_file" "$terminal_paths_file" \
+    "$suite_list" "$harness_list" <<'PY'
+import json, sys, urllib.request
+from pathlib import Path
+
+source, runnable, terminal, suites, harnesses = sys.argv[1:]
+rows = []
+for line in Path(source).read_text(encoding="utf-8").splitlines():
+    if not line.strip():
+        continue
+    fields = line.split("\t")
+    name, digest = fields[:2]
+    request = urllib.request.Request(
+        "http://127.0.0.1:11434/api/show",
+        data=json.dumps({"model": name}).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(request, timeout=60) as response:
+        capabilities = set(json.load(response).get("capabilities") or [])
+    rows.append((line, name, digest, capabilities))
+
+with Path(runnable).open("x", encoding="utf-8") as active, \
+        Path(terminal).open("x", encoding="utf-8") as stopped:
+    stopped.write("suite\tharness\tmodel\tdigest\treason\n")
+    for line, name, digest, capabilities in rows:
+        if "tools" in capabilities:
+            active.write(line + "\n")
+            continue
+        reason = "ollama-metadata-does-not-advertise-native-tools"
+        for suite in suites.split():
+            for harness in harnesses.split():
+                stopped.write("\t".join((suite, harness, name, digest, reason)) + "\n")
+PY
+fi
+[[ -s "$runnable_models_file" ]] || { echo "No tool-capable models are available" >&2; exit 1; }
 
 if [[ ! -e "$state_file" ]]; then
   {
@@ -106,7 +146,7 @@ for suite in $suite_list; do
 
     "$python_bin" "$repo_dir/scripts/${suite}_agent_benchmarks.py" \
       --suite "$suite" --harness "$harness" --model-runner ollama \
-      --models-file "$models_file" \
+      --models-file "$runnable_models_file" \
       --output-dir "$campaign_dir/$suite/$harness" \
       --workspace "$campaign_dir/workspace/$suite" \
       --timeout "$timeout" --run
