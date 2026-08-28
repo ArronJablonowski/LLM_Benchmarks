@@ -34,6 +34,11 @@ class COHCodexStandardTests(unittest.TestCase):
         self.assertEqual(len(tasks), 228)
         self.assertEqual(len({task["id"] for task in tasks}), 228)
 
+    def test_jsonl_record_split_does_not_split_unicode_line_separator(self):
+        payload = json.dumps({"assistant_text": "before\u2028after"}, ensure_ascii=False) + "\n"
+        records = [json.loads(line) for line in payload.split("\n") if line]
+        self.assertEqual(records, [{"assistant_text": "before\u2028after"}])
+
 
 if __name__ == "__main__":
     unittest.main()

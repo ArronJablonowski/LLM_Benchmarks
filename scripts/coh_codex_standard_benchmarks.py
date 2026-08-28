@@ -163,7 +163,9 @@ def main(argv=None):
     args.output_dir.mkdir(parents=True, exist_ok=True)
     jsonl_path = args.output_dir / "coh_codex_standard.jsonl"
     csv_path = args.output_dir / "coh_codex_standard.csv"
-    records = [json.loads(line) for line in jsonl_path.read_text(encoding="utf-8").splitlines()] if jsonl_path.exists() else []
+    # JSON strings may legally contain Unicode line-separator characters.
+    # Split only on the JSONL record delimiter, never with str.splitlines().
+    records = [json.loads(line) for line in jsonl_path.read_text(encoding="utf-8").split("\n") if line] if jsonl_path.exists() else []
     run_id = records[0]["row"]["run_id"] if records else time.strftime("%Y%m%d_%H%M%S")
     successful = {(record["row"]["model"], record["row"]["task_id"]) for record in records if record["row"]["status"] == "ok"}
     attempt_counts = {}
