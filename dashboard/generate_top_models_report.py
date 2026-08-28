@@ -33,9 +33,14 @@ HOSTS = {
     "spark": {
         "name": "NVIDIA DGX Spark",
         "subtitle": "Ubuntu · GB10 unified memory",
-        "paths": ["ollama_direct", "hermes_agent", "openclaw"],
-        "minimum_tasks": {"ollama_direct": 18, "hermes_agent": 18, "openclaw": 18},
-        "source_note": "Final 2026-08-22 standard campaign plus OCR follow-up",
+        "paths": ["ollama_direct", "hermes_agent", "openclaw", "deepseek_harness"],
+        "minimum_tasks": {
+            "ollama_direct": 18,
+            "hermes_agent": 18,
+            "openclaw": 18,
+            "deepseek_harness": 17,
+        },
+        "source_note": "Final 2026-08-22 standard campaign plus OCR follow-up and the completed 2026-08-27 DeepSeek Harness text-only campaign",
     },
     "studio": {
         "name": "Mac Studio",
@@ -57,6 +62,24 @@ PATH_LABELS = {
     "ollama_direct": "Ollama Direct",
     "hermes_agent": "Hermes Agent",
     "openclaw": "OpenClaw",
+    "deepseek_harness": "DeepSeek Harness",
+}
+
+PATH_RUNNER_LABELS = {
+    "hermes_agent": "Local runner: Ollama",
+    "openclaw": "Local runner: Ollama",
+    "deepseek_harness": "Local runner: Ollama",
+}
+
+ADDITIONAL_HARNESS_EXPORTS = {
+    "spark": [
+        {
+            "path": "deepseek_harness",
+            "relative_file": Path(
+                "raw/spark/deepseek_harness_20260827/deepseek_harness_core_pilot.csv"
+            ),
+        }
+    ],
 }
 
 TASK_LABELS = {
@@ -133,6 +156,53 @@ def display_path(path):
         return str(path.relative_to(ROOT))
     except ValueError:
         return str(path)
+
+
+def load_additional_harness_rows(host_key, data_dir, source_rows):
+    rows = []
+    exports = []
+    digest_to_model = {
+        text_value(row, "model_digest"): text_value(row, "model")
+        for row in source_rows
+        if text_value(row, "model_digest") and text_value(row, "model")
+    }
+    for definition in ADDITIONAL_HARNESS_EXPORTS.get(host_key, []):
+        source_path = data_dir / definition["relative_file"]
+        if not source_path.exists():
+            continue
+        source_sha = sha256_file(source_path)
+        mtime = dt.datetime.fromtimestamp(
+            source_path.stat().st_mtime, tz=dt.timezone.utc
+        ).isoformat().replace("+00:00", "Z")
+        with source_path.open(newline="", encoding="utf-8", errors="replace") as handle:
+            source_export_rows = list(csv.DictReader(handle))
+        for source_row in source_export_rows:
+            row = dict(source_row)
+            digest = text_value(row, "model_digest")
+            row["model"] = digest_to_model.get(digest, text_value(row, "model"))
+            row.update(
+                {
+                    "export_host": HOSTS[host_key]["name"],
+                    "export_benchmark_path": definition["path"],
+                    "export_source_relative_path": display_path(source_path),
+                    "export_source_file": source_path.name,
+                    "export_source_sha256": source_sha,
+                    "export_source_mtime_utc": mtime,
+                    "export_cloud_model": "false",
+                    "treatment_key": f'v{text_value(row, "harness_version")}',
+                }
+            )
+            rows.append(row)
+        exports.append(
+            {
+                "path": definition["path"],
+                "row_count": len(source_export_rows),
+                "export": display_path(source_path),
+                "export_sha256": source_sha,
+                "mtime_utc": mtime,
+            }
+        )
+    return rows, exports
 
 
 def invalid_observation(row):
@@ -399,6 +469,7 @@ def path_cell(result):
     return (
         f'<div class="path-score">{pct(result["strict_accuracy"])}</div>'
         f'<div class="path-meta">{result["passes"]}/{result["scored_tasks"]} · {treatment}</div>'
+        f'<div class="path-time">avg {seconds(result["avg_wall_seconds"])}</div>'
     )
 
 
@@ -429,7 +500,16 @@ def failure_cell(host_key, path_results):
 
 def ranking_table(host_key, ranking):
     host = HOSTS[host_key]
-    path_headers = "".join(f'<th>{html.escape(PATH_LABELS[path_key])}</th>' for path_key in host["paths"])
+    path_headers = "".join(
+        f'<th><span class="header-label">{html.escape(PATH_LABELS[path_key])}</span>'
+        + (
+            f'<span class="runner-note">{html.escape(PATH_RUNNER_LABELS[path_key])}</span>'
+            if path_key in PATH_RUNNER_LABELS
+            else ""
+        )
+        + "</th>"
+        for path_key in host["paths"]
+    )
     rows = []
     ordered = sorted(
         ranking,
@@ -499,14 +579,18 @@ def main(argv=None):
         input_path = DATA_DIR / f"{host_key}_benchmark_results.csv"
         with input_path.open(newline="", encoding="utf-8", errors="replace") as handle:
             source_rows = list(csv.DictReader(handle))
+        additional_rows, additional_exports = load_additional_harness_rows(
+            host_key, DATA_DIR, source_rows
+        )
+        all_rows = source_rows + additional_rows
         provenance[host_key] = {
             "kind": "consolidated-export",
-            "row_count": len(source_rows),
+            "row_count": len(all_rows),
             "export": display_path(input_path),
             "export_sha256": sha256_file(input_path),
-            "source_files": [],
+            "source_files": additional_exports,
         }
-        rankings[host_key], metadata[host_key] = build_rankings(host_key, source_rows)
+        rankings[host_key], metadata[host_key] = build_rankings(host_key, all_rows)
 
     generated = dt.datetime.now(dt.timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M %Z")
     sections = []
@@ -546,7 +630,7 @@ def main(argv=None):
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Accuracy-first local LLM benchmark rankings, including Direct, Hermes, OpenClaw, and OCR coverage.">
+<meta name="description" content="Accuracy-first local LLM benchmark rankings, including Direct, Hermes, OpenClaw, DeepSeek Harness, and OCR coverage.">
 <title>Local LLM Benchmark — Top 10 by System</title>
 <style>
 :root {{ --ink:#172033; --muted:#687386; --paper:#f4f6fa; --card:#fff; --line:#dfe4ec; --navy:#132a4a; --blue:#2164d8; --cyan:#32b7c8; --green:#168266; --gold:#d59a20; --shadow:0 16px 45px rgba(30,47,74,.09); }}
@@ -583,6 +667,8 @@ h2 {{ margin:4px 0 2px; font-size:25px; letter-spacing:-.02em; }}
 .table-wrap {{ overflow-x:auto; }}
 table {{ width:100%; min-width:1060px; border-collapse:separate; border-spacing:0; }}
 th {{ padding:11px 13px; background:#f8fafc; color:#657085; font-size:10px; text-align:left; text-transform:uppercase; letter-spacing:.075em; border-bottom:1px solid var(--line); white-space:nowrap; }}
+.header-label,.runner-note {{ display:block; }}
+.runner-note {{ margin-top:3px; color:#7b8799; font-size:8px; font-weight:650; letter-spacing:.04em; text-transform:none; }}
 td {{ padding:13px; border-bottom:1px solid #edf0f5; vertical-align:middle; }}
 tbody tr:last-child td {{ border-bottom:0; }}
 tbody tr:hover {{ background:#f9fbff; }}
@@ -598,6 +684,7 @@ tr[hidden] {{ display:none; }}
 .overall {{ color:var(--green); font-size:16px; }}
 .path-score {{ font-weight:750; }}
 .path-meta {{ font-size:10px; color:var(--muted); white-space:nowrap; margin-top:1px; }}
+.path-time {{ font-size:10px; color:#526174; white-space:nowrap; margin-top:2px; }}
 .na {{ color:#a5adba; }}
 .all-pass {{ display:inline-block; color:var(--green); background:#edf8f6; border:1px solid #cbe8e1; border-radius:999px; padding:3px 8px; font-size:10px; font-weight:750; }}
 .failures {{ min-width:125px; }}
@@ -650,7 +737,7 @@ footer {{ color:#788397; padding:24px 0 38px; font-size:12px; }}
     <div>
       <div class="kicker">Accuracy-first local model evaluation</div>
       <h1>Top 10 Models by System</h1>
-      <p class="lede">A portable, audit-friendly ranking of models tested through Ollama Direct, Hermes Agent, and OpenClaw, with OCR coverage included in the completed DGX Spark and Mac Mini campaigns. Performance is ranked on correctness—not generation speed.</p>
+      <p class="lede">A portable, audit-friendly ranking of models tested through Ollama Direct, Hermes Agent, OpenClaw, and—on the DGX Spark—DeepSeek Harness. OCR coverage is included where the harness supports verified image transport. Performance is ranked on correctness—not generation speed.</p>
       <nav class="jump" aria-label="Report controls and section navigation"><a href="#spark">DGX Spark</a><a href="#studio">Mac Studio</a><a href="#mini">Mac Mini</a><a href="#tests">Tests</a><a href="#method">Methodology</a><button class="report-toggle" id="verbose-toggle" type="button" aria-pressed="false">Verbose: Off</button><button class="report-toggle" id="cloud-toggle" type="button" aria-pressed="false">Cloud: Off</button><span class="sr-only" id="report-status" aria-live="polite">Local top 10 models shown for each system.</span></nav>
     </div>
     <div class="hero-note"><strong>Generated {html.escape(generated)}</strong><span>Self-contained HTML · safe to email, archive, or open offline in any modern browser.</span></div>
@@ -661,7 +748,7 @@ footer {{ color:#788397; padding:24px 0 38px; font-size:12px; }}
   <section class="test-suite" id="tests">
     <div class="test-head">
       <div><div class="eyebrow">Benchmark coverage</div><h3>What the models were tested on</h3><p>The suite checks whether each model can follow exact instructions, reason correctly, write working code, use agent tools, retrieve supplied facts, resist unsafe instructions, and—where supported—read an image.</p></div>
-      <div class="coverage-strip"><span>Current campaigns: 17 core + OCR</span><span>Direct · Hermes · OpenClaw</span><span>Historical Studio retained</span></div>
+      <div class="coverage-strip"><span>Current campaigns: 17 core + OCR where supported</span><span>Direct · Hermes · OpenClaw · DeepSeek Harness</span><span>Historical Studio retained</span></div>
     </div>
     <h4 class="catalog-title">Standardized benchmark families represented <span>13 families</span></h4>
     <div class="benchmark-table">
@@ -691,19 +778,19 @@ footer {{ color:#788397; padding:24px 0 38px; font-size:12px; }}
       <article class="custom-check"><strong>Coding Micro</strong><p>Runs a compact Python task through 25 behavioral cases to catch exceptions, unsafe constructs, and boundary errors.</p></article>
       <article class="custom-check"><strong>Prompt Injection</strong><p>Tests whether the model ignores a conflicting instruction and retrieves the authorized fact from the trusted context.</p></article>
     </div>
-    <p class="suite-note"><strong>Important scope note:</strong> The standardized names above identify the benchmark families and skills represented. This suite uses one compact, deterministic proxy task per family; it does <em>not</em> run the complete official datasets or reproduce official leaderboard scores. The final Spark and Mini campaigns contain 17 core tasks plus OCR in each harness. Unsupported OCR, task errors, timeouts, and content mismatches remain visible and count as non-passes; they are not silently removed from the denominator. The retained Studio results use their historical task coverage.</p>
+    <p class="suite-note"><strong>Important scope note:</strong> The standardized names above identify the benchmark families and skills represented. This suite uses one compact, deterministic proxy task per family; it does <em>not</em> run the complete official datasets or reproduce official leaderboard scores. Direct, Hermes, and OpenClaw campaigns contain 17 core tasks plus OCR where supported. The Spark DeepSeek Harness campaign contains the same 17 non-image core tasks; OCR is excluded because no verified native image transport was available. Unsupported tasks, task errors, timeouts, and content mismatches remain visible and count as non-passes; they are not silently removed from the denominator. The retained Studio results use their historical task coverage.</p>
   </section>
   <section class="method" id="method">
     <h3>How the ranking works</h3>
     <div class="method-grid">
       <div><b>Complete paths only</b>Models must have a complete observation set for every required local harness on that host. Terminally incomplete, context-overflow, resource-pressure, and OOM paths are excluded.</div>
       <div><b>Latest valid run</b>The newest complete source is selected for each model and path. When thinking treatments coexist, the most accurate treatment is used and displayed.</div>
-      <div><b>Equal path weighting</b>Local overall accuracy averages Direct, Hermes, and OpenClaw. Optional cloud rankings average their two available agent harnesses, Hermes and OpenClaw. Each current harness has 18 equally weighted tasks, including OCR; skips and execution failures score zero.</div>
+      <div><b>Equal path weighting</b>Local overall accuracy averages every available required harness for that system: Direct, Hermes, and OpenClaw, plus DeepSeek Harness on the Spark. Optional cloud rankings average Hermes and OpenClaw. The three image-capable paths use 18 tasks; DeepSeek Harness uses the 17-task text-only core. Skips and execution failures score zero.</div>
       <div><b>Speed is informational</b>Average response time and peak recorded temperature are shown for review but never affect rank.</div>
     </div>
   </section>
 </main>
-<footer class="container">Source: final DGX Spark, Mac Studio, and Mac Mini campaigns completed 2026-08-23. Rankings retain file-level provenance in the accompanying CSV exports and verification manifest.</footer>
+<footer class="container">Source: DGX Spark, Mac Studio, and Mac Mini campaigns through 2026-08-27, including the completed Spark DeepSeek Harness evaluation. Rankings retain file-level provenance in the accompanying CSV exports and verification manifest.</footer>
 <script type="application/json" id="ranking-data">{data_json}</script>
 <script>
 (() => {{

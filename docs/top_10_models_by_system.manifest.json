@@ -1,14 +1,22 @@
 {
-  "generated": "2026-08-26 09:14 MDT",
+  "generated": "2026-08-28 07:52 MDT",
   "report": "docs/top_10_models_by_system.html",
-  "report_sha256": "27226586778138eba87e9b9a9b82f135a526083e979017189d7d2983ff27e98b",
+  "report_sha256": "3f560aeed74f1a060c856c0ffeb04d3c3fb97ec87b2f2a23846b192c36236e22",
   "hosts": {
     "spark": {
       "kind": "consolidated-export",
-      "row_count": 1637,
+      "row_count": 2147,
       "export": "data/top_models_report/spark_benchmark_results.csv",
       "export_sha256": "e54a5ca5f6fb97a54c06bdb3aa8dd7ba72601b83b49d3f509a27bab741e856ec",
-      "source_files": []
+      "source_files": [
+        {
+          "path": "deepseek_harness",
+          "row_count": 510,
+          "export": "data/top_models_report/raw/spark/deepseek_harness_20260827/deepseek_harness_core_pilot.csv",
+          "export_sha256": "63efaa498292c8c4240a10d677591c6104f60baa4837232797439925419f09e1",
+          "mtime_utc": "2026-08-27T22:40:31Z"
+        }
+      ]
     },
     "studio": {
       "kind": "consolidated-export",
@@ -32,7 +40,7 @@
       "incomplete_models": 3,
       "local_observed_models": 30,
       "observed_models": 30,
-      "valid_candidates": 84
+      "valid_candidates": 114
     },
     "studio": {
       "qualified_models": 17,

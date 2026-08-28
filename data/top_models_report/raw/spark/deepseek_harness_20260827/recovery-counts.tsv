@@ -1,0 +1,4 @@
+devstral-small-2:24b	1	139264-byte campaign-relative swap growth on exact_reply
+huihui_ai/Qwen3.6-abliterated:35b-a3b-q8_0	1	CUDA illegal memory access/Xid 31 during mbpp_mini; cold-unload recovery permitted remaining unfinished tasks
+devstral-2:123b	1	1 GiB campaign-relative swap allowance exceeded by 1679360 bytes during exact_reply with NVIDIA NV_ERR_NO_MEMORY; cold-unload recovery permitted remaining unfinished tasks
+mistral-medium-3.5:128b-q4_K_M	1	Kernel OOM kill and NVIDIA NV_ERR_NO_MEMORY during exact_reply; bounded recovery limited to cold-unload and health verification because reproducing the OOM could kill additional unrelated user processes

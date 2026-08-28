@@ -1,0 +1,4 @@
+69d0b7c0cd4cd5d4023290f031ed3e7294b99ac54b35ec475f8034f127079ec3  /home/arron_spark/.local/share/deepseek-harness-all-models-20260827/run_dsh_core_pilot.py
+6ba384f7316e04f07ffd4621dea67e703cc60e00a3a6a41fc84ef01c9beb7502  /home/arron_spark/.local/share/deepseek-harness-all-models-20260827/run_dsh_core_pilot.sh
+e53debf8e8c416f4166df465c9eafa42bd206ec4a8e2810e0759f25825a34f27  /home/arron_spark/.local/share/deepseek-harness-all-models-20260827/models.tsv
+59260135f468d904231e4e87529f9e6d84b9375c22ceddbdd7788c3f00bdb3ac  /home/arron_spark/.local/share/deepseek-harness-all-models-20260827/run_dsh_core_pilot.py
