@@ -1,0 +1,1 @@
+{"events":[{"id":"E1","behavior":"schtasks created a task named UpdateCheck to run powershell.exe at user logon"},{"id":"E2","behavior":"rundll32.exe loaded an exported function from a newly downloaded DLL"},{"id":"E3","behavior":"host emitted repeated long unique DNS labels containing encoded archive chunks"}]}

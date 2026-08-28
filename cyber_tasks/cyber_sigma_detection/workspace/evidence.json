@@ -1,0 +1,1 @@
+{"logsource":{"product":"windows","category":"process_creation"},"suspicious":{"Image":"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe","CommandLine":"powershell -EncodedCommand SQBFAFgA"},"allowed_path":"C:\\Program Files\\Ops\\Deploy\\","attack":"T1059.001"}

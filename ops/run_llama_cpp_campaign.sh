@@ -17,7 +17,7 @@ mkdir -p "$campaign_dir"
 [[ -f "$model_file" ]] || { echo "GGUF model is missing: $model_file" >&2; exit 1; }
 [[ -x "$llama_server" ]] || { echo "llama-server is missing: $llama_server" >&2; exit 1; }
 max_timeout=1800
-[[ "${BENCH_SUITE:-standard}" == "coding" || "${BENCH_SUITE:-standard}" == "creative" ]] && max_timeout=14400
+[[ "${BENCH_SUITE:-standard}" == "coding" || "${BENCH_SUITE:-standard}" == "creative" || "${BENCH_SUITE:-standard}" == "cybersecurity" ]] && max_timeout=14400
 (( timeout >= 1 && timeout <= max_timeout )) || { echo "Invalid task timeout for ${BENCH_SUITE:-standard}" >&2; exit 1; }
 (( context_size == 32768 )) || { echo "This campaign requires the frozen 32768 context" >&2; exit 1; }
 
@@ -64,7 +64,7 @@ server_pid=$!
 printf '%s\n' "$server_pid" >"$campaign_dir/server.pid"
 "$llama_server" --version >"$campaign_dir/runner-version.txt" 2>&1 || true
 
-if [[ "${BENCH_SUITE:-standard}" == "coding" || "${BENCH_SUITE:-standard}" == "creative" ]]; then
+if [[ "${BENCH_SUITE:-standard}" == "coding" || "${BENCH_SUITE:-standard}" == "creative" || "${BENCH_SUITE:-standard}" == "cybersecurity" ]]; then
   ready=0
   for _attempt in $(seq 1 900); do
     kill -0 "$server_pid" 2>/dev/null || { echo "llama.cpp server exited during startup" >&2; exit 1; }
@@ -85,8 +85,10 @@ if [[ "${BENCH_SUITE:-standard}" == "coding" || "${BENCH_SUITE:-standard}" == "c
   done
   if [[ "$suite" == "coding" ]]; then
     python3 "$repo_dir/dashboard/generate_coding_report.py" --input-root "$campaign_dir" --output "$campaign_dir/coding_agent_report.html"
-  else
+  elif [[ "$suite" == "creative" ]]; then
     python3 "$repo_dir/dashboard/generate_creative_review.py" --input-root "$campaign_dir" --output "$campaign_dir/creative_human_review.html"
+  else
+    python3 "$repo_dir/dashboard/generate_cybersecurity_report.py" --input-root "$campaign_dir" --output "$campaign_dir/cybersecurity_agent_report.html"
   fi
 else
   python3 "$repo_dir/scripts/openai_compatible_benchmarks.py" \

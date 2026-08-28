@@ -1,0 +1,16 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: report-api
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: api
+          image: registry.example/report-api:1.4
+          ports:
+            - containerPort: 8080
+          securityContext:
+            privileged: true
+            runAsUser: 0

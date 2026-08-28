@@ -1,0 +1,1 @@
+{"internet_edge":{"web_to_database":"tcp/5432 allowed directly","web_segment":"dmz"},"administration":{"vpn_mfa":false,"management_segment":"shared with user workstations"},"east_west":{"default_policy":"allow","workload_segments":1}}

@@ -1,0 +1,1 @@
+{"process_product_event_type":"PROCESS_LAUNCH","network_product_event_type":"NETWORK_CONNECTION","process_name":"powershell.exe","target_port":4444,"join_field":"principal.hostname","window":"5m"}

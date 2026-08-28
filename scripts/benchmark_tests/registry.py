@@ -19,8 +19,9 @@ from accuracy_grading import COUNT_UNIQUE_IPS_GRADER, PRIVATE_IPV4_GRADER
 COMPONENT_DIRECTORY = Path(__file__).with_name("core")
 CODING_COMPONENT_DIRECTORY = Path(__file__).with_name("coding")
 CREATIVE_COMPONENT_DIRECTORY = Path(__file__).with_name("creative")
+CYBERSECURITY_COMPONENT_DIRECTORY = Path(__file__).with_name("cybersecurity")
 DEFAULT_SUITE = "standard"
-SUITE_CHOICES = (DEFAULT_SUITE, "coding", "creative")
+SUITE_CHOICES = (DEFAULT_SUITE, "coding", "creative", "cybersecurity")
 REQUIRED_FIELDS = {"id", "family", "category", "name", "prompt", "grading"}
 CORE_TASK_ORDER = (
     "exact_reply", "simple_reasoning", "coding_micro", "ifeval_exact",
@@ -47,6 +48,32 @@ CREATIVE_TASK_ORDER = (
     "creative_scroll_motion_story",
     "creative_nextjs_motion_experience",
     "creative_microinteraction_lab",
+)
+CYBERSECURITY_TASK_ORDER = (
+    "cyber_foundations_architecture",
+    "cyber_advanced_protocol_reasoning",
+    "cyber_governance_risk_prioritization",
+    "cyber_cti_attack_mapping",
+    "cyber_vulnerability_cvss_triage",
+    "cyber_threat_report_synthesis",
+    "cyber_soc_alert_triage",
+    "cyber_incident_timeline",
+    "cyber_malware_static_analysis",
+    "cyber_sigma_detection",
+    "cyber_spl_detection",
+    "cyber_sentinel_kql_detection",
+    "cyber_elastic_esql_detection",
+    "cyber_chronicle_yaral_detection",
+    "cyber_appsec_code_review",
+    "cyber_appsec_secure_patch",
+    "cyber_api_bola_remediation",
+    "cyber_exploit_crash_analysis",
+    "cyber_exploit_toy_poc",
+    "cyber_pentest_attack_path",
+    "cyber_ctf_multidiscipline",
+    "cyber_llm_prompt_injection",
+    "cyber_llm_tool_rag_security",
+    "cyber_cloud_kubernetes_hardening",
 )
 
 
@@ -220,6 +247,48 @@ def _creative_tasks() -> tuple[dict[str, Any], ...]:
     return tuple(by_id[task_id] for task_id in CREATIVE_TASK_ORDER)
 
 
+@lru_cache(maxsize=1)
+def _cybersecurity_tasks() -> tuple[dict[str, Any], ...]:
+    paths = sorted(CYBERSECURITY_COMPONENT_DIRECTORY.glob("*.json"))
+    if not paths:
+        raise BenchmarkComponentError("no cybersecurity benchmark components found")
+    tasks = [_load_descriptor(path) for path in paths]
+    required = {
+        "fixture", "grader", "time_class", "benchmark_origin", "track",
+        "difficulty", "safety_scope", "best_practices",
+    }
+    for path, task in zip(paths, tasks):
+        missing = required - task.keys()
+        if missing:
+            raise _fail(path, "missing cybersecurity fields: " + ", ".join(sorted(missing)))
+        if task["grading"].get("kind") != "workspace":
+            raise _fail(path, "cybersecurity grading.kind must be workspace")
+        for field in (
+            "fixture", "grader", "time_class", "benchmark_origin", "track",
+            "difficulty", "safety_scope",
+        ):
+            if not isinstance(task[field], str) or not task[field]:
+                raise _fail(path, f"{field} must be a non-empty string")
+        if not isinstance(task["best_practices"], list) or not all(
+            isinstance(item, str) and item for item in task["best_practices"]
+        ):
+            raise _fail(path, "best_practices must be a non-empty string list")
+    task_ids = [task["id"] for task in tasks]
+    if len(task_ids) != len(set(task_ids)):
+        raise BenchmarkComponentError("duplicate cybersecurity benchmark component ids")
+    overlap = set(task_ids) & (
+        set(CORE_TASK_ORDER) | set(CODING_TASK_ORDER) | set(CREATIVE_TASK_ORDER)
+    )
+    if overlap:
+        raise BenchmarkComponentError(
+            "cybersecurity tasks overlap another suite: " + ", ".join(sorted(overlap))
+        )
+    if set(task_ids) != set(CYBERSECURITY_TASK_ORDER):
+        raise BenchmarkComponentError("cybersecurity task order is out of sync")
+    by_id = {task["id"]: task for task in tasks}
+    return tuple(by_id[task_id] for task_id in CYBERSECURITY_TASK_ORDER)
+
+
 def core_task_catalog() -> list[dict[str, Any]]:
     """Return fresh task mappings so callers cannot mutate the registry."""
     return copy.deepcopy(list(_core_tasks()))
@@ -237,6 +306,8 @@ def suite_task_catalog(suite: str = DEFAULT_SUITE) -> list[dict[str, Any]]:
         return copy.deepcopy(list(_coding_tasks()))
     if suite == "creative":
         return copy.deepcopy(list(_creative_tasks()))
+    if suite == "cybersecurity":
+        return copy.deepcopy(list(_cybersecurity_tasks()))
     choices = ", ".join(SUITE_CHOICES)
     raise BenchmarkComponentError(
         f"unknown benchmark suite: {suite}; choose from: {choices}"

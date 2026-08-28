@@ -317,6 +317,27 @@ Creative campaigns generate `creative_human_review.html`, where reviewers can
 open artifacts, enter rubric scores and notes, shortlist work, and export their
 human review data. See [`docs/CREATIVE_SUITE.md`](docs/CREATIVE_SUITE.md).
 
+## Cybersecurity suite
+
+The separate `cybersecurity` suite evaluates models as security agents across
+24 original, isolated tasks. Eight tracks cover foundations and governance,
+threat intelligence and vulnerability analysis, defensive operations,
+detection engineering and five SIEM/rule languages, application security,
+offensive security and CTF work, LLM/agent security, and cloud/container
+hardening. Offensive tasks operate only on purpose-built local fixtures.
+
+```bash
+python3 scripts/cybersecurity_agent_benchmarks.py \
+  --suite cybersecurity --harness pi \
+  --models-file models.tsv --output-dir reports/pi --workspace cyber-work \
+  --list-tasks
+```
+
+Cybersecurity campaigns produce their own `cybersecurity_agent_report.html`
+and never contribute to Standard, Coding, or Creative results. See
+[`docs/CYBERSECURITY_SUITE.md`](docs/CYBERSECURITY_SUITE.md) for the task map,
+standards lineage, safety boundaries, scoring, and execution instructions.
+
 See [`docs/BENCHMARK_COMPONENTS.md`](docs/BENCHMARK_COMPONENTS.md) to review,
 add, or replace a core component.
 

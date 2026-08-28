@@ -1,0 +1,1 @@
+{"tls":{"certificate_san":["api.example.test"],"requested_host":"login.example.test","client_result":"accepted"},"dns":{"signed_zone":true,"validating_resolver":"SERVFAIL","nonvalidating_resolver":"203.0.113.40"},"jwt":{"header":{"alg":"none"},"signature":"","api_result":"administrator response returned"}}

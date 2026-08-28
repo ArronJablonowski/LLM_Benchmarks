@@ -25,6 +25,7 @@ class BenchmarkComponentTests(unittest.TestCase):
         self.assertEqual(core_task_catalog(), suite_task_catalog("standard"))
         self.assertEqual(9, len(suite_task_catalog("coding")))
         self.assertEqual(6, len(suite_task_catalog("creative")))
+        self.assertEqual(24, len(suite_task_catalog("cybersecurity")))
         with self.assertRaisesRegex(BenchmarkComponentError, "unknown benchmark suite"):
             suite_task_catalog("unknown")
 

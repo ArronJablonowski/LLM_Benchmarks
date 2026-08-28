@@ -14,7 +14,6 @@ import json
 import os
 import signal
 import subprocess
-import sys
 import time
 import urllib.request
 from pathlib import Path
@@ -226,6 +225,9 @@ def main(argv=None):
     if args.suite == "creative":
         from creative_agent_benchmarks import main as creative_main
         return creative_main(argv)
+    if args.suite == "cybersecurity":
+        from cybersecurity_agent_benchmarks import main as cybersecurity_main
+        return cybersecurity_main(argv)
     if not args.run:
         raise SystemExit("Plan only. Pass --run to execute benchmark observations.")
     if args.timeout < 1 or args.timeout > 1800:

@@ -18,7 +18,7 @@ if [[ ! -s "$models_file" ]]; then
   exit 1
 fi
 max_timeout=1800
-[[ "$suite" == "coding" || "$suite" == "creative" ]] && max_timeout=14400
+[[ "$suite" == "coding" || "$suite" == "creative" || "$suite" == "cybersecurity" ]] && max_timeout=14400
 if (( timeout < 1 || timeout > max_timeout )); then
   echo "BENCH_TASK_TIMEOUT must be between 1 and $max_timeout for suite $suite" >&2
   exit 1
@@ -73,6 +73,10 @@ elif [[ "$suite" == "creative" ]]; then
   "$python_bin" "$repo_dir/dashboard/generate_creative_review.py" \
     --input-root "$campaign_dir" \
     --output "$campaign_dir/creative_human_review.html"
+elif [[ "$suite" == "cybersecurity" ]]; then
+  "$python_bin" "$repo_dir/dashboard/generate_cybersecurity_report.py" \
+    --input-root "$campaign_dir" \
+    --output "$campaign_dir/cybersecurity_agent_report.html"
 fi
 
 touch "$campaign_dir/campaign.done"

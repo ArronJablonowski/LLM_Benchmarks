@@ -1,0 +1,1 @@
+{"source":"logs-endpoint.events.*","event_category":"process","event_type":"start","command_field":"process.command_line","needle":"-encodedcommand","group_by":["host.name","user.name"],"threshold":3}

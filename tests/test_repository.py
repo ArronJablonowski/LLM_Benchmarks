@@ -21,6 +21,9 @@ CODING_REPORT = ROOT / "dashboard" / "generate_coding_report.py"
 OPENHANDS_CODING_AGENT = ROOT / "scripts" / "openhands_coding_agent.py"
 CREATIVE_RUNNER = ROOT / "scripts" / "creative_agent_benchmarks.py"
 CREATIVE_REPORT = ROOT / "dashboard" / "generate_creative_review.py"
+CYBERSECURITY_RUNNER = ROOT / "scripts" / "cybersecurity_agent_benchmarks.py"
+CYBERSECURITY_REPORT = ROOT / "dashboard" / "generate_cybersecurity_report.py"
+CYBERSECURITY_GRADER = ROOT / "cyber_tasks" / "grader.py"
 
 
 def literal_assignment(path, name):
@@ -50,6 +53,7 @@ class RepositoryTests(unittest.TestCase):
             THINKING_PAIR_SUPPORT, STANDARD_LOCAL_TASKS, HERMES, VISION_SUPPORT,
             BENCHMARK_REGISTRY, CODING_RUNNER, CODING_REPORT,
             OPENHANDS_CODING_AGENT, CREATIVE_RUNNER, CREATIVE_REPORT,
+            CYBERSECURITY_RUNNER, CYBERSECURITY_REPORT, CYBERSECURITY_GRADER,
         ):
             compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
@@ -70,6 +74,8 @@ class RepositoryTests(unittest.TestCase):
                 ACCURACY_GRADING, THINKING_PAIR_SUPPORT, STANDARD_LOCAL_TASKS,
                 HERMES, VISION_SUPPORT, CODING_RUNNER, CODING_REPORT,
                 OPENHANDS_CODING_AGENT, CREATIVE_RUNNER, CREATIVE_REPORT,
+                CYBERSECURITY_RUNNER, CYBERSECURITY_REPORT,
+                CYBERSECURITY_GRADER,
             )
         )
         self.assertNotIn("/Users/", source)

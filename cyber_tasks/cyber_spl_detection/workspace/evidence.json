@@ -1,0 +1,1 @@
+{"index":"auth","failure_field":"action","failure_value":"failure","allowlisted_scanner":"10.10.10.5","threshold":8,"window":"15m","group_by":["src","user"]}
