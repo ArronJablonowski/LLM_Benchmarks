@@ -18,7 +18,14 @@ state_file="$campaign_dir/pre-campaign-services.env"
 mkdir -p "$campaign_dir"
 [[ -d "$model_path" ]] || { echo "Model directory is missing: $model_path" >&2; exit 1; }
 command -v docker >/dev/null || { echo "Docker is required" >&2; exit 1; }
-docker image inspect "$image" >/dev/null 2>&1 || { echo "TensorRT-LLM image is missing: $image" >&2; exit 1; }
+docker info >/dev/null 2>&1 || {
+  echo "Docker is installed but inaccessible to this process; refresh its docker-group membership or launch through 'sg docker -c'." >&2
+  exit 1
+}
+docker image inspect "$image" >/dev/null 2>&1 || {
+  echo "TensorRT-LLM image is missing: $image" >&2
+  exit 1
+}
 (( timeout >= 1 && timeout <= 1800 )) || { echo "Invalid task timeout" >&2; exit 1; }
 (( context_size == 32768 )) || { echo "This campaign requires the frozen 32768 context" >&2; exit 1; }
 python3 - "$kv_cache_fraction" <<'PY'
