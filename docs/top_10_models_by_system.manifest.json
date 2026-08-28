@@ -1,11 +1,11 @@
 {
-  "generated": "2026-08-28 07:52 MDT",
+  "generated": "2026-08-28 11:22 MDT",
   "report": "docs/top_10_models_by_system.html",
-  "report_sha256": "3f560aeed74f1a060c856c0ffeb04d3c3fb97ec87b2f2a23846b192c36236e22",
+  "report_sha256": "fa1920b0949eea2ca6bd82765b429bd010af9aa4ad6ab6be03a73269b3c3d549",
   "hosts": {
     "spark": {
       "kind": "consolidated-export",
-      "row_count": 2147,
+      "row_count": 2300,
       "export": "data/top_models_report/spark_benchmark_results.csv",
       "export_sha256": "e54a5ca5f6fb97a54c06bdb3aa8dd7ba72601b83b49d3f509a27bab741e856ec",
       "source_files": [
@@ -15,6 +15,69 @@
           "export": "data/top_models_report/raw/spark/deepseek_harness_20260827/deepseek_harness_core_pilot.csv",
           "export_sha256": "63efaa498292c8c4240a10d677591c6104f60baa4837232797439925419f09e1",
           "mtime_utc": "2026-08-27T22:40:31Z"
+        },
+        {
+          "path": "pi_agent",
+          "row_count": 17,
+          "export": "data/top_models_report/raw/spark/pi_goose_muse_20260828/pi_core_text.csv",
+          "export_sha256": "41f74a6cfd2527744871e80aaf1ad967f6eb5fb4aca9342f47c1ab5bca7eef44",
+          "mtime_utc": "2026-08-28T17:18:32.572532Z"
+        },
+        {
+          "path": "goose_agent",
+          "row_count": 17,
+          "export": "data/top_models_report/raw/spark/pi_goose_muse_20260828/goose_core_text.csv",
+          "export_sha256": "e86b81e441d9ee174ef7bfa4606dd257b880c900be1b735544b1fe1030797f61",
+          "mtime_utc": "2026-08-28T17:18:32.969607Z"
+        },
+        {
+          "path": "pi_agent",
+          "row_count": 17,
+          "export": "data/top_models_report/raw/spark/pi_goose_qwen3_8b_20260828/pi_core_text.csv",
+          "export_sha256": "3d451476c6cf0d08525cce69b11daa8c804c81734cdd9d2ab0f9231e8e283aa5",
+          "mtime_utc": "2026-08-28T17:18:33.376640Z"
+        },
+        {
+          "path": "goose_agent",
+          "row_count": 17,
+          "export": "data/top_models_report/raw/spark/pi_goose_qwen3_8b_20260828/goose_core_text.csv",
+          "export_sha256": "8ec879f8a00e0094124676373f8f2735193786af47e6fcc303e45215cef60db7",
+          "mtime_utc": "2026-08-28T17:18:33.793004Z"
+        },
+        {
+          "path": "openhands_agent",
+          "row_count": 17,
+          "export": "data/top_models_report/raw/spark/openhands_qwen3_8b_20260828/openhands_core_text.csv",
+          "export_sha256": "c16028d3c96a0a5ad6aadb5b42e06bf86ad0090e04e9388dfe9fea271de7622c",
+          "mtime_utc": "2026-08-28T17:18:35.443005Z"
+        },
+        {
+          "path": "llama_cpp_direct",
+          "row_count": 17,
+          "export": "data/top_models_report/raw/spark/llama_cpp_qwen38_flash_20260828/llama_cpp_core_text.csv",
+          "export_sha256": "4696937b3a12bab1b041beeb2656431a51c0c152642d4ba9cc45f51627dc102e",
+          "mtime_utc": "2026-08-28T17:18:34.189382Z"
+        },
+        {
+          "path": "llama_cpp_direct",
+          "row_count": 17,
+          "export": "data/top_models_report/raw/spark/llama_cpp_qwen3_8b_20260828/llama_cpp_core_text.csv",
+          "export_sha256": "d558db325408181eb9cb9b96cd2ced42964302c49ea76b507b0957b27989f626",
+          "mtime_utc": "2026-08-28T17:18:34.607324Z"
+        },
+        {
+          "path": "vllm_direct",
+          "row_count": 17,
+          "export": "data/top_models_report/raw/spark/vllm_qwen3_8b_20260828/vllm_core_text.csv",
+          "export_sha256": "1c7eab205b86f91ec2e1ac9b3f33d372394624b129b600148dd858e53aa5988b",
+          "mtime_utc": "2026-08-28T17:18:35.029466Z"
+        },
+        {
+          "path": "tensorrt_llm_direct",
+          "row_count": 17,
+          "export": "data/top_models_report/raw/spark/tensorrt_llm_qwen3_8b_20260828/tensorrt_llm_core_text.csv",
+          "export_sha256": "f28ccc547d56383bb5d0d53fe4828d52efdd9042430b96a0a4d3993c8c4248c3",
+          "mtime_utc": "2026-08-28T17:22:20.434807Z"
         }
       ]
     },
@@ -37,10 +100,10 @@
     "spark": {
       "qualified_models": 27,
       "cloud_models": 0,
-      "incomplete_models": 3,
-      "local_observed_models": 30,
-      "observed_models": 30,
-      "valid_candidates": 114
+      "incomplete_models": 7,
+      "local_observed_models": 34,
+      "observed_models": 34,
+      "valid_candidates": 123
     },
     "studio": {
       "qualified_models": 17,

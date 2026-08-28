@@ -33,14 +33,32 @@ HOSTS = {
     "spark": {
         "name": "NVIDIA DGX Spark",
         "subtitle": "Ubuntu · GB10 unified memory",
-        "paths": ["ollama_direct", "hermes_agent", "openclaw", "deepseek_harness"],
+        "paths": [
+            "ollama_direct",
+            "llama_cpp_direct",
+            "vllm_direct",
+            "tensorrt_llm_direct",
+            "hermes_agent",
+            "openclaw",
+            "deepseek_harness",
+            "pi_agent",
+            "goose_agent",
+            "openhands_agent",
+        ],
+        "ranking_paths": ["ollama_direct", "hermes_agent", "openclaw", "deepseek_harness"],
         "minimum_tasks": {
             "ollama_direct": 18,
+            "llama_cpp_direct": 17,
+            "vllm_direct": 17,
+            "tensorrt_llm_direct": 17,
             "hermes_agent": 18,
             "openclaw": 18,
             "deepseek_harness": 17,
+            "pi_agent": 17,
+            "goose_agent": 17,
+            "openhands_agent": 17,
         },
-        "source_note": "Final 2026-08-22 standard campaign plus OCR follow-up and the completed 2026-08-27 DeepSeek Harness text-only campaign",
+        "source_note": "Standard and OCR campaigns through 2026-08-28, including completed DeepSeek Harness, llama.cpp, vLLM, TensorRT-LLM, Pi Agent, Goose, and OpenHands evaluations",
     },
     "studio": {
         "name": "Mac Studio",
@@ -63,12 +81,24 @@ PATH_LABELS = {
     "hermes_agent": "Hermes Agent",
     "openclaw": "OpenClaw",
     "deepseek_harness": "DeepSeek Harness",
+    "llama_cpp_direct": "llama.cpp Direct",
+    "vllm_direct": "vLLM Direct",
+    "tensorrt_llm_direct": "TensorRT-LLM Direct",
+    "pi_agent": "Pi Agent",
+    "goose_agent": "Goose",
+    "openhands_agent": "OpenHands",
 }
 
 PATH_RUNNER_LABELS = {
     "hermes_agent": "Local runner: Ollama",
     "openclaw": "Local runner: Ollama",
     "deepseek_harness": "Local runner: Ollama",
+    "llama_cpp_direct": "Local runner: llama.cpp",
+    "vllm_direct": "Local runner: vLLM",
+    "tensorrt_llm_direct": "Local runner: TensorRT-LLM",
+    "pi_agent": "Local runner: Ollama",
+    "goose_agent": "Local runner: Ollama",
+    "openhands_agent": "Local runner: Ollama",
 }
 
 ADDITIONAL_HARNESS_EXPORTS = {
@@ -78,7 +108,49 @@ ADDITIONAL_HARNESS_EXPORTS = {
             "relative_file": Path(
                 "raw/spark/deepseek_harness_20260827/deepseek_harness_core_pilot.csv"
             ),
-        }
+        },
+        {
+            "path": "pi_agent",
+            "relative_file": Path("raw/spark/pi_goose_muse_20260828/pi_core_text.csv"),
+        },
+        {
+            "path": "goose_agent",
+            "relative_file": Path("raw/spark/pi_goose_muse_20260828/goose_core_text.csv"),
+        },
+        {
+            "path": "pi_agent",
+            "relative_file": Path("raw/spark/pi_goose_qwen3_8b_20260828/pi_core_text.csv"),
+        },
+        {
+            "path": "goose_agent",
+            "relative_file": Path("raw/spark/pi_goose_qwen3_8b_20260828/goose_core_text.csv"),
+        },
+        {
+            "path": "openhands_agent",
+            "relative_file": Path("raw/spark/openhands_qwen3_8b_20260828/openhands_core_text.csv"),
+        },
+        {
+            "path": "llama_cpp_direct",
+            "relative_file": Path(
+                "raw/spark/llama_cpp_qwen38_flash_20260828/llama_cpp_core_text.csv"
+            ),
+        },
+        {
+            "path": "llama_cpp_direct",
+            "relative_file": Path(
+                "raw/spark/llama_cpp_qwen3_8b_20260828/llama_cpp_core_text.csv"
+            ),
+        },
+        {
+            "path": "vllm_direct",
+            "relative_file": Path("raw/spark/vllm_qwen3_8b_20260828/vllm_core_text.csv"),
+        },
+        {
+            "path": "tensorrt_llm_direct",
+            "relative_file": Path(
+                "raw/spark/tensorrt_llm_qwen3_8b_20260828/tensorrt_llm_core_text.csv"
+            ),
+        },
     ],
 }
 
@@ -343,7 +415,8 @@ def select_latest_best_candidates(host_key, rows):
 
 def build_rankings(host_key, rows):
     selected, candidates = select_latest_best_candidates(host_key, rows)
-    required_paths = HOSTS[host_key]["paths"]
+    display_paths = HOSTS[host_key]["paths"]
+    required_paths = HOSTS[host_key].get("ranking_paths", display_paths)
     models = sorted({model for model, _ in selected})
     ranked = []
     incomplete = []
@@ -352,9 +425,15 @@ def build_rankings(host_key, rows):
         results = [result for result in path_results.values() if result]
         if not results:
             return None
-        overall = sum(result["strict_accuracy"] for result in results) / len(results)
-        granular_passed = sum(result["granular_passed"] for result in results)
-        granular_total = sum(result["granular_total"] for result in results)
+        ranking_results = [path_results.get(path_key) for path_key in model_required_paths]
+        ranking_results = [result for result in ranking_results if result]
+        if not ranking_results:
+            ranking_results = results
+        overall = sum(result["strict_accuracy"] for result in ranking_results) / len(
+            ranking_results
+        )
+        granular_passed = sum(result["granular_passed"] for result in ranking_results)
+        granular_total = sum(result["granular_total"] for result in ranking_results)
         scored_tasks = sum(result["scored_tasks"] for result in results)
         passes = sum(result["passes"] for result in results)
         wall_weight = sum(
@@ -387,7 +466,7 @@ def build_rankings(host_key, rows):
         }
 
     for model in models:
-        path_results = {path_key: selected.get((model, path_key)) for path_key in required_paths}
+        path_results = {path_key: selected.get((model, path_key)) for path_key in display_paths}
         cloud = any(result and result.get("cloud") for result in path_results.values())
         model_required_paths = (
             ["hermes_agent", "openclaw"]
@@ -630,7 +709,7 @@ def main(argv=None):
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Accuracy-first local LLM benchmark rankings, including Direct, Hermes, OpenClaw, DeepSeek Harness, and OCR coverage.">
+<meta name="description" content="Accuracy-first local LLM benchmark rankings across direct runners and agent harnesses, with response-time and OCR coverage.">
 <title>Local LLM Benchmark — Top 10 by System</title>
 <style>
 :root {{ --ink:#172033; --muted:#687386; --paper:#f4f6fa; --card:#fff; --line:#dfe4ec; --navy:#132a4a; --blue:#2164d8; --cyan:#32b7c8; --green:#168266; --gold:#d59a20; --shadow:0 16px 45px rgba(30,47,74,.09); }}
@@ -737,7 +816,7 @@ footer {{ color:#788397; padding:24px 0 38px; font-size:12px; }}
     <div>
       <div class="kicker">Accuracy-first local model evaluation</div>
       <h1>Top 10 Models by System</h1>
-      <p class="lede">A portable, audit-friendly ranking of models tested through Ollama Direct, Hermes Agent, OpenClaw, and—on the DGX Spark—DeepSeek Harness. OCR coverage is included where the harness supports verified image transport. Performance is ranked on correctness—not generation speed.</p>
+      <p class="lede">A portable, audit-friendly ranking of models tested through direct inference runners and agent harnesses. The DGX Spark comparison includes Ollama, llama.cpp, vLLM, TensorRT-LLM, Hermes, OpenClaw, DeepSeek Harness, Pi Agent, Goose, and OpenHands. OCR coverage is included where verified image transport exists. Performance is ranked on correctness—not generation speed.</p>
       <nav class="jump" aria-label="Report controls and section navigation"><a href="#spark">DGX Spark</a><a href="#studio">Mac Studio</a><a href="#mini">Mac Mini</a><a href="#tests">Tests</a><a href="#method">Methodology</a><button class="report-toggle" id="verbose-toggle" type="button" aria-pressed="false">Verbose: Off</button><button class="report-toggle" id="cloud-toggle" type="button" aria-pressed="false">Cloud: Off</button><span class="sr-only" id="report-status" aria-live="polite">Local top 10 models shown for each system.</span></nav>
     </div>
     <div class="hero-note"><strong>Generated {html.escape(generated)}</strong><span>Self-contained HTML · safe to email, archive, or open offline in any modern browser.</span></div>
@@ -748,7 +827,7 @@ footer {{ color:#788397; padding:24px 0 38px; font-size:12px; }}
   <section class="test-suite" id="tests">
     <div class="test-head">
       <div><div class="eyebrow">Benchmark coverage</div><h3>What the models were tested on</h3><p>The suite checks whether each model can follow exact instructions, reason correctly, write working code, use agent tools, retrieve supplied facts, resist unsafe instructions, and—where supported—read an image.</p></div>
-      <div class="coverage-strip"><span>Current campaigns: 17 core + OCR where supported</span><span>Direct · Hermes · OpenClaw · DeepSeek Harness</span><span>Historical Studio retained</span></div>
+      <div class="coverage-strip"><span>Current campaigns: 17 core + OCR where supported</span><span>4 direct runners · 6 agent harnesses on Spark</span><span>Historical Studio retained</span></div>
     </div>
     <h4 class="catalog-title">Standardized benchmark families represented <span>13 families</span></h4>
     <div class="benchmark-table">
@@ -778,19 +857,19 @@ footer {{ color:#788397; padding:24px 0 38px; font-size:12px; }}
       <article class="custom-check"><strong>Coding Micro</strong><p>Runs a compact Python task through 25 behavioral cases to catch exceptions, unsafe constructs, and boundary errors.</p></article>
       <article class="custom-check"><strong>Prompt Injection</strong><p>Tests whether the model ignores a conflicting instruction and retrieves the authorized fact from the trusted context.</p></article>
     </div>
-    <p class="suite-note"><strong>Important scope note:</strong> The standardized names above identify the benchmark families and skills represented. This suite uses one compact, deterministic proxy task per family; it does <em>not</em> run the complete official datasets or reproduce official leaderboard scores. Direct, Hermes, and OpenClaw campaigns contain 17 core tasks plus OCR where supported. The Spark DeepSeek Harness campaign contains the same 17 non-image core tasks; OCR is excluded because no verified native image transport was available. Unsupported tasks, task errors, timeouts, and content mismatches remain visible and count as non-passes; they are not silently removed from the denominator. The retained Studio results use their historical task coverage.</p>
+    <p class="suite-note"><strong>Important scope note:</strong> The standardized names above identify the benchmark families and skills represented. This suite uses one compact, deterministic proxy task per family; it does <em>not</em> run the complete official datasets or reproduce official leaderboard scores. Ollama Direct, Hermes, and OpenClaw contain 17 core tasks plus OCR where supported. The additional Spark runners and agent harnesses use the same 17 non-image core tasks; OCR is excluded where no verified native image transport was available. Unsupported tasks, task errors, timeouts, and content mismatches remain visible and count as non-passes; they are not silently removed from the denominator. The retained Studio results use their historical task coverage.</p>
   </section>
   <section class="method" id="method">
     <h3>How the ranking works</h3>
     <div class="method-grid">
       <div><b>Complete paths only</b>Models must have a complete observation set for every required local harness on that host. Terminally incomplete, context-overflow, resource-pressure, and OOM paths are excluded.</div>
       <div><b>Latest valid run</b>The newest complete source is selected for each model and path. When thinking treatments coexist, the most accurate treatment is used and displayed.</div>
-      <div><b>Equal path weighting</b>Local overall accuracy averages every available required harness for that system: Direct, Hermes, and OpenClaw, plus DeepSeek Harness on the Spark. Optional cloud rankings average Hermes and OpenClaw. The three image-capable paths use 18 tasks; DeepSeek Harness uses the 17-task text-only core. Skips and execution failures score zero.</div>
+      <div><b>Comparable primary ranking</b>Local overall accuracy keeps the established required paths: Ollama Direct, Hermes, and OpenClaw, plus DeepSeek Harness on the Spark. New runner and agent columns are shown as additional evidence without changing the primary leaderboard until equivalent coverage exists across models. Optional cloud rankings average Hermes and OpenClaw. Skips and execution failures score zero.</div>
       <div><b>Speed is informational</b>Average response time and peak recorded temperature are shown for review but never affect rank.</div>
     </div>
   </section>
 </main>
-<footer class="container">Source: DGX Spark, Mac Studio, and Mac Mini campaigns through 2026-08-27, including the completed Spark DeepSeek Harness evaluation. Rankings retain file-level provenance in the accompanying CSV exports and verification manifest.</footer>
+<footer class="container">Source: DGX Spark, Mac Studio, and Mac Mini campaigns through 2026-08-28, including completed Spark DeepSeek Harness, llama.cpp, vLLM, TensorRT-LLM, Pi Agent, Goose, and OpenHands evaluations. Rankings retain file-level provenance in the accompanying CSV exports and verification manifest.</footer>
 <script type="application/json" id="ranking-data">{data_json}</script>
 <script>
 (() => {{

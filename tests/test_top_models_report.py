@@ -50,9 +50,27 @@ class TopModelsReportTests(unittest.TestCase):
             self.assertIn('id="studio"', report)
             self.assertIn('id="mini"', report)
             self.assertIn("DeepSeek Harness", report)
+            self.assertIn("llama.cpp Direct", report)
+            self.assertIn("vLLM Direct", report)
+            self.assertIn("TensorRT-LLM Direct", report)
+            self.assertIn("Pi Agent", report)
+            self.assertIn("Goose", report)
+            self.assertIn("OpenHands", report)
             self.assertIn("v0.1.1-rc.2", report)
             self.assertRegex(report, r'<div class="path-time">avg \d+\.\d+s</div>')
-            self.assertEqual(report.count("Local runner: Ollama"), 7)
+            self.assertEqual(report.count("Local runner: Ollama"), 10)
+            self.assertEqual(report.count("Local runner: llama.cpp"), 1)
+            self.assertEqual(report.count("Local runner: vLLM"), 1)
+            self.assertEqual(report.count("Local runner: TensorRT-LLM"), 1)
+            self.assertIn(
+                'data-model="muse-glimmer:30b-q4_K_M-dflash" data-cloud="false" '
+                'data-partial="false" data-score="0.859477124183"',
+                report,
+            )
+            self.assertIn(
+                'data-model="Qwen/Qwen3-8B" data-cloud="false" data-partial="true"',
+                report,
+            )
             self.assertIn('data-cloud="true"', report)
             self.assertIn('data-cloud="false"', report)
             self.assertNotIn("<script src=", report)
