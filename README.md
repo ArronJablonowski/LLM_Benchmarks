@@ -155,7 +155,7 @@ complete model × runner × harness combination.
 | Layer | Supported integrations | Where they are used |
 |---|---|---|
 | Model runners | Ollama, llama.cpp, vLLM, TensorRT-LLM | Direct Standard runs; Ollama or an OpenAI-compatible server beneath tool-agent suites |
-| Standard agent paths | Hermes Agent, OpenClaw, DeepSeek Harness evidence | The 18-task Standard comparison; DeepSeek Harness is currently a preserved completed campaign/report source |
+| Standard agent paths | Hermes Agent, OpenClaw, DeepSeek Harness evidence, COH over Ollama | The 18-task Standard comparison; DeepSeek Harness is currently a preserved completed campaign/report source, while COH uses its identity-bound local Ollama adapter for the 17 text tasks |
 | Tool-agent harnesses | Ollama workspace agent, Hermes, OpenClaw, Pi Agent, Goose, OpenHands | Coding and Creative project/artifact campaigns; Pi, Goose, and OpenHands also support Cybersecurity |
 | Orchestration check | Gas Town | Disposable operational smoke test only; not accuracy-comparable |
 | External published harness | ExploitGym with Codex, Claude Code, or Gemini CLI | Isolated opt-in Cybersecurity profile using ExploitGym's provider proxy |
