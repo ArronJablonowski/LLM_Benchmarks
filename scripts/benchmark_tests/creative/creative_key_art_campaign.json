@@ -1,0 +1,14 @@
+{
+  "id": "creative_key_art_campaign",
+  "family": "Creative image direction",
+  "category": "creative_image",
+  "name": "Create original key art for a speculative music festival",
+  "prompt": "Create the original campaign key art described in CREATIVE_BRIEF.md. Use an available image-generation capability if the harness provides one; otherwise create a sophisticated original SVG composition. Deliver a primary artwork as artwork.png, artwork.webp, or artwork.svg, plus PROCESS.md describing the visual idea, generation or construction method, and intentional refinements. Also create a square social adaptation. This is evaluated only by human reviewers for imagination and visual craft; do not copy a living artist or existing campaign.",
+  "fixture": "creative_tasks/creative_key_art_campaign/workspace",
+  "time_class": "long",
+  "creative_medium": "image generation and art direction",
+  "deliverables": ["primary artwork", "square social artwork", "PROCESS.md"],
+  "review_dimensions": ["concept originality", "visual impact", "composition", "color and texture", "campaign adaptability", "finish quality"],
+  "preview_entry": "artwork.svg",
+  "grading": {"kind": "human"}
+}

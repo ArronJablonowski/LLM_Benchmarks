@@ -1,0 +1,14 @@
+{
+  "id": "creative_threejs_dreamscape",
+  "family": "Creative 3D interaction",
+  "category": "creative_threejs",
+  "name": "Build an expressive Three.js generative dreamscape",
+  "prompt": "Create the interactive Three.js experience in CREATIVE_BRIEF.md. Deliver index.html, styles.css, scene.js, and DESIGN_NOTES.md. Use Three.js through an import map or documented package setup, create an original spatial composition with intentional camera movement, lighting, materials, and interaction, and provide a graceful reduced-motion/static fallback. Keep performance and resize behavior in mind. Human reviewers will judge the live experience and source; there is no automated aesthetic score.",
+  "fixture": "creative_tasks/creative_threejs_dreamscape/workspace",
+  "time_class": "extended",
+  "creative_medium": "Three.js generative animation",
+  "deliverables": ["index.html", "styles.css", "scene.js", "DESIGN_NOTES.md"],
+  "review_dimensions": ["spatial concept", "motion choreography", "lighting and materials", "interaction", "technical polish", "atmosphere"],
+  "preview_entry": "index.html",
+  "grading": {"kind": "human"}
+}

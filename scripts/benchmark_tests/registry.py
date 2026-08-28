@@ -18,8 +18,9 @@ from accuracy_grading import COUNT_UNIQUE_IPS_GRADER, PRIVATE_IPV4_GRADER
 
 COMPONENT_DIRECTORY = Path(__file__).with_name("core")
 CODING_COMPONENT_DIRECTORY = Path(__file__).with_name("coding")
+CREATIVE_COMPONENT_DIRECTORY = Path(__file__).with_name("creative")
 DEFAULT_SUITE = "standard"
-SUITE_CHOICES = (DEFAULT_SUITE, "coding")
+SUITE_CHOICES = (DEFAULT_SUITE, "coding", "creative")
 REQUIRED_FIELDS = {"id", "family", "category", "name", "prompt", "grading"}
 CORE_TASK_ORDER = (
     "exact_reply", "simple_reasoning", "coding_micro", "ifeval_exact",
@@ -38,6 +39,14 @@ CODING_TASK_ORDER = (
     "web_accessible_incident_dashboard",
     "web_component_storefront",
     "web_fullstack_kanban",
+)
+CREATIVE_TASK_ORDER = (
+    "creative_brand_launch_site",
+    "creative_key_art_campaign",
+    "creative_threejs_dreamscape",
+    "creative_scroll_motion_story",
+    "creative_nextjs_motion_experience",
+    "creative_microinteraction_lab",
 )
 
 
@@ -173,6 +182,44 @@ def _coding_tasks() -> tuple[dict[str, Any], ...]:
     return tuple(by_id[task_id] for task_id in CODING_TASK_ORDER)
 
 
+@lru_cache(maxsize=1)
+def _creative_tasks() -> tuple[dict[str, Any], ...]:
+    paths = sorted(CREATIVE_COMPONENT_DIRECTORY.glob("*.json"))
+    if not paths:
+        raise BenchmarkComponentError("no creative benchmark components found")
+    tasks = [_load_descriptor(path) for path in paths]
+    required = {
+        "fixture", "time_class", "creative_medium", "deliverables",
+        "review_dimensions", "preview_entry",
+    }
+    for path, task in zip(paths, tasks):
+        missing = required - task.keys()
+        if missing:
+            raise _fail(path, "missing creative fields: " + ", ".join(sorted(missing)))
+        if task["grading"].get("kind") != "human":
+            raise _fail(path, "creative grading.kind must be human")
+        for field in ("fixture", "time_class", "creative_medium", "preview_entry"):
+            if not isinstance(task[field], str) or not task[field]:
+                raise _fail(path, f"{field} must be a non-empty string")
+        for field in ("deliverables", "review_dimensions"):
+            if not isinstance(task[field], list) or not all(
+                isinstance(item, str) and item for item in task[field]
+            ):
+                raise _fail(path, f"{field} must be a non-empty string list")
+    task_ids = [task["id"] for task in tasks]
+    if len(task_ids) != len(set(task_ids)):
+        raise BenchmarkComponentError("duplicate creative benchmark component ids")
+    overlap = set(task_ids) & (set(CORE_TASK_ORDER) | set(CODING_TASK_ORDER))
+    if overlap:
+        raise BenchmarkComponentError(
+            "creative tasks overlap another suite: " + ", ".join(sorted(overlap))
+        )
+    if set(task_ids) != set(CREATIVE_TASK_ORDER):
+        raise BenchmarkComponentError("creative task order is out of sync")
+    by_id = {task["id"]: task for task in tasks}
+    return tuple(by_id[task_id] for task_id in CREATIVE_TASK_ORDER)
+
+
 def core_task_catalog() -> list[dict[str, Any]]:
     """Return fresh task mappings so callers cannot mutate the registry."""
     return copy.deepcopy(list(_core_tasks()))
@@ -188,6 +235,8 @@ def suite_task_catalog(suite: str = DEFAULT_SUITE) -> list[dict[str, Any]]:
         return core_task_catalog()
     if suite == "coding":
         return copy.deepcopy(list(_coding_tasks()))
+    if suite == "creative":
+        return copy.deepcopy(list(_creative_tasks()))
     choices = ", ".join(SUITE_CHOICES)
     raise BenchmarkComponentError(
         f"unknown benchmark suite: {suite}; choose from: {choices}"

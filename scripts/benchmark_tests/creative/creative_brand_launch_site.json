@@ -1,0 +1,14 @@
+{
+  "id": "creative_brand_launch_site",
+  "family": "Creative web design",
+  "category": "creative_website",
+  "name": "Design a distinctive launch site for an imaginary cultural venue",
+  "prompt": "Create the complete launch website described in CREATIVE_BRIEF.md. Make a bold original art direction rather than a generic template. Deliver responsive HTML, CSS, JavaScript, and a short DESIGN_NOTES.md explaining the concept, type/color decisions, interaction choices, and accessibility considerations. You may create original SVG or raster assets. The experience should feel polished on desktop and mobile and include at least one memorable interaction. This is a human-reviewed creative exercise: do not optimize for automated tests or imitate an existing brand.",
+  "fixture": "creative_tasks/creative_brand_launch_site/workspace",
+  "time_class": "long",
+  "creative_medium": "website design",
+  "deliverables": ["index.html", "styles.css", "app.js", "DESIGN_NOTES.md"],
+  "review_dimensions": ["originality", "visual composition", "typography and color", "interaction design", "responsive polish", "brief alignment"],
+  "preview_entry": "index.html",
+  "grading": {"kind": "human"}
+}

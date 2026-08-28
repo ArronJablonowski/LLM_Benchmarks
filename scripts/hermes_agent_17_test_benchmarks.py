@@ -271,7 +271,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--list-tasks", "--list-tests", dest="list_tasks", action="store_true", help="List selected task IDs without contacting Hermes or Ollama.")
     args = parser.parse_args(argv)
     if args.suite != DEFAULT_SUITE:
-        parser.error("--suite coding requires the isolated coding-agent runner; this Hermes runner is prompt/response only")
+        parser.error(f"--suite {args.suite} requires its isolated tool-capable agent runner; this Hermes runner is prompt/response only")
     if not 1 <= args.timeout <= 1800:
         parser.error("--timeout must be between 1 and 1800 seconds")
 

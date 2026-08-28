@@ -298,6 +298,25 @@ Coding campaigns produce their own `coding_agent_report.html`. See
 [`docs/CODING_SUITE.md`](docs/CODING_SUITE.md) for tasks, scoring, safety,
 methodology, and execution instructions.
 
+## Creative suite
+
+The separate `creative` suite produces design artifacts for subjective human
+review. Its six briefs cover original website art direction, image/key-art
+creation, Three.js generative animation, scroll-driven storytelling, animated
+Next.js experiences, and UI microinteractions. It never assigns an automated
+aesthetic pass/fail or contributes to Standard or Coding rankings.
+
+```bash
+python3 scripts/creative_agent_benchmarks.py \
+  --suite creative --harness pi \
+  --models-file models.tsv --output-dir reports/pi --workspace creative-work \
+  --list-tasks
+```
+
+Creative campaigns generate `creative_human_review.html`, where reviewers can
+open artifacts, enter rubric scores and notes, shortlist work, and export their
+human review data. See [`docs/CREATIVE_SUITE.md`](docs/CREATIVE_SUITE.md).
+
 See [`docs/BENCHMARK_COMPONENTS.md`](docs/BENCHMARK_COMPONENTS.md) to review,
 add, or replace a core component.
 

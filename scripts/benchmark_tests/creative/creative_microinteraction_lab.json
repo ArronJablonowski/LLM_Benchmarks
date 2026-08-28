@@ -1,0 +1,14 @@
+{
+  "id": "creative_microinteraction_lab",
+  "family": "Creative interaction design",
+  "category": "creative_microinteractions",
+  "name": "Create a cohesive laboratory of expressive UI microinteractions",
+  "prompt": "Create the interaction laboratory described in CREATIVE_BRIEF.md. Deliver a single polished responsive page containing at least six related microinteractions across navigation, controls, feedback, state change, and direct manipulation. Establish one coherent motion language, support keyboard and reduced-motion use, and document the principles in MOTION_SYSTEM.md. Use native JavaScript or a documented animation framework. Human reviewers will judge delight, coherence, restraint, and craft; there is no code-computed creativity score.",
+  "fixture": "creative_tasks/creative_microinteraction_lab/workspace",
+  "time_class": "long",
+  "creative_medium": "UI motion and microinteraction design",
+  "deliverables": ["index.html", "styles.css", "interactions.js", "MOTION_SYSTEM.md"],
+  "review_dimensions": ["interaction inventiveness", "motion coherence", "feedback clarity", "tactile quality", "accessibility", "overall delight"],
+  "preview_entry": "index.html",
+  "grading": {"kind": "human"}
+}

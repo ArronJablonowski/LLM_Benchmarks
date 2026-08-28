@@ -19,6 +19,8 @@ BENCHMARK_REGISTRY = ROOT / "scripts" / "benchmark_tests" / "registry.py"
 CODING_RUNNER = ROOT / "scripts" / "coding_agent_benchmarks.py"
 CODING_REPORT = ROOT / "dashboard" / "generate_coding_report.py"
 OPENHANDS_CODING_AGENT = ROOT / "scripts" / "openhands_coding_agent.py"
+CREATIVE_RUNNER = ROOT / "scripts" / "creative_agent_benchmarks.py"
+CREATIVE_REPORT = ROOT / "dashboard" / "generate_creative_review.py"
 
 
 def literal_assignment(path, name):
@@ -47,7 +49,7 @@ class RepositoryTests(unittest.TestCase):
             DIRECT, OPENCLAW, GENERATOR, PLATFORM_SUPPORT, ACCURACY_GRADING,
             THINKING_PAIR_SUPPORT, STANDARD_LOCAL_TASKS, HERMES, VISION_SUPPORT,
             BENCHMARK_REGISTRY, CODING_RUNNER, CODING_REPORT,
-            OPENHANDS_CODING_AGENT,
+            OPENHANDS_CODING_AGENT, CREATIVE_RUNNER, CREATIVE_REPORT,
         ):
             compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
@@ -67,7 +69,7 @@ class RepositoryTests(unittest.TestCase):
                 DIRECT, OPENCLAW, GENERATOR, PLATFORM_SUPPORT,
                 ACCURACY_GRADING, THINKING_PAIR_SUPPORT, STANDARD_LOCAL_TASKS,
                 HERMES, VISION_SUPPORT, CODING_RUNNER, CODING_REPORT,
-                OPENHANDS_CODING_AGENT,
+                OPENHANDS_CODING_AGENT, CREATIVE_RUNNER, CREATIVE_REPORT,
             )
         )
         self.assertNotIn("/Users/", source)

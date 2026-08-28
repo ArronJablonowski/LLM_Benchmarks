@@ -1,0 +1,14 @@
+{
+  "id": "creative_scroll_motion_story",
+  "family": "Creative motion narrative",
+  "category": "creative_motion_web",
+  "name": "Direct a scroll-driven interactive visual essay",
+  "prompt": "Turn CREATIVE_BRIEF.md into a scroll-driven visual essay with a clear narrative arc. Deliver a complete responsive web experience, original visual assets, and MOTION_NOTES.md. You may use GSAP, Motion One, or a carefully built native animation system, but the motion must support the story rather than decorate it. Include thoughtful pacing, transitions, reduced-motion behavior, and a strong ending. This is evaluated subjectively by humans, not by code-based correctness tests.",
+  "fixture": "creative_tasks/creative_scroll_motion_story/workspace",
+  "time_class": "extended",
+  "creative_medium": "scroll-driven web animation",
+  "deliverables": ["index.html", "styles.css", "story.js", "MOTION_NOTES.md"],
+  "review_dimensions": ["narrative clarity", "motion direction", "pacing", "visual storytelling", "responsive behavior", "emotional impact"],
+  "preview_entry": "index.html",
+  "grading": {"kind": "human"}
+}

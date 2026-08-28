@@ -3460,7 +3460,7 @@ def main(argv=None):
     args=ap.parse_args(argv)
 
     if args.suite != DEFAULT_SUITE:
-        ap.error('--suite coding requires scripts/coding_agent_benchmarks.py and a tool-capable coding harness')
+        ap.error(f'--suite {args.suite} requires its isolated tool-capable agent runner')
 
     if args.task_profile is None:
         args.task_profile = 'standard-local' if args.full_suite else 'core'

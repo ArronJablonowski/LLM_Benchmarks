@@ -1,0 +1,14 @@
+{
+  "id": "creative_nextjs_motion_experience",
+  "family": "Creative Next.js motion",
+  "category": "creative_nextjs_animation",
+  "name": "Design a cinematic animated Next.js product experience",
+  "prompt": "Build the animated Next.js App Router experience described in CREATIVE_BRIEF.md using the supplied pinned project manifest. Create a distinctive responsive visual system and use Motion for React for purposeful shared-layout transitions, route or state transitions, gesture feedback, and scroll-linked motion. Include a complete reduced-motion experience, loading behavior, and DESIGN_NOTES.md. Do not settle for a standard SaaS template. Human reviewers will evaluate the running experience and creative decisions; no automated aesthetic grade is assigned.",
+  "fixture": "creative_tasks/creative_nextjs_motion_experience/workspace",
+  "time_class": "extended",
+  "creative_medium": "Next.js and Motion animation",
+  "deliverables": ["Next.js App Router source", "responsive animated experience", "DESIGN_NOTES.md"],
+  "review_dimensions": ["art direction", "motion system", "transition quality", "interaction feedback", "responsive polish", "concept coherence"],
+  "preview_entry": "app/page.jsx",
+  "grading": {"kind": "human"}
+}

@@ -188,7 +188,7 @@ def write_csv(path, records):
 def main(argv=None):
     args = parse_args(argv)
     if args.suite != DEFAULT_SUITE:
-        raise SystemExit("--suite coding requires a tool-capable agent harness, not direct OpenAI-compatible inference")
+        raise SystemExit(f"--suite {args.suite} requires its tool-capable agent runner, not direct OpenAI-compatible inference")
     if not args.run:
         raise SystemExit("Plan only. Pass --run to execute benchmark observations.")
     if args.timeout < 1 or args.timeout > 1800:

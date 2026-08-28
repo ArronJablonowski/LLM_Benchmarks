@@ -25,7 +25,7 @@ command -v ninja >/dev/null || {
   exit 1
 }
 max_timeout=1800
-[[ "${BENCH_SUITE:-standard}" == "coding" ]] && max_timeout=14400
+[[ "${BENCH_SUITE:-standard}" == "coding" || "${BENCH_SUITE:-standard}" == "creative" ]] && max_timeout=14400
 (( timeout >= 1 && timeout <= max_timeout )) || { echo "Invalid task timeout for ${BENCH_SUITE:-standard}" >&2; exit 1; }
 (( context_size == 32768 )) || { echo "This campaign requires the frozen 32768 context" >&2; exit 1; }
 python3 - "$gpu_memory_utilization" <<'PY'
@@ -84,7 +84,7 @@ setsid "$vllm_bin" "${server_args[@]}" \
 server_pid=$!
 printf '%s\n' "$server_pid" >"$campaign_dir/server.pid"
 
-if [[ "${BENCH_SUITE:-standard}" == "coding" ]]; then
+if [[ "${BENCH_SUITE:-standard}" == "coding" || "${BENCH_SUITE:-standard}" == "creative" ]]; then
   ready=0
   for _attempt in $(seq 1 900); do
     kill -0 "$server_pid" 2>/dev/null || { echo "vLLM server exited during startup" >&2; exit 1; }
@@ -92,17 +92,22 @@ if [[ "${BENCH_SUITE:-standard}" == "coding" ]]; then
     sleep 1
   done
   (( ready == 1 )) || { echo "vLLM server did not become ready" >&2; exit 1; }
-  models_file="$campaign_dir/coding-models.tsv"
+  suite="${BENCH_SUITE:-standard}"
+  models_file="$campaign_dir/$suite-models.tsv"
   [[ -f "$models_file" ]] || printf '%s\t%s\n' "$model_id" "$model_digest" >"$models_file"
   for agent_harness in ${BENCH_CLI_HARNESSES:-pi goose openhands}; do
-    python3 "$repo_dir/scripts/coding_agent_benchmarks.py" \
-      --suite coding --harness "$agent_harness" --model-runner vllm \
+    python3 "$repo_dir/scripts/${suite}_agent_benchmarks.py" \
+      --suite "$suite" --harness "$agent_harness" --model-runner vllm \
       --base-url "http://127.0.0.1:$port/v1" --api-key benchmark \
       --runner-version "$(head -1 "$campaign_dir/runner-version.txt")" --server-pid "$server_pid" \
-      --models-file "$models_file" --output-dir "$campaign_dir/coding/$agent_harness" \
-      --workspace "$campaign_dir/coding-workspace" --timeout "${BENCH_TASK_TIMEOUT:-7200}" --run
+      --models-file "$models_file" --output-dir "$campaign_dir/$suite/$agent_harness" \
+      --workspace "$campaign_dir/$suite-workspace" --timeout "${BENCH_TASK_TIMEOUT:-7200}" --run
   done
-  python3 "$repo_dir/dashboard/generate_coding_report.py" --input-root "$campaign_dir" --output "$campaign_dir/coding_agent_report.html"
+  if [[ "$suite" == "coding" ]]; then
+    python3 "$repo_dir/dashboard/generate_coding_report.py" --input-root "$campaign_dir" --output "$campaign_dir/coding_agent_report.html"
+  else
+    python3 "$repo_dir/dashboard/generate_creative_review.py" --input-root "$campaign_dir" --output "$campaign_dir/creative_human_review.html"
+  fi
 else
   python3 "$repo_dir/scripts/openai_compatible_benchmarks.py" \
     --suite standard --endpoint "http://127.0.0.1:$port/v1/chat/completions" \

@@ -444,7 +444,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     if args.suite != DEFAULT_SUITE:
-        ap.error('--suite coding requires the isolated coding-agent runner; this OpenClaw runner is prompt/response only')
+        ap.error(f'--suite {args.suite} requires its isolated tool-capable agent runner; this OpenClaw runner is prompt/response only')
 
     unknown_external_vision = set(args.external_vision_models) - set(args.external_models)
     if unknown_external_vision:
