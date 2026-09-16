@@ -135,5 +135,14 @@ class CybersecuritySuiteTests(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             direct.main(["--suite", "cybersecurity", "--list-tasks"])
 
+    def test_tool_capable_harnesses_are_available_for_security_suite(self):
+        for harness in ("hermes", "openclaw", "pi", "goose", "openhands"):
+            with self.subTest(harness=harness):
+                args = cyber.parse_args([
+                    "--harness", harness, "--models-file", "models.tsv",
+                    "--output-dir", "out", "--workspace", "work",
+                ])
+                self.assertEqual(harness, args.harness)
+
 
 if __name__ == "__main__": unittest.main()

@@ -10,7 +10,10 @@ timeout="${BENCH_TASK_TIMEOUT:-1800}"
 suite="${BENCH_SUITE:-standard}"
 state_file="$campaign_dir/pre-campaign-services.env"
 
-export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.openclaw/bin:$HOME/.openclaw/tools/node/bin:$PATH"
+for openclaw_node_bin in "$HOME"/.openclaw/tools/node-v*/bin; do
+  [[ -d "$openclaw_node_bin" ]] && export PATH="$openclaw_node_bin:$PATH"
+done
 mkdir -p "$campaign_dir" "$workspace"
 
 if [[ ! -s "$models_file" ]]; then

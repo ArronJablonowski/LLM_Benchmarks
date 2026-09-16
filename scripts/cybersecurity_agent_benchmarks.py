@@ -17,7 +17,9 @@ from cli_agent_benchmarks import (
 )
 from coding_agent_benchmarks import (
     count_student_tests, fingerprint_tree, grade_workspace, harness_command,
-    prepare_workspace, provider_configuration, run_guarded_server,
+    hermes_configuration, openclaw_original_state, prepare_workspace,
+    provider_configuration, restore_openclaw_state, run_guarded_server,
+    select_openclaw_model,
 )
 from ollama_standardized_local_benchmarks import read_linux_resource_snapshot
 from platform_support import create_sampler
@@ -40,7 +42,11 @@ FIELDS = [
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--suite", choices=("cybersecurity",), default="cybersecurity")
-    parser.add_argument("--harness", choices=("pi", "goose", "openhands"), required=True)
+    parser.add_argument(
+        "--harness",
+        choices=("hermes", "openclaw", "pi", "goose", "openhands"),
+        required=True,
+    )
     parser.add_argument("--model-runner", choices=("ollama", "llama.cpp", "vllm", "tensorrt-llm"), default="ollama")
     parser.add_argument("--base-url", default="http://127.0.0.1:11434/v1")
     parser.add_argument("--api-key", default="ollama")
@@ -127,6 +133,12 @@ def main(argv=None) -> int:
     if args.harness == "pi":
         if args.model_runner == "ollama": pi_configuration(config_dir, models)
         else: provider_configuration(config_dir, models, args.base_url, args.api_key)
+    if args.harness == "hermes":
+        if args.model_runner != "ollama":
+            raise SystemExit("--harness hermes currently requires --model-runner ollama")
+        hermes_configuration(config_dir, models[0]["name"], args.base_url)
+    if args.harness == "openclaw" and args.model_runner != "ollama":
+        raise SystemExit("--harness openclaw currently requires --model-runner ollama")
     harness_version = command_output([args.openhands_python, "-c", "import importlib.metadata as m; print(m.version('openhands-ai'))"]) if args.harness == "openhands" else command_output([args.harness, "--version"])
     runner_version = args.runner_version or (command_output(["ollama", "--version"]) if args.model_runner == "ollama" else "unreported")
     jsonl_path = args.output_dir / f"{args.harness}_cybersecurity.jsonl"
@@ -137,10 +149,13 @@ def main(argv=None) -> int:
     if len(completed) != len(records):
         raise RuntimeError("Existing cybersecurity evidence contains duplicate model/task keys")
     baseline = read_linux_resource_snapshot(); sampler = create_sampler("auto", interval_ms=1000); sampler.start()
+    original_openclaw = openclaw_original_state() if args.harness == "openclaw" else None
     run_id = records[0]["row"]["run_id"] if records else time.strftime("%Y%m%d_%H%M%S")
     try:
         total = len(models) * len(tasks)
         for model in models:
+            if args.harness == "openclaw" and any((model["name"], task["id"]) not in completed for task in tasks):
+                select_openclaw_model(model["name"])
             for task in tasks:
                 key = (model["name"], task["id"])
                 if key in completed: continue
@@ -154,8 +169,15 @@ def main(argv=None) -> int:
                     + "\n\nWork only inside: " + str(workspace)
                 )
                 provider = "ollama" if args.model_runner == "ollama" else "openai"
-                command = harness_command(args.harness, model["name"], prompt, workspace, args.openhands_python, "ollama" if args.model_runner == "ollama" else "benchmark", args.base_url, args.api_key)
+                command = harness_command(
+                    args.harness, model["name"], prompt, workspace,
+                    args.openhands_python,
+                    "ollama" if args.model_runner == "ollama" else "benchmark",
+                    args.base_url, args.api_key, args.timeout,
+                )
                 env = {**os.environ, "PI_CODING_AGENT_DIR": str(config_dir), "PI_TELEMETRY": "0", "GOOSE_PROVIDER": provider, "GOOSE_MODEL": model["name"], "GOOSE_TELEMETRY_ENABLED": "false", "GOOSE_PROVIDER__HOST": args.base_url, "GOOSE_PROVIDER__API_KEY": args.api_key, "OPENAI_HOST": args.base_url, "OPENAI_API_KEY": args.api_key, "XDG_CONFIG_HOME": str(config_dir / "xdg-config"), "XDG_DATA_HOME": str(config_dir / "xdg-data")}
+                if args.harness == "hermes":
+                    env["HERMES_HOME"] = str(config_dir / "hermes-home")
                 sample_start = sampler.snapshot_len(); started = time.monotonic()
                 if args.model_runner == "ollama": result = run_guarded(command, env, workspace, model["name"], args.timeout, baseline)
                 else: result = run_guarded_server(command, env, workspace, args.timeout, baseline, args.server_pid, args.stop_command)
@@ -174,6 +196,8 @@ def main(argv=None) -> int:
         sampler.stop()
         if args.model_runner == "ollama":
             for model in models: stop_model(model["name"])
+        if args.harness == "openclaw":
+            restore_openclaw_state(original_openclaw)
     return 0
 
 
