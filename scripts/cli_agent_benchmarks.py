@@ -45,7 +45,11 @@ FIELDS = [
 def parse_args(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--suite", choices=SUITE_CHOICES, default=DEFAULT_SUITE)
-    parser.add_argument("--harness", choices=("pi", "goose", "openhands"), required=True)
+    parser.add_argument(
+        "--harness",
+        choices=("pi", "goose", "openhands", "hermes", "openclaw"),
+        required=True,
+    )
     parser.add_argument("--models-file", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--workspace", type=Path, required=True)

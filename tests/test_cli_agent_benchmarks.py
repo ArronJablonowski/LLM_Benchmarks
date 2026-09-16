@@ -58,6 +58,15 @@ class CliAgentBenchmarksTests(unittest.TestCase):
         ])
         self.assertEqual("standard", api_args.suite)
 
+    def test_security_harnesses_pass_the_common_entrypoint_parser(self):
+        for harness in ("hermes", "openclaw"):
+            args = runner.parse_args([
+                "--suite", "cybersecurity", "--harness", harness,
+                "--models-file", "models.tsv", "--output-dir", "out",
+                "--workspace", "work",
+            ])
+            self.assertEqual(harness, args.harness)
+
     def test_openai_request_is_non_streaming_and_deterministic(self):
         command = openai_runner.request_command(
             "http://127.0.0.1:8000/v1/chat/completions", "fixture", "prompt", 1800
