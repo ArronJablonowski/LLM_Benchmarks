@@ -20,7 +20,9 @@ def main() -> int:
     parser.add_argument("--base-url", default="http://127.0.0.1:11434/v1")
     parser.add_argument("--api-key", default="ollama")
     parser.add_argument("--workspace", type=Path, required=True)
-    parser.add_argument("--prompt", required=True)
+    prompt_source = parser.add_mutually_exclusive_group(required=True)
+    prompt_source.add_argument("--prompt")
+    prompt_source.add_argument("--prompt-file", type=Path)
     args = parser.parse_args()
     llm = LLM(
         model=f"openai/{args.model}", api_key=args.api_key,
@@ -32,12 +34,13 @@ def main() -> int:
         Tool(name=TerminalTool.name), Tool(name=FileEditorTool.name),
         Tool(name=TaskTrackerTool.name),
     ])
+    prompt = args.prompt if args.prompt is not None else args.prompt_file.read_text(encoding="utf-8")
     conversation = Conversation(
         agent=agent, workspace=args.workspace, max_iteration_per_run=150,
         stuck_detection=True, visualizer=None,
     )
     try:
-        conversation.send_message(args.prompt)
+        conversation.send_message(prompt)
         conversation.run()
     finally:
         conversation.close()

@@ -189,11 +189,17 @@ Evidence profile IDs also include the selected task profile and family (for
 example, `exploitgym-v1-hardened-e4123d0:sample:all`) so qualification,
 family-only, and full runs cannot be merged accidentally.
 
-ExploitGym currently supplies Codex, Claude Code, and Gemini CLI agents. This
-adapter therefore records its harness as `exploitgym-codex`,
-`exploitgym-claude_code`, or `exploitgym-gemini_cli` and its model runner as
-`exploitgym-llm-proxy`. It does not pretend that the upstream runner supports
-Ollama, llama.cpp, vLLM, TensorRT-LLM, Pi, Goose, or OpenHands.
+The pinned upstream runner supplies Codex, Claude Code, and Gemini CLI agents.
+This repository also pins a reviewed local-adapter commit that adds Pi, Goose,
+OpenHands, Hermes, and OpenClaw. Those adapters use a read-only runtime bundle
+inside the task container and send model traffic to an OpenAI-compatible Ollama
+gateway on the private `cybergym-internal` Docker network. They do not give the
+task container access to the host network or general internet.
+
+Provider runs are recorded as `exploitgym-llm-proxy`; local runs are recorded
+as `ollama`, with the exact Ollama model digest preserved. Local-harness results
+remain separate per harness and are never merged with the original 24-task
+cybersecurity-agent profile.
 
 ### Prepare the pinned upstream checkout
 
@@ -231,10 +237,36 @@ The adapter refuses execution unless all of these controls remain enabled:
 - four fresh controller/proxy secrets; and
 - an exact command-line acknowledgement that this runs real exploit work.
 
+Local Ollama runs add three enforced controls:
+
+- host harness installations are copied into a frozen, checksummed runtime
+  mounted read-only at `/data/local-harnesses`;
+- `cybergym-ollama-gateway` is a read-only, capability-free TCP forwarder whose
+  only upstream is the host Ollama port; and
+- the agent bypasses the HTTP firewall proxy only for the gateway's fixed
+  private IP. All other traffic still traverses ExploitGym's run firewall.
+
 The setup phase can download packages through ExploitGym's separate install
 proxy. Before the agent starts, upstream moves the task container to the
 API-only run network. Run this profile only on a dedicated, isolated host; do
 not launch it on a workstation or network that contains sensitive services.
+
+After upstream setup has created its internal networks, prepare local harnesses:
+
+```bash
+ops/bootstrap_exploitgym_local_harnesses.sh
+ops/start_exploitgym_ollama_gateway.sh
+```
+
+A local qualification plan names the harness, exact model, and digest:
+
+```bash
+EXPLOITGYM_AGENT=hermes \
+EXPLOITGYM_MODEL='qwen3.8:27b-mtp-q8_0' \
+EXPLOITGYM_MODEL_DIGEST='<ollama digest>' \
+EXPLOITGYM_MODEL_RUNNER=ollama \
+ops/run_exploitgym_campaign.sh
+```
 
 ### Preview, run, and import
 

@@ -447,10 +447,11 @@ The suite also includes a pinned, opt-in adapter for the published
 qualification and 869-task v1 profiles retain upstream licensing and run only
 with hardened targets, isolated firewall networks, provider-retrieval blocking,
 and explicit real-exploitation acknowledgement. ExploitGym evidence is shown
-separately from the original local profile. It currently uses ExploitGym's
-Codex, Claude Code, or Gemini CLI agents and provider proxy; it does not claim
-support for local Ollama, llama.cpp, vLLM, TensorRT-LLM, Pi, Goose, or
-OpenHands. Run it only on a dedicated isolated Linux host after following the
+separately from the original local profile. Provider runs use ExploitGym's
+Codex, Claude Code, or Gemini CLI agents. An additional pinned adapter supports
+Pi, Goose, OpenHands, Hermes, and OpenClaw with exact-digest local Ollama models
+through a private, single-purpose gateway and read-only harness runtimes. Run it
+only on a dedicated isolated Linux host after following the
 preparation and safety procedure in
 [`docs/CYBERSECURITY_SUITE.md`](docs/CYBERSECURITY_SUITE.md#exploitgym-external-profile).
 
