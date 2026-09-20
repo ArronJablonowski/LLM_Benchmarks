@@ -10,6 +10,7 @@ openhands_python="${BENCH_OPENHANDS_PYTHON:-$HOME/.local/venvs/openhands-1.11.0/
 harnesses="${BENCH_HARNESSES:-ollama-direct hermes openclaw openhands pi goose}"
 telemetry_file="$campaign_dir/temperature-telemetry.csv"
 state_file="$campaign_dir/campaign-state.env"
+services_file="$campaign_dir/pre-campaign-services.env"
 
 export PATH="$HOME/.local/bin:$HOME/.openclaw/bin:$HOME/.openclaw/tools/node/bin:$PATH"
 for openclaw_node_bin in "$HOME"/.openclaw/tools/node-v*/bin; do
@@ -61,9 +62,31 @@ cleanup() {
   if (( campaign_completed == 0 )); then
     write_state failed "${harness:-}" "${started_at:-}"
   fi
+  [[ "${COMFYUI_WAS_ACTIVE:-0}" == 1 ]] && systemctl --user start comfyui.service || true
   return "$exit_code"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+if [[ ! -s "$services_file" ]]; then
+  if systemctl --user is-active --quiet comfyui.service; then
+    printf 'COMFYUI_WAS_ACTIVE=1\n' >"$services_file"
+  else
+    printf 'COMFYUI_WAS_ACTIVE=0\n' >"$services_file"
+  fi
+fi
+# shellcheck disable=SC1090
+source "$services_file"
+systemctl --user stop comfyui.service
+for _ in $(seq 1 30); do
+  pgrep -f "$HOME/ComfyUI/.venv/bin/python" >/dev/null || break
+  sleep 1
+done
+if pgrep -f "$HOME/ComfyUI/.venv/bin/python" >/dev/null; then
+  echo "ComfyUI did not release the GPU" >&2
+  exit 1
+fi
 
 sample_temperature &
 telemetry_pid="$!"
