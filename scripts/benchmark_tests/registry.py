@@ -399,7 +399,9 @@ def core_task_catalog() -> list[dict[str, Any]]:
     return copy.deepcopy(list(_core_tasks()))
 
 
-def suite_task_catalog(suite: str = DEFAULT_SUITE) -> list[dict[str, Any]]:
+def suite_task_catalog(
+    suite: str = DEFAULT_SUITE, *, full: bool = False,
+) -> list[dict[str, Any]]:
     """Return fresh task mappings for a named benchmark suite.
 
     ``standard`` is the public name for the existing 18-task suite. Routing
@@ -414,7 +416,11 @@ def suite_task_catalog(suite: str = DEFAULT_SUITE) -> list[dict[str, Any]]:
     if suite == "cybersecurity":
         return copy.deepcopy(list(_cybersecurity_tasks()))
     if suite == "commandline":
-        return copy.deepcopy(list(_commandline_tasks()))
+        tasks = list(_commandline_tasks())
+        if full:
+            return copy.deepcopy(tasks)
+        by_id = {task["id"]: task for task in tasks}
+        return copy.deepcopy([by_id[task_id] for task_id in COMMANDLINE_TASK_ORDER])
     choices = ", ".join(SUITE_CHOICES)
     raise BenchmarkComponentError(
         f"unknown benchmark suite: {suite}; choose from: {choices}"

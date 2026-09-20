@@ -8,6 +8,7 @@ workspace="$campaign_dir/workspace"
 timeout="${BENCH_TASK_TIMEOUT:-3600}"
 openhands_python="${BENCH_OPENHANDS_PYTHON:-$HOME/.local/venvs/openhands-1.11.0/bin/python}"
 harnesses="${BENCH_HARNESSES:-ollama-direct hermes openclaw openhands pi goose}"
+full_suite="${BENCH_FULL_SUITE:-0}"
 telemetry_file="$campaign_dir/temperature-telemetry.csv"
 state_file="$campaign_dir/campaign-state.env"
 services_file="$campaign_dir/pre-campaign-services.env"
@@ -95,14 +96,18 @@ write_state running
 for harness in $harnesses; do
   started_at="$(date --iso-8601=seconds)"
   write_state running "$harness" "$started_at"
+  runner_args=(
+    --harness "$harness"
+    --models-file "$models_file"
+    --output-dir "$campaign_dir/$harness"
+    --workspace "$workspace"
+    --timeout "$timeout"
+    --openhands-python "$openhands_python"
+    --run
+  )
+  [[ "$full_suite" == 1 ]] && runner_args+=(--full-suite)
   python3 "$repo_dir/scripts/commandline_agent_benchmarks.py" \
-    --harness "$harness" \
-    --models-file "$models_file" \
-    --output-dir "$campaign_dir/$harness" \
-    --workspace "$workspace" \
-    --timeout "$timeout" \
-    --openhands-python "$openhands_python" \
-    --run 2>&1 | tee -a "$campaign_dir/$harness.log"
+    "${runner_args[@]}" 2>&1 | tee -a "$campaign_dir/$harness.log"
 done
 
 write_state complete

@@ -3,11 +3,14 @@
 The `commandline` suite measures whether a tool-capable LLM can select, order,
 and interpret command-line operations across operating systems and terminal
 appliances. It is isolated from Standard, Coding, Creative, and Cybersecurity
-scores and uses the versioned profile `commandline-agent-v1`.
+scores. The default profile is `commandline-agent-v2-standard-20`; the explicit
+`--full-suite` profile is `commandline-agent-v2-full-120`.
 
 ## Coverage and progression
 
-The profile contains 120 original tasks ordered globally from easy to expert:
+The standard profile contains 20 hand-authored cornerstone tasks ordered from
+easy to expert. Passing `--full-suite` selects all 120 tasks, also ordered
+globally from easy to expert:
 
 | Level | Coverage |
 |---|---|
@@ -47,13 +50,18 @@ that the submitted conclusions contain the decisive evidence.
 List or preview tasks without starting a model:
 
 ```bash
-python3 scripts/cli_agent_benchmarks.py \
-  --suite commandline --harness pi \
+python3 scripts/commandline_agent_benchmarks.py \
+  --harness pi \
   --models-file models.tsv --output-dir reports/cli \
   --workspace work --list-tasks
 
-python3 scripts/cli_agent_benchmarks.py \
-  --suite commandline --harness pi \
+# Explicitly list all 120 tasks.
+python3 scripts/commandline_agent_benchmarks.py \
+  --harness pi --models-file models.tsv --output-dir reports/cli \
+  --workspace work --full-suite --list-tasks
+
+python3 scripts/commandline_agent_benchmarks.py \
+  --harness pi \
   --models-file models.tsv --output-dir reports/cli \
   --workspace work --tasks cli_linux_basics
 ```
@@ -66,6 +74,9 @@ BENCH_MODELS_FILE="$HOME/.hermes/reports/campaigns/commandline-v1/models.tsv" \
 BENCH_CLI_HARNESSES="pi goose openhands" \
 ops/run_commandline_agent_campaign.sh
 ```
+
+Set `BENCH_FULL_SUITE=1` for the 120-task profile. Without it, campaign
+wrappers and direct runner invocations use the standard 20-task profile.
 
 The runner is plan-only unless `--run` is supplied. Every model-task workspace
 is fresh, interrupted work is preserved under a recovery name, frozen model

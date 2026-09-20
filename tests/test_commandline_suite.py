@@ -18,23 +18,29 @@ import coding_agent_benchmarks as project_runner
 class CommandLineSuiteTests(unittest.TestCase):
     def test_suite_is_separate_complete_and_progressive(self):
         tasks = suite_task_catalog("commandline")
-        self.assertEqual(120, len(tasks))
+        self.assertEqual(20, len(tasks))
+        full_tasks = suite_task_catalog("commandline", full=True)
+        self.assertEqual(120, len(full_tasks))
+        self.assertEqual(
+            {task["id"] for task in tasks},
+            {task["id"] for task in full_tasks if not task["id"].startswith("cli_exp_")},
+        )
         standard = {task["id"] for task in suite_task_catalog("standard")}
-        self.assertFalse(standard & {task["id"] for task in tasks})
-        self.assertEqual("easy", tasks[0]["difficulty"])
-        self.assertEqual("expert", tasks[-1]["difficulty"])
+        self.assertFalse(standard & {task["id"] for task in full_tasks})
+        self.assertEqual("easy", full_tasks[0]["difficulty"])
+        self.assertEqual("expert", full_tasks[-1]["difficulty"])
         self.assertTrue(
             {"Linux", "macOS", "Windows"}
-            <= {task["platform"] for task in tasks if task["difficulty"] == "easy"}
+            <= {task["platform"] for task in full_tasks if task["difficulty"] == "easy"}
         )
         ranks = {"easy": 0, "medium": 1, "hard": 2, "expert": 3}
         self.assertEqual(
-            sorted(ranks[task["difficulty"]] for task in tasks),
-            [ranks[task["difficulty"]] for task in tasks],
+            sorted(ranks[task["difficulty"]] for task in full_tasks),
+            [ranks[task["difficulty"]] for task in full_tasks],
         )
 
     def test_firewall_and_incident_response_coverage(self):
-        tasks = suite_task_catalog("commandline")
+        tasks = suite_task_catalog("commandline", full=True)
         ids = {task["id"] for task in tasks}
         self.assertTrue(any("pfsense" in task_id for task_id in ids))
         self.assertTrue(any("openwrt" in task_id for task_id in ids))
@@ -81,6 +87,12 @@ class CommandLineSuiteTests(unittest.TestCase):
             output = io.StringIO()
             with contextlib.redirect_stdout(output):
                 self.assertEqual(0, project_runner.main(args + ["--list-tasks"]))
+            self.assertEqual(20, len(output.getvalue().strip().splitlines()))
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    0, project_runner.main(args + ["--full-suite", "--list-tasks"])
+                )
             self.assertEqual(120, len(output.getvalue().strip().splitlines()))
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(0, project_runner.main(args))
@@ -133,7 +145,7 @@ class CommandLineSuiteTests(unittest.TestCase):
 
     def test_generated_task_golden_workflow_passes_hidden_grader(self):
         task = next(
-            item for item in suite_task_catalog("commandline")
+            item for item in suite_task_catalog("commandline", full=True)
             if item["id"].startswith("cli_exp_")
         )
         commands = task["grading"]["required_commands"]

@@ -27,7 +27,7 @@ from platform_support import create_sampler
 ROOT = Path(__file__).resolve().parents[1]
 PROFILES = {
     "coding": "coding-agent-v2-web",
-    "commandline": "commandline-agent-v1",
+    "commandline": "commandline-agent-v2-standard-20",
 }
 PROFILE = PROFILES["coding"]
 FIELDS = [
@@ -62,6 +62,10 @@ def parse_args(argv=None):
     parser.add_argument("--timeout", type=int, default=7200)
     parser.add_argument("--openhands-python", default=str(Path.home() / ".local/venvs/openhands-1.11.0/bin/python"))
     parser.add_argument("--tasks", "--test", dest="tasks", nargs="*")
+    parser.add_argument(
+        "--full-suite", "--full_suite", dest="full_suite", action="store_true",
+        help="Run all 120 command-line tasks instead of the default 20-task profile.",
+    )
     parser.add_argument("--list-tasks", action="store_true")
     parser.add_argument("--run", action="store_true")
     return parser.parse_args(argv)
@@ -256,10 +260,16 @@ def validate_existing_records(records: list[dict], profile: str = PROFILE) -> No
 
 def main(argv=None) -> int:
     args = parse_args(argv)
-    profile = PROFILES[args.suite]
+    if args.full_suite and args.suite != "commandline":
+        raise SystemExit("--full-suite is only supported with --suite commandline")
+    profile = (
+        "commandline-agent-v2-full-120"
+        if args.suite == "commandline" and args.full_suite
+        else PROFILES[args.suite]
+    )
     if args.harness in {"ollama-direct", "hermes", "openclaw"} and args.model_runner != "ollama":
         raise SystemExit(f"--harness {args.harness} currently requires --model-runner ollama")
-    tasks = suite_task_catalog(args.suite)
+    tasks = suite_task_catalog(args.suite, full=args.full_suite)
     if args.tasks:
         wanted = set(args.tasks); tasks = [task for task in tasks if task["id"] in wanted]
         missing = wanted - {task["id"] for task in tasks}

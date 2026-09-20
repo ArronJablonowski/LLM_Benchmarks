@@ -8,6 +8,7 @@ workspace="$campaign_dir/workspace"
 python_bin="${BENCH_PYTHON:-python3}"
 timeout="${BENCH_TASK_TIMEOUT:-1800}"
 suite="${BENCH_SUITE:-standard}"
+full_suite="${BENCH_FULL_SUITE:-0}"
 state_file="$campaign_dir/pre-campaign-services.env"
 
 export PATH="$HOME/.local/bin:$HOME/.openclaw/bin:$HOME/.openclaw/tools/node/bin:$PATH"
@@ -57,8 +58,10 @@ trap restore_services EXIT
 
 systemctl --user stop hermes-gateway.service openclaw-gateway.service comfyui.service
 
+runner="$repo_dir/scripts/cli_agent_benchmarks.py"
+[[ "$suite" == "commandline" ]] && runner="$repo_dir/scripts/commandline_agent_benchmarks.py"
 for harness in ${BENCH_CLI_HARNESSES:-pi goose}; do
-  "$python_bin" "$repo_dir/scripts/cli_agent_benchmarks.py" \
+  runner_args=(
     --suite "$suite" \
     --harness "$harness" \
     --models-file "$models_file" \
@@ -66,6 +69,9 @@ for harness in ${BENCH_CLI_HARNESSES:-pi goose}; do
     --workspace "$workspace" \
     --timeout "$timeout" \
     --run
+  )
+  [[ "$suite" == "commandline" && "$full_suite" == 1 ]] && runner_args+=(--full-suite)
+  "$python_bin" "$runner" "${runner_args[@]}"
 done
 
 if [[ "$suite" == "coding" ]]; then
