@@ -24,6 +24,10 @@ def parse_args(argv=None):
     parser.add_argument("--prompt", required=True)
     parser.add_argument("--timeout", type=int, default=7200)
     parser.add_argument("--max-turns", type=int, default=150)
+    parser.add_argument(
+        "--num-ctx", type=int, default=16_384,
+        help="Fixed Ollama context window used to keep local runs comparable and memory-safe.",
+    )
     parser.add_argument("--ollama-url", default="http://127.0.0.1:11434")
     return parser.parse_args(argv)
 
@@ -155,8 +159,12 @@ def request(url: str, payload: dict, timeout: float) -> dict:
 
 def main(argv=None) -> int:
     args = parse_args(argv)
-    if not 1 <= args.timeout <= 14_400 or not 1 <= args.max_turns <= 500:
-        raise SystemExit("invalid timeout or max-turns")
+    if (
+        not 1 <= args.timeout <= 14_400
+        or not 1 <= args.max_turns <= 500
+        or not 2_048 <= args.num_ctx <= 131_072
+    ):
+        raise SystemExit("invalid timeout, max-turns, or num-ctx")
     workspace = WorkspaceTools(args.workspace)
     messages = [{
         "role": "system",
@@ -175,7 +183,9 @@ def main(argv=None) -> int:
         data = request(args.ollama_url, {
             "model": args.model, "messages": messages, "tools": tools(),
             "stream": False, "keep_alive": "30m",
-            "options": {"temperature": 0, "num_predict": -1},
+            "options": {
+                "temperature": 0, "num_predict": -1, "num_ctx": args.num_ctx,
+            },
         }, min(remaining, 1800))
         message = data.get("message") or {}
         messages.append(message)
