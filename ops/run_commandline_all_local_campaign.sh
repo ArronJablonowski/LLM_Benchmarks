@@ -53,9 +53,15 @@ sample_temperature() {
 }
 
 telemetry_pid=""
+campaign_completed=0
 cleanup() {
+  local exit_code="$?"
   [[ -n "$telemetry_pid" ]] && kill "$telemetry_pid" 2>/dev/null || true
   wait "$telemetry_pid" 2>/dev/null || true
+  if (( campaign_completed == 0 )); then
+    write_state failed "${harness:-}" "${started_at:-}"
+  fi
+  return "$exit_code"
 }
 trap cleanup EXIT INT TERM
 
@@ -78,3 +84,4 @@ done
 
 write_state complete
 touch "$campaign_dir/campaign.done"
+campaign_completed=1
