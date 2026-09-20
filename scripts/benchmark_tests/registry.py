@@ -20,8 +20,9 @@ COMPONENT_DIRECTORY = Path(__file__).with_name("core")
 CODING_COMPONENT_DIRECTORY = Path(__file__).with_name("coding")
 CREATIVE_COMPONENT_DIRECTORY = Path(__file__).with_name("creative")
 CYBERSECURITY_COMPONENT_DIRECTORY = Path(__file__).with_name("cybersecurity")
+COMMANDLINE_COMPONENT_DIRECTORY = Path(__file__).with_name("commandline")
 DEFAULT_SUITE = "standard"
-SUITE_CHOICES = (DEFAULT_SUITE, "coding", "creative", "cybersecurity")
+SUITE_CHOICES = (DEFAULT_SUITE, "coding", "creative", "cybersecurity", "commandline")
 REQUIRED_FIELDS = {"id", "family", "category", "name", "prompt", "grading"}
 CORE_TASK_ORDER = (
     "exact_reply", "simple_reasoning", "coding_micro", "ifeval_exact",
@@ -74,6 +75,28 @@ CYBERSECURITY_TASK_ORDER = (
     "cyber_llm_prompt_injection",
     "cyber_llm_tool_rag_security",
     "cyber_cloud_kubernetes_hardening",
+)
+COMMANDLINE_TASK_ORDER = (
+    "cli_linux_basics",
+    "cli_macos_diagnostics",
+    "cli_windows_cmd_diagnostics",
+    "cli_powershell_services",
+    "cli_wmi_inventory",
+    "cli_ssh_triage",
+    "cli_ubuntu_admin",
+    "cli_rhel_admin",
+    "cli_alpine_admin",
+    "cli_custom_menu_navigation",
+    "cli_pfsense_interface_recovery",
+    "cli_pfsense_firewall_nat",
+    "cli_pfsense_vpn_diagnostics",
+    "cli_openwrt_network_recovery",
+    "cli_openwrt_firewall_diagnostics",
+    "cli_linux_incident_response",
+    "cli_macos_incident_response",
+    "cli_windows_incident_response",
+    "cli_multi_host_incident_response",
+    "cli_multi_firewall_outage",
 )
 
 
@@ -289,6 +312,58 @@ def _cybersecurity_tasks() -> tuple[dict[str, Any], ...]:
     return tuple(by_id[task_id] for task_id in CYBERSECURITY_TASK_ORDER)
 
 
+@lru_cache(maxsize=1)
+def _commandline_tasks() -> tuple[dict[str, Any], ...]:
+    paths = sorted(COMMANDLINE_COMPONENT_DIRECTORY.glob("*.json"))
+    if not paths:
+        raise BenchmarkComponentError("no command-line benchmark components found")
+    tasks = [_load_descriptor(path) for path in paths]
+    required = {
+        "fixture", "grader", "time_class", "benchmark_origin", "platform",
+        "difficulty", "skills", "lab",
+    }
+    for path, task in zip(paths, tasks):
+        missing = required - task.keys()
+        if missing:
+            raise _fail(path, "missing command-line fields: " + ", ".join(sorted(missing)))
+        if task["grading"].get("kind") != "workspace":
+            raise _fail(path, "command-line grading.kind must be workspace")
+        for field in (
+            "fixture", "grader", "time_class", "benchmark_origin", "platform",
+            "difficulty",
+        ):
+            if not isinstance(task[field], str) or not task[field]:
+                raise _fail(path, f"{field} must be a non-empty string")
+        if not isinstance(task["skills"], list) or not all(
+            isinstance(item, str) and item for item in task["skills"]
+        ):
+            raise _fail(path, "skills must be a non-empty string list")
+        lab = task["lab"]
+        if not isinstance(lab, dict) or not isinstance(lab.get("commands"), dict):
+            raise _fail(path, "lab.commands must be an object")
+        if not lab["commands"] or not all(
+            isinstance(command, str) and command and isinstance(output, str)
+            for command, output in lab["commands"].items()
+        ):
+            raise _fail(path, "lab.commands must map non-empty commands to output strings")
+    task_ids = [task["id"] for task in tasks]
+    if len(task_ids) != len(set(task_ids)):
+        raise BenchmarkComponentError("duplicate command-line benchmark component ids")
+    all_existing = (
+        set(CORE_TASK_ORDER) | set(CODING_TASK_ORDER) | set(CREATIVE_TASK_ORDER)
+        | set(CYBERSECURITY_TASK_ORDER)
+    )
+    overlap = set(task_ids) & all_existing
+    if overlap:
+        raise BenchmarkComponentError(
+            "command-line tasks overlap another suite: " + ", ".join(sorted(overlap))
+        )
+    if set(task_ids) != set(COMMANDLINE_TASK_ORDER):
+        raise BenchmarkComponentError("command-line task order is out of sync")
+    by_id = {task["id"]: task for task in tasks}
+    return tuple(by_id[task_id] for task_id in COMMANDLINE_TASK_ORDER)
+
+
 def core_task_catalog() -> list[dict[str, Any]]:
     """Return fresh task mappings so callers cannot mutate the registry."""
     return copy.deepcopy(list(_core_tasks()))
@@ -308,6 +383,8 @@ def suite_task_catalog(suite: str = DEFAULT_SUITE) -> list[dict[str, Any]]:
         return copy.deepcopy(list(_creative_tasks()))
     if suite == "cybersecurity":
         return copy.deepcopy(list(_cybersecurity_tasks()))
+    if suite == "commandline":
+        return copy.deepcopy(list(_commandline_tasks()))
     choices = ", ".join(SUITE_CHOICES)
     raise BenchmarkComponentError(
         f"unknown benchmark suite: {suite}; choose from: {choices}"

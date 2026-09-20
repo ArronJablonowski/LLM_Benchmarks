@@ -20,7 +20,7 @@ exec >>"$campaign_dir/campaign.log" 2>&1
 echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] project campaign start/resume host=$(hostname) repo=$repo_dir"
 
 for suite in $suite_list; do
-  [[ "$suite" == coding || "$suite" == creative ]] || {
+  [[ "$suite" == coding || "$suite" == creative || "$suite" == commandline ]] || {
     echo "Unsupported project suite: $suite" >&2; exit 1;
   }
 done
@@ -158,7 +158,7 @@ for suite in $suite_list; do
     "$python_bin" "$repo_dir/dashboard/generate_coding_report.py" \
       --input-root "$campaign_dir/coding" \
       --output "$campaign_dir/coding_agent_report.html"
-  else
+  elif [[ "$suite" == creative ]]; then
     "$python_bin" "$repo_dir/dashboard/generate_creative_review.py" \
       --input-root "$campaign_dir/creative" \
       --output "$campaign_dir/creative_human_review.html"
