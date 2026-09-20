@@ -94,6 +94,32 @@ class CommandLineSuiteTests(unittest.TestCase):
             payload = json.loads(proc.stdout.strip().splitlines()[-1])
             self.assertEqual("fail", payload["verdict"])
 
+    def test_golden_easy_workflow_passes_hidden_grader(self):
+        task = suite_task_catalog("commandline")[0]
+        commands = ["uname -a", "df -h", "ps aux --sort=-%cpu"]
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = project_runner.prepare_workspace(
+                Path(directory), "fixture", "model", task
+            )
+            for command in commands:
+                subprocess.run(
+                    [sys.executable, str(workspace / "terminal_lab.py"), "run", command],
+                    cwd=workspace, check=True, capture_output=True, text=True,
+                )
+            (workspace / "answer.json").write_text(json.dumps({
+                "commands": commands,
+                "findings": ["The /var disk is full", "python3 is the top CPU process"],
+                "actions": ["Preserve logs, identify safe cleanup candidates, then recheck usage"],
+                "menu_path": [],
+            }), encoding="utf-8")
+            proc = subprocess.run(
+                [sys.executable, str(ROOT / task["grader"]), str(workspace)],
+                text=True, capture_output=True, check=False,
+            )
+            self.assertEqual(0, proc.returncode, proc.stderr)
+            payload = json.loads(proc.stdout.strip().splitlines()[-1])
+            self.assertEqual("pass", payload["verdict"])
+
 
 if __name__ == "__main__":
     unittest.main()
