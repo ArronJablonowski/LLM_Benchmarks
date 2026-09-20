@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_powershell_10",
+  "family": "Escalating Command Line Lab",
+  "category": "powershell_wmi_operations",
+  "name": "Hyper-V outage",
+  "prompt": "Investigate the simulated hyper-v outage scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Windows",
+  "difficulty": "expert",
+  "difficulty_level": 10,
+  "skills": [
+    "PowerShell",
+    "CIM",
+    "Windows administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Hyper-V outage. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "Get-VM": "STEP 1/3: simulated hyper-v outage evidence for Get-VM",
+      "Get-VMNetworkAdapter -All": "STEP 2/3: simulated hyper-v outage evidence for Get-VMNetworkAdapter -All",
+      "Get-VMSwitch | Format-List *": "STEP 3/3: simulated hyper-v outage evidence for Get-VMSwitch | Format-List *\nDECISIVE: evidence-cli_exp_powershell_10"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "Get-VM",
+      "Get-VMNetworkAdapter -All",
+      "Get-VMSwitch | Format-List *"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_powershell_10"
+    ],
+    "required_menu": []
+  }
+}

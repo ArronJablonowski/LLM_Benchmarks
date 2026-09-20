@@ -42,7 +42,18 @@ def subsequence(required: list[str], actual: list[str]) -> bool:
 def main(workspace: Path) -> int:
     checks = Checks()
     task_id = (workspace / ".benchmark-task-id").read_text(encoding="utf-8").strip()
-    required_commands, required_findings, required_menu = EXPECTED[task_id]
+    if task_id in EXPECTED:
+        required_commands, required_findings, required_menu = EXPECTED[task_id]
+    else:
+        descriptor_path = (
+            Path(__file__).resolve().parents[1]
+            / "scripts" / "benchmark_tests" / "commandline" / f"{task_id}.json"
+        )
+        descriptor = json.loads(descriptor_path.read_text(encoding="utf-8"))
+        grading = descriptor["grading"]
+        required_commands = grading["required_commands"]
+        required_findings = grading["required_findings"]
+        required_menu = grading.get("required_menu", [])
     answer_path = workspace / "answer.json"
     try:
         answer = json.loads(answer_path.read_text(encoding="utf-8"))

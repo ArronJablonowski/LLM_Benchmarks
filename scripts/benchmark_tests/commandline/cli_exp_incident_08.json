@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_incident_08",
+  "family": "Escalating Command Line Lab",
+  "category": "live_incident_response",
+  "name": "Windows ransomware staging",
+  "prompt": "Investigate the simulated windows ransomware staging scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Cross-platform incident response",
+  "difficulty": "hard",
+  "difficulty_level": 8,
+  "skills": [
+    "incident response",
+    "IOC investigation",
+    "evidence preservation"
+  ],
+  "lab": {
+    "context": "Escalating lab: Windows ransomware staging. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "Get-SmbSession": "STEP 1/3: simulated windows ransomware staging evidence for Get-SmbSession",
+      "Get-WinEvent -FilterHashtable @{LogName='Security';Id=4663}": "STEP 2/3: simulated windows ransomware staging evidence for Get-WinEvent -FilterHashtable @{LogName='Security';Id=4663}",
+      "Get-ChildItem C:\\Users -Recurse -Filter '*.locked'": "STEP 3/3: simulated windows ransomware staging evidence for Get-ChildItem C:\\Users -Recurse -Filter '*.locked'\nDECISIVE: evidence-cli_exp_incident_08"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "Get-SmbSession",
+      "Get-WinEvent -FilterHashtable @{LogName='Security';Id=4663}",
+      "Get-ChildItem C:\\Users -Recurse -Filter '*.locked'"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_incident_08"
+    ],
+    "required_menu": []
+  }
+}

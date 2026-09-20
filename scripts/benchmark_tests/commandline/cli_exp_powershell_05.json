@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_powershell_05",
+  "family": "Escalating Command Line Lab",
+  "category": "powershell_wmi_operations",
+  "name": "Local account audit",
+  "prompt": "Investigate the simulated local account audit scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Windows",
+  "difficulty": "medium",
+  "difficulty_level": 5,
+  "skills": [
+    "PowerShell",
+    "CIM",
+    "Windows administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Local account audit. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "Get-LocalUser": "STEP 1/3: simulated local account audit evidence for Get-LocalUser",
+      "Get-LocalGroupMember Administrators": "STEP 2/3: simulated local account audit evidence for Get-LocalGroupMember Administrators",
+      "Get-CimInstance Win32_UserProfile": "STEP 3/3: simulated local account audit evidence for Get-CimInstance Win32_UserProfile\nDECISIVE: evidence-cli_exp_powershell_05"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "Get-LocalUser",
+      "Get-LocalGroupMember Administrators",
+      "Get-CimInstance Win32_UserProfile"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_powershell_05"
+    ],
+    "required_menu": []
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_cmd_01",
+  "family": "Escalating Command Line Lab",
+  "category": "windows_cmd_operations",
+  "name": "Identity and environment",
+  "prompt": "Investigate the simulated identity and environment scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "short",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Windows",
+  "difficulty": "easy",
+  "difficulty_level": 1,
+  "skills": [
+    "cmd.exe",
+    "Windows administration",
+    "diagnostics"
+  ],
+  "lab": {
+    "context": "Escalating lab: Identity and environment. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "whoami /all": "STEP 1/3: simulated identity and environment evidence for whoami /all",
+      "set": "STEP 2/3: simulated identity and environment evidence for set",
+      "hostname": "STEP 3/3: simulated identity and environment evidence for hostname\nDECISIVE: evidence-cli_exp_cmd_01"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "whoami /all",
+      "set",
+      "hostname"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_cmd_01"
+    ],
+    "required_menu": []
+  }
+}

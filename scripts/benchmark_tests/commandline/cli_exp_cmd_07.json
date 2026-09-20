@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_cmd_07",
+  "family": "Escalating Command Line Lab",
+  "category": "windows_cmd_operations",
+  "name": "Firewall inspection",
+  "prompt": "Investigate the simulated firewall inspection scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Windows",
+  "difficulty": "hard",
+  "difficulty_level": 7,
+  "skills": [
+    "cmd.exe",
+    "Windows administration",
+    "diagnostics"
+  ],
+  "lab": {
+    "context": "Escalating lab: Firewall inspection. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "netsh advfirewall show allprofiles": "STEP 1/3: simulated firewall inspection evidence for netsh advfirewall show allprofiles",
+      "netsh advfirewall firewall show rule name=all": "STEP 2/3: simulated firewall inspection evidence for netsh advfirewall firewall show rule name=all",
+      "netstat -abno": "STEP 3/3: simulated firewall inspection evidence for netstat -abno\nDECISIVE: evidence-cli_exp_cmd_07"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "netsh advfirewall show allprofiles",
+      "netsh advfirewall firewall show rule name=all",
+      "netstat -abno"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_cmd_07"
+    ],
+    "required_menu": []
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_linux_04",
+  "family": "Escalating Command Line Lab",
+  "category": "linux_operations",
+  "name": "Boot regression",
+  "prompt": "Investigate the simulated boot regression scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Linux",
+  "difficulty": "medium",
+  "difficulty_level": 4,
+  "skills": [
+    "bash",
+    "diagnostics",
+    "administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Boot regression. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "systemd-analyze": "STEP 1/3: simulated boot regression evidence for systemd-analyze",
+      "systemd-analyze blame": "STEP 2/3: simulated boot regression evidence for systemd-analyze blame",
+      "journalctl -b -p warning": "STEP 3/3: simulated boot regression evidence for journalctl -b -p warning\nDECISIVE: evidence-cli_exp_linux_04"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "systemd-analyze",
+      "systemd-analyze blame",
+      "journalctl -b -p warning"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_linux_04"
+    ],
+    "required_menu": []
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_linux_10",
+  "family": "Escalating Command Line Lab",
+  "category": "linux_operations",
+  "name": "Multipath storage outage",
+  "prompt": "Investigate the simulated multipath storage outage scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Linux",
+  "difficulty": "expert",
+  "difficulty_level": 10,
+  "skills": [
+    "bash",
+    "diagnostics",
+    "administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Multipath storage outage. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "multipath -ll": "STEP 1/3: simulated multipath storage outage evidence for multipath -ll",
+      "lsblk -o NAME,HCTL,SIZE,STATE,MOUNTPOINT": "STEP 2/3: simulated multipath storage outage evidence for lsblk -o NAME,HCTL,SIZE,STATE,MOUNTPOINT",
+      "journalctl -u multipathd --since -2h": "STEP 3/3: simulated multipath storage outage evidence for journalctl -u multipathd --since -2h\nDECISIVE: evidence-cli_exp_linux_10"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "multipath -ll",
+      "lsblk -o NAME,HCTL,SIZE,STATE,MOUNTPOINT",
+      "journalctl -u multipathd --since -2h"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_linux_10"
+    ],
+    "required_menu": []
+  }
+}

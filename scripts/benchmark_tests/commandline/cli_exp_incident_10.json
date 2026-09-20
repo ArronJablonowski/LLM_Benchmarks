@@ -1,0 +1,43 @@
+{
+  "id": "cli_exp_incident_10",
+  "family": "Escalating Command Line Lab",
+  "category": "live_incident_response",
+  "name": "Enterprise coordinated intrusion",
+  "prompt": "Investigate the simulated enterprise coordinated intrusion scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Cross-platform incident response",
+  "difficulty": "expert",
+  "difficulty_level": 10,
+  "skills": [
+    "incident response",
+    "IOC investigation",
+    "evidence preservation"
+  ],
+  "lab": {
+    "context": "Escalating lab: Enterprise coordinated intrusion. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "date -u": "STEP 1/5: simulated enterprise coordinated intrusion evidence for date -u",
+      "parallel-ssh -h linux-hosts.txt 'ss -plant'": "STEP 2/5: simulated enterprise coordinated intrusion evidence for parallel-ssh -h linux-hosts.txt 'ss -plant'",
+      "Invoke-Command -ComputerName (Get-Content windows-hosts.txt) { Get-NetTCPConnection }": "STEP 3/5: simulated enterprise coordinated intrusion evidence for Invoke-Command -ComputerName (Get-Content windows-hosts.txt) { Get-NetTCPConnection }",
+      "ssh ir@pfsense 'pfctl -ss'": "STEP 4/5: simulated enterprise coordinated intrusion evidence for ssh ir@pfsense 'pfctl -ss'",
+      "ssh ir@openwrt 'nft list ruleset'": "STEP 5/5: simulated enterprise coordinated intrusion evidence for ssh ir@openwrt 'nft list ruleset'\nDECISIVE: evidence-cli_exp_incident_10"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "date -u",
+      "parallel-ssh -h linux-hosts.txt 'ss -plant'",
+      "Invoke-Command -ComputerName (Get-Content windows-hosts.txt) { Get-NetTCPConnection }",
+      "ssh ir@pfsense 'pfctl -ss'",
+      "ssh ir@openwrt 'nft list ruleset'"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_incident_10"
+    ],
+    "required_menu": []
+  }
+}

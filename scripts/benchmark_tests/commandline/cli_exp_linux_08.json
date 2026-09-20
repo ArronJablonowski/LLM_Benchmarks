@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_linux_08",
+  "family": "Escalating Command Line Lab",
+  "category": "linux_operations",
+  "name": "Kernel fault triage",
+  "prompt": "Investigate the simulated kernel fault triage scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Linux",
+  "difficulty": "hard",
+  "difficulty_level": 8,
+  "skills": [
+    "bash",
+    "diagnostics",
+    "administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Kernel fault triage. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "uname -r": "STEP 1/3: simulated kernel fault triage evidence for uname -r",
+      "journalctl -k -p err --since today": "STEP 2/3: simulated kernel fault triage evidence for journalctl -k -p err --since today",
+      "lsmod | sort": "STEP 3/3: simulated kernel fault triage evidence for lsmod | sort\nDECISIVE: evidence-cli_exp_linux_08"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "uname -r",
+      "journalctl -k -p err --since today",
+      "lsmod | sort"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_linux_08"
+    ],
+    "required_menu": []
+  }
+}

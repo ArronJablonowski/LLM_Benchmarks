@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_ssh_10",
+  "family": "Escalating Command Line Lab",
+  "category": "ssh_network_operations",
+  "name": "Fleet evidence collection",
+  "prompt": "Investigate the simulated fleet evidence collection scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Mixed Unix over SSH",
+  "difficulty": "expert",
+  "difficulty_level": 10,
+  "skills": [
+    "SSH",
+    "remote administration",
+    "networking"
+  ],
+  "lab": {
+    "context": "Escalating lab: Fleet evidence collection. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "parallel-ssh -h hosts.txt -x '-o BatchMode=yes' 'date -u'": "STEP 1/3: simulated fleet evidence collection evidence for parallel-ssh -h hosts.txt -x '-o BatchMode=yes' 'date -u'",
+      "parallel-ssh -h hosts.txt 'sha256sum /usr/local/bin/agent'": "STEP 2/3: simulated fleet evidence collection evidence for parallel-ssh -h hosts.txt 'sha256sum /usr/local/bin/agent'",
+      "parallel-ssh -h hosts.txt 'ss -plant'": "STEP 3/3: simulated fleet evidence collection evidence for parallel-ssh -h hosts.txt 'ss -plant'\nDECISIVE: evidence-cli_exp_ssh_10"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "parallel-ssh -h hosts.txt -x '-o BatchMode=yes' 'date -u'",
+      "parallel-ssh -h hosts.txt 'sha256sum /usr/local/bin/agent'",
+      "parallel-ssh -h hosts.txt 'ss -plant'"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_ssh_10"
+    ],
+    "required_menu": []
+  }
+}

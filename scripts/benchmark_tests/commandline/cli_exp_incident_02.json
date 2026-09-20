@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_incident_02",
+  "family": "Escalating Command Line Lab",
+  "category": "live_incident_response",
+  "name": "Windows malicious service",
+  "prompt": "Investigate the simulated windows malicious service scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "short",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Cross-platform incident response",
+  "difficulty": "easy",
+  "difficulty_level": 2,
+  "skills": [
+    "incident response",
+    "IOC investigation",
+    "evidence preservation"
+  ],
+  "lab": {
+    "context": "Escalating lab: Windows malicious service. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "Get-Date -AsUTC": "STEP 1/3: simulated windows malicious service evidence for Get-Date -AsUTC",
+      "Get-CimInstance Win32_Service": "STEP 2/3: simulated windows malicious service evidence for Get-CimInstance Win32_Service",
+      "Get-WinEvent -FilterHashtable @{LogName='System';Id=7045}": "STEP 3/3: simulated windows malicious service evidence for Get-WinEvent -FilterHashtable @{LogName='System';Id=7045}\nDECISIVE: evidence-cli_exp_incident_02"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "Get-Date -AsUTC",
+      "Get-CimInstance Win32_Service",
+      "Get-WinEvent -FilterHashtable @{LogName='System';Id=7045}"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_incident_02"
+    ],
+    "required_menu": []
+  }
+}

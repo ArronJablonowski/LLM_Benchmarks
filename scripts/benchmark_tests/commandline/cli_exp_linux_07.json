@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_linux_07",
+  "family": "Escalating Command Line Lab",
+  "category": "linux_operations",
+  "name": "Container resource leak",
+  "prompt": "Investigate the simulated container resource leak scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Linux",
+  "difficulty": "hard",
+  "difficulty_level": 7,
+  "skills": [
+    "bash",
+    "diagnostics",
+    "administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Container resource leak. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "systemd-cgtop -b -n 1": "STEP 1/3: simulated container resource leak evidence for systemd-cgtop -b -n 1",
+      "nsenter -t 4242 -n ss -plant": "STEP 2/3: simulated container resource leak evidence for nsenter -t 4242 -n ss -plant",
+      "cat /proc/4242/cgroup": "STEP 3/3: simulated container resource leak evidence for cat /proc/4242/cgroup\nDECISIVE: evidence-cli_exp_linux_07"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "systemd-cgtop -b -n 1",
+      "nsenter -t 4242 -n ss -plant",
+      "cat /proc/4242/cgroup"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_linux_07"
+    ],
+    "required_menu": []
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_cmd_02",
+  "family": "Escalating Command Line Lab",
+  "category": "windows_cmd_operations",
+  "name": "Disk diagnostics",
+  "prompt": "Investigate the simulated disk diagnostics scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "short",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Windows",
+  "difficulty": "easy",
+  "difficulty_level": 2,
+  "skills": [
+    "cmd.exe",
+    "Windows administration",
+    "diagnostics"
+  ],
+  "lab": {
+    "context": "Escalating lab: Disk diagnostics. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "fsutil volume diskfree c:": "STEP 1/3: simulated disk diagnostics evidence for fsutil volume diskfree c:",
+      "chkdsk c: /scan": "STEP 2/3: simulated disk diagnostics evidence for chkdsk c: /scan",
+      "dir c:\\ /a": "STEP 3/3: simulated disk diagnostics evidence for dir c:\\ /a\nDECISIVE: evidence-cli_exp_cmd_02"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "fsutil volume diskfree c:",
+      "chkdsk c: /scan",
+      "dir c:\\ /a"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_cmd_02"
+    ],
+    "required_menu": []
+  }
+}

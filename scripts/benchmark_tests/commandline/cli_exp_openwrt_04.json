@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_openwrt_04",
+  "family": "Escalating Command Line Lab",
+  "category": "openwrt_administration",
+  "name": "DNS forwarding failure",
+  "prompt": "Investigate the simulated dns forwarding failure scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "OpenWrt mock",
+  "difficulty": "medium",
+  "difficulty_level": 4,
+  "skills": [
+    "OpenWrt",
+    "UCI",
+    "router administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: DNS forwarding failure. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "uci show dhcp": "STEP 1/3: simulated dns forwarding failure evidence for uci show dhcp",
+      "ubus call service list '{\"name\":\"dnsmasq\"}'": "STEP 2/3: simulated dns forwarding failure evidence for ubus call service list '{\"name\":\"dnsmasq\"}'",
+      "logread -e dnsmasq": "STEP 3/3: simulated dns forwarding failure evidence for logread -e dnsmasq\nDECISIVE: evidence-cli_exp_openwrt_04"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "uci show dhcp",
+      "ubus call service list '{\"name\":\"dnsmasq\"}'",
+      "logread -e dnsmasq"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_openwrt_04"
+    ],
+    "required_menu": []
+  }
+}

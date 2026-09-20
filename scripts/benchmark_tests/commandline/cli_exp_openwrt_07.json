@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_openwrt_07",
+  "family": "Escalating Command Line Lab",
+  "category": "openwrt_administration",
+  "name": "SQM regression",
+  "prompt": "Investigate the simulated sqm regression scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "OpenWrt mock",
+  "difficulty": "hard",
+  "difficulty_level": 7,
+  "skills": [
+    "OpenWrt",
+    "UCI",
+    "router administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: SQM regression. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "uci show sqm": "STEP 1/3: simulated sqm regression evidence for uci show sqm",
+      "tc -s qdisc show dev pppoe-wan": "STEP 2/3: simulated sqm regression evidence for tc -s qdisc show dev pppoe-wan",
+      "logread -e sqm": "STEP 3/3: simulated sqm regression evidence for logread -e sqm\nDECISIVE: evidence-cli_exp_openwrt_07"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "uci show sqm",
+      "tc -s qdisc show dev pppoe-wan",
+      "logread -e sqm"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_openwrt_07"
+    ],
+    "required_menu": []
+  }
+}

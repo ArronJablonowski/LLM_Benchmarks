@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_linux_01",
+  "family": "Escalating Command Line Lab",
+  "category": "linux_operations",
+  "name": "Filesystem pressure",
+  "prompt": "Investigate the simulated filesystem pressure scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "short",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Linux",
+  "difficulty": "easy",
+  "difficulty_level": 1,
+  "skills": [
+    "bash",
+    "diagnostics",
+    "administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Filesystem pressure. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "findmnt -o TARGET,SOURCE,FSTYPE,OPTIONS": "STEP 1/3: simulated filesystem pressure evidence for findmnt -o TARGET,SOURCE,FSTYPE,OPTIONS",
+      "df -i": "STEP 2/3: simulated filesystem pressure evidence for df -i",
+      "du -xhd1 /var | sort -h": "STEP 3/3: simulated filesystem pressure evidence for du -xhd1 /var | sort -h\nDECISIVE: evidence-cli_exp_linux_01"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "findmnt -o TARGET,SOURCE,FSTYPE,OPTIONS",
+      "df -i",
+      "du -xhd1 /var | sort -h"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_linux_01"
+    ],
+    "required_menu": []
+  }
+}

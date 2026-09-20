@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_macos_06",
+  "family": "Escalating Command Line Lab",
+  "category": "macos_operations",
+  "name": "FileVault posture",
+  "prompt": "Investigate the simulated filevault posture scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "macOS",
+  "difficulty": "hard",
+  "difficulty_level": 6,
+  "skills": [
+    "zsh",
+    "macOS administration",
+    "diagnostics"
+  ],
+  "lab": {
+    "context": "Escalating lab: FileVault posture. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "fdesetup status": "STEP 1/3: simulated filevault posture evidence for fdesetup status",
+      "diskutil apfs listCryptoUsers /": "STEP 2/3: simulated filevault posture evidence for diskutil apfs listCryptoUsers /",
+      "profiles status -type enrollment": "STEP 3/3: simulated filevault posture evidence for profiles status -type enrollment\nDECISIVE: evidence-cli_exp_macos_06"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "fdesetup status",
+      "diskutil apfs listCryptoUsers /",
+      "profiles status -type enrollment"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_macos_06"
+    ],
+    "required_menu": []
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_macos_10",
+  "family": "Escalating Command Line Lab",
+  "category": "macos_operations",
+  "name": "APFS snapshot recovery",
+  "prompt": "Investigate the simulated apfs snapshot recovery scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "macOS",
+  "difficulty": "expert",
+  "difficulty_level": 10,
+  "skills": [
+    "zsh",
+    "macOS administration",
+    "diagnostics"
+  ],
+  "lab": {
+    "context": "Escalating lab: APFS snapshot recovery. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "diskutil apfs list": "STEP 1/3: simulated apfs snapshot recovery evidence for diskutil apfs list",
+      "diskutil apfs listSnapshots /": "STEP 2/3: simulated apfs snapshot recovery evidence for diskutil apfs listSnapshots /",
+      "tmutil compare -s": "STEP 3/3: simulated apfs snapshot recovery evidence for tmutil compare -s\nDECISIVE: evidence-cli_exp_macos_10"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "diskutil apfs list",
+      "diskutil apfs listSnapshots /",
+      "tmutil compare -s"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_macos_10"
+    ],
+    "required_menu": []
+  }
+}

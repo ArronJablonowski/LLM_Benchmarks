@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_incident_03",
+  "family": "Escalating Command Line Lab",
+  "category": "live_incident_response",
+  "name": "macOS launch agent",
+  "prompt": "Investigate the simulated macos launch agent scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Cross-platform incident response",
+  "difficulty": "medium",
+  "difficulty_level": 3,
+  "skills": [
+    "incident response",
+    "IOC investigation",
+    "evidence preservation"
+  ],
+  "lab": {
+    "context": "Escalating lab: macOS launch agent. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "date -u": "STEP 1/3: simulated macos launch agent evidence for date -u",
+      "launchctl print gui/501/com.fixture.sync": "STEP 2/3: simulated macos launch agent evidence for launchctl print gui/501/com.fixture.sync",
+      "plutil -p ~/Library/LaunchAgents/com.fixture.sync.plist": "STEP 3/3: simulated macos launch agent evidence for plutil -p ~/Library/LaunchAgents/com.fixture.sync.plist\nDECISIVE: evidence-cli_exp_incident_03"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "date -u",
+      "launchctl print gui/501/com.fixture.sync",
+      "plutil -p ~/Library/LaunchAgents/com.fixture.sync.plist"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_incident_03"
+    ],
+    "required_menu": []
+  }
+}

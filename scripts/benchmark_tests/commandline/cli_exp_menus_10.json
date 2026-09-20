@@ -1,0 +1,48 @@
+{
+  "id": "cli_exp_menus_10",
+  "family": "Escalating Command Line Lab",
+  "category": "interactive_terminal_menus",
+  "name": "Disaster recovery console",
+  "prompt": "Investigate the simulated disaster recovery console scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Terminal appliances",
+  "difficulty": "expert",
+  "difficulty_level": 10,
+  "skills": [
+    "terminal menus",
+    "state tracking",
+    "administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Disaster recovery console. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "show recovery points": "STEP 1/2: simulated disaster recovery console evidence for show recovery points",
+      "validate recovery point rp-42": "STEP 2/2: simulated disaster recovery console evidence for validate recovery point rp-42\nDECISIVE: evidence-cli_exp_menus_10"
+    },
+    "menus": {
+      "9>3>4>2>rp-42>1>3": "Menu path confirmed for Disaster recovery console; DECISIVE: evidence-cli_exp_menus_10"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "show recovery points",
+      "validate recovery point rp-42"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_menus_10"
+    ],
+    "required_menu": [
+      "9",
+      "3",
+      "4",
+      "2",
+      "rp-42",
+      "1",
+      "3"
+    ]
+  }
+}

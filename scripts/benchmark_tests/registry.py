@@ -358,10 +358,40 @@ def _commandline_tasks() -> tuple[dict[str, Any], ...]:
         raise BenchmarkComponentError(
             "command-line tasks overlap another suite: " + ", ".join(sorted(overlap))
         )
-    if set(task_ids) != set(COMMANDLINE_TASK_ORDER):
-        raise BenchmarkComponentError("command-line task order is out of sync")
-    by_id = {task["id"]: task for task in tasks}
-    return tuple(by_id[task_id] for task_id in COMMANDLINE_TASK_ORDER)
+    if len(task_ids) != 120:
+        raise BenchmarkComponentError(
+            f"command-line profile must contain exactly 120 tasks, found {len(task_ids)}"
+        )
+    missing_handcrafted = set(COMMANDLINE_TASK_ORDER) - set(task_ids)
+    if missing_handcrafted:
+        raise BenchmarkComponentError(
+            "command-line profile is missing hand-authored tasks: "
+            + ", ".join(sorted(missing_handcrafted))
+        )
+    generated = [task for task in tasks if task["id"].startswith("cli_exp_")]
+    if len(generated) != 100:
+        raise BenchmarkComponentError(
+            f"command-line expansion must contain exactly 100 tasks, found {len(generated)}"
+        )
+    difficulty_order = {"easy": 0, "medium": 1, "hard": 2, "expert": 3}
+    for path, task in zip(paths, tasks):
+        if task["difficulty"] not in difficulty_order:
+            raise _fail(path, "difficulty must be easy, medium, hard, or expert")
+        level = task.get("difficulty_level", 0)
+        if not isinstance(level, int) or not 0 <= level <= 10:
+            raise _fail(path, "difficulty_level must be an integer from 0 through 10")
+        grading = task["grading"]
+        for field in ("required_commands", "required_findings", "required_menu"):
+            if field in grading and not isinstance(grading[field], list):
+                raise _fail(path, f"grading.{field} must be a list")
+    return tuple(sorted(
+        tasks,
+        key=lambda task: (
+            difficulty_order[task["difficulty"]],
+            task.get("difficulty_level", 0),
+            task["id"],
+        ),
+    ))
 
 
 def core_task_catalog() -> list[dict[str, Any]]:

@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_macos_04",
+  "family": "Escalating Command Line Lab",
+  "category": "macos_operations",
+  "name": "Network configuration",
+  "prompt": "Investigate the simulated network configuration scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "macOS",
+  "difficulty": "medium",
+  "difficulty_level": 4,
+  "skills": [
+    "zsh",
+    "macOS administration",
+    "diagnostics"
+  ],
+  "lab": {
+    "context": "Escalating lab: Network configuration. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "networksetup -listallhardwareports": "STEP 1/3: simulated network configuration evidence for networksetup -listallhardwareports",
+      "scutil --dns": "STEP 2/3: simulated network configuration evidence for scutil --dns",
+      "route -n get default": "STEP 3/3: simulated network configuration evidence for route -n get default\nDECISIVE: evidence-cli_exp_macos_04"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "networksetup -listallhardwareports",
+      "scutil --dns",
+      "route -n get default"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_macos_04"
+    ],
+    "required_menu": []
+  }
+}

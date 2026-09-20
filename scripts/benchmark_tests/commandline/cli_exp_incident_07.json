@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_incident_07",
+  "family": "Escalating Command Line Lab",
+  "category": "live_incident_response",
+  "name": "Linux rootkit indicators",
+  "prompt": "Investigate the simulated linux rootkit indicators scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Cross-platform incident response",
+  "difficulty": "hard",
+  "difficulty_level": 7,
+  "skills": [
+    "incident response",
+    "IOC investigation",
+    "evidence preservation"
+  ],
+  "lab": {
+    "context": "Escalating lab: Linux rootkit indicators. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "lsmod": "STEP 1/3: simulated linux rootkit indicators evidence for lsmod",
+      "find /proc -maxdepth 1 -type d | sort": "STEP 2/3: simulated linux rootkit indicators evidence for find /proc -maxdepth 1 -type d | sort",
+      "ss -plant": "STEP 3/3: simulated linux rootkit indicators evidence for ss -plant\nDECISIVE: evidence-cli_exp_incident_07"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "lsmod",
+      "find /proc -maxdepth 1 -type d | sort",
+      "ss -plant"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_incident_07"
+    ],
+    "required_menu": []
+  }
+}

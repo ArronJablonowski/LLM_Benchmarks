@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_pfsense_02",
+  "family": "Escalating Command Line Lab",
+  "category": "pfsense_administration",
+  "name": "DHCP lease failure",
+  "prompt": "Investigate the simulated dhcp lease failure scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "short",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "pfSense mock",
+  "difficulty": "easy",
+  "difficulty_level": 2,
+  "skills": [
+    "pfSense",
+    "FreeBSD",
+    "firewall administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: DHCP lease failure. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "pgrep -laf dhcpd": "STEP 1/3: simulated dhcp lease failure evidence for pgrep -laf dhcpd",
+      "clog /var/log/dhcpd.log": "STEP 2/3: simulated dhcp lease failure evidence for clog /var/log/dhcpd.log",
+      "sockstat -4 -l | grep :67": "STEP 3/3: simulated dhcp lease failure evidence for sockstat -4 -l | grep :67\nDECISIVE: evidence-cli_exp_pfsense_02"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "pgrep -laf dhcpd",
+      "clog /var/log/dhcpd.log",
+      "sockstat -4 -l | grep :67"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_pfsense_02"
+    ],
+    "required_menu": []
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_distro_03",
+  "family": "Escalating Command Line Lab",
+  "category": "linux_distribution_admin",
+  "name": "Arch service audit",
+  "prompt": "Investigate the simulated arch service audit scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Multiple Linux distributions",
+  "difficulty": "medium",
+  "difficulty_level": 3,
+  "skills": [
+    "package managers",
+    "service managers",
+    "Linux administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Arch service audit. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "cat /etc/arch-release": "STEP 1/3: simulated arch service audit evidence for cat /etc/arch-release",
+      "pacman -Qu": "STEP 2/3: simulated arch service audit evidence for pacman -Qu",
+      "systemctl --failed": "STEP 3/3: simulated arch service audit evidence for systemctl --failed\nDECISIVE: evidence-cli_exp_distro_03"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "cat /etc/arch-release",
+      "pacman -Qu",
+      "systemctl --failed"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_distro_03"
+    ],
+    "required_menu": []
+  }
+}

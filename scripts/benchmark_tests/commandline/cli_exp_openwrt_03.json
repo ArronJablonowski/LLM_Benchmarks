@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_openwrt_03",
+  "family": "Escalating Command Line Lab",
+  "category": "openwrt_administration",
+  "name": "Wireless client issue",
+  "prompt": "Investigate the simulated wireless client issue scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "OpenWrt mock",
+  "difficulty": "medium",
+  "difficulty_level": 3,
+  "skills": [
+    "OpenWrt",
+    "UCI",
+    "router administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Wireless client issue. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "ubus call network.wireless status": "STEP 1/3: simulated wireless client issue evidence for ubus call network.wireless status",
+      "iwinfo wlan0 assoclist": "STEP 2/3: simulated wireless client issue evidence for iwinfo wlan0 assoclist",
+      "logread -e hostapd": "STEP 3/3: simulated wireless client issue evidence for logread -e hostapd\nDECISIVE: evidence-cli_exp_openwrt_03"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "ubus call network.wireless status",
+      "iwinfo wlan0 assoclist",
+      "logread -e hostapd"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_openwrt_03"
+    ],
+    "required_menu": []
+  }
+}
