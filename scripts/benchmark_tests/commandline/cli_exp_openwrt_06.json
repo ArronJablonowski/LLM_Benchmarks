@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_openwrt_06",
+  "family": "Escalating Command Line Lab",
+  "category": "openwrt_administration",
+  "name": "Policy-based routing",
+  "prompt": "Investigate the simulated policy-based routing scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "OpenWrt mock",
+  "difficulty": "hard",
+  "difficulty_level": 6,
+  "skills": [
+    "OpenWrt",
+    "UCI",
+    "router administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Policy-based routing. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "uci show pbr": "STEP 1/3: simulated policy-based routing evidence for uci show pbr",
+      "ip rule show": "STEP 2/3: simulated policy-based routing evidence for ip rule show",
+      "ip route show table 100": "STEP 3/3: simulated policy-based routing evidence for ip route show table 100\nDECISIVE: evidence-cli_exp_openwrt_06"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "uci show pbr",
+      "ip rule show",
+      "ip route show table 100"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_openwrt_06"
+    ],
+    "required_menu": []
+  }
+}

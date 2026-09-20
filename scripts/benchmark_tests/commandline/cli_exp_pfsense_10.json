@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_pfsense_10",
+  "family": "Escalating Command Line Lab",
+  "category": "pfsense_administration",
+  "name": "HA configuration divergence",
+  "prompt": "Investigate the simulated ha configuration divergence scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "pfSense mock",
+  "difficulty": "expert",
+  "difficulty_level": 10,
+  "skills": [
+    "pfSense",
+    "FreeBSD",
+    "firewall administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: HA configuration divergence. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "pfctl -sr | sha256": "STEP 1/3: simulated ha configuration divergence evidence for pfctl -sr | sha256",
+      "pfSsh.php playback pfsyncstatus": "STEP 2/3: simulated ha configuration divergence evidence for pfSsh.php playback pfsyncstatus",
+      "clog /var/log/system.log | grep XMLRPC": "STEP 3/3: simulated ha configuration divergence evidence for clog /var/log/system.log | grep XMLRPC\nDECISIVE: evidence-cli_exp_pfsense_10"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "pfctl -sr | sha256",
+      "pfSsh.php playback pfsyncstatus",
+      "clog /var/log/system.log | grep XMLRPC"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_pfsense_10"
+    ],
+    "required_menu": []
+  }
+}

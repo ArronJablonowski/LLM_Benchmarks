@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_powershell_08",
+  "family": "Escalating Command Line Lab",
+  "category": "powershell_wmi_operations",
+  "name": "Cluster health",
+  "prompt": "Investigate the simulated cluster health scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Windows",
+  "difficulty": "hard",
+  "difficulty_level": 8,
+  "skills": [
+    "PowerShell",
+    "CIM",
+    "Windows administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Cluster health. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "Get-ClusterNode": "STEP 1/3: simulated cluster health evidence for Get-ClusterNode",
+      "Get-ClusterGroup": "STEP 2/3: simulated cluster health evidence for Get-ClusterGroup",
+      "Get-ClusterLog -UseLocalTime -TimeSpan 15": "STEP 3/3: simulated cluster health evidence for Get-ClusterLog -UseLocalTime -TimeSpan 15\nDECISIVE: evidence-cli_exp_powershell_08"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "Get-ClusterNode",
+      "Get-ClusterGroup",
+      "Get-ClusterLog -UseLocalTime -TimeSpan 15"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_powershell_08"
+    ],
+    "required_menu": []
+  }
+}

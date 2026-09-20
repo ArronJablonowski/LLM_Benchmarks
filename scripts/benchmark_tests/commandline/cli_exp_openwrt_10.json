@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_openwrt_10",
+  "family": "Escalating Command Line Lab",
+  "category": "openwrt_administration",
+  "name": "Multi-router roaming",
+  "prompt": "Investigate the simulated multi-router roaming scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "OpenWrt mock",
+  "difficulty": "expert",
+  "difficulty_level": 10,
+  "skills": [
+    "OpenWrt",
+    "UCI",
+    "router administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Multi-router roaming. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "ubus call usteer remote_hosts": "STEP 1/3: simulated multi-router roaming evidence for ubus call usteer remote_hosts",
+      "ubus call hostapd.wlan0 get_clients": "STEP 2/3: simulated multi-router roaming evidence for ubus call hostapd.wlan0 get_clients",
+      "logread -e 802.11r": "STEP 3/3: simulated multi-router roaming evidence for logread -e 802.11r\nDECISIVE: evidence-cli_exp_openwrt_10"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "ubus call usteer remote_hosts",
+      "ubus call hostapd.wlan0 get_clients",
+      "logread -e 802.11r"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_openwrt_10"
+    ],
+    "required_menu": []
+  }
+}

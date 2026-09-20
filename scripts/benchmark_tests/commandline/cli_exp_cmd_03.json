@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_cmd_03",
+  "family": "Escalating Command Line Lab",
+  "category": "windows_cmd_operations",
+  "name": "Network baseline",
+  "prompt": "Investigate the simulated network baseline scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Windows",
+  "difficulty": "medium",
+  "difficulty_level": 3,
+  "skills": [
+    "cmd.exe",
+    "Windows administration",
+    "diagnostics"
+  ],
+  "lab": {
+    "context": "Escalating lab: Network baseline. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "ipconfig /all": "STEP 1/3: simulated network baseline evidence for ipconfig /all",
+      "route print": "STEP 2/3: simulated network baseline evidence for route print",
+      "netstat -ano": "STEP 3/3: simulated network baseline evidence for netstat -ano\nDECISIVE: evidence-cli_exp_cmd_03"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "ipconfig /all",
+      "route print",
+      "netstat -ano"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_cmd_03"
+    ],
+    "required_menu": []
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_pfsense_07",
+  "family": "Escalating Command Line Lab",
+  "category": "pfsense_administration",
+  "name": "NAT reflection",
+  "prompt": "Investigate the simulated nat reflection scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "pfSense mock",
+  "difficulty": "hard",
+  "difficulty_level": 7,
+  "skills": [
+    "pfSense",
+    "FreeBSD",
+    "firewall administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: NAT reflection. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "pfctl -sn": "STEP 1/3: simulated nat reflection evidence for pfctl -sn",
+      "pfctl -sr": "STEP 2/3: simulated nat reflection evidence for pfctl -sr",
+      "tcpdump -ni pflog0 host 10.0.20.15": "STEP 3/3: simulated nat reflection evidence for tcpdump -ni pflog0 host 10.0.20.15\nDECISIVE: evidence-cli_exp_pfsense_07"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "pfctl -sn",
+      "pfctl -sr",
+      "tcpdump -ni pflog0 host 10.0.20.15"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_pfsense_07"
+    ],
+    "required_menu": []
+  }
+}

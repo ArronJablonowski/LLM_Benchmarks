@@ -1,0 +1,45 @@
+{
+  "id": "cli_exp_menus_06",
+  "family": "Escalating Command Line Lab",
+  "category": "interactive_terminal_menus",
+  "name": "HA failover menu",
+  "prompt": "Investigate the simulated ha failover menu scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Terminal appliances",
+  "difficulty": "hard",
+  "difficulty_level": 6,
+  "skills": [
+    "terminal menus",
+    "state tracking",
+    "administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: HA failover menu. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "show ha": "STEP 1/2: simulated ha failover menu evidence for show ha",
+      "show ha peer": "STEP 2/2: simulated ha failover menu evidence for show ha peer\nDECISIVE: evidence-cli_exp_menus_06"
+    },
+    "menus": {
+      "5>3>2>1": "Menu path confirmed for HA failover menu; DECISIVE: evidence-cli_exp_menus_06"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "show ha",
+      "show ha peer"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_menus_06"
+    ],
+    "required_menu": [
+      "5",
+      "3",
+      "2",
+      "1"
+    ]
+  }
+}

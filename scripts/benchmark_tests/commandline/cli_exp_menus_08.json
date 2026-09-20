@@ -1,0 +1,46 @@
+{
+  "id": "cli_exp_menus_08",
+  "family": "Escalating Command Line Lab",
+  "category": "interactive_terminal_menus",
+  "name": "VLAN repair menu",
+  "prompt": "Investigate the simulated vlan repair menu scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Terminal appliances",
+  "difficulty": "hard",
+  "difficulty_level": 8,
+  "skills": [
+    "terminal menus",
+    "state tracking",
+    "administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: VLAN repair menu. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "show vlans": "STEP 1/2: simulated vlan repair menu evidence for show vlans",
+      "show vlan 220": "STEP 2/2: simulated vlan repair menu evidence for show vlan 220\nDECISIVE: evidence-cli_exp_menus_08"
+    },
+    "menus": {
+      "2>5>3>220>2": "Menu path confirmed for VLAN repair menu; DECISIVE: evidence-cli_exp_menus_08"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "show vlans",
+      "show vlan 220"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_menus_08"
+    ],
+    "required_menu": [
+      "2",
+      "5",
+      "3",
+      "220",
+      "2"
+    ]
+  }
+}

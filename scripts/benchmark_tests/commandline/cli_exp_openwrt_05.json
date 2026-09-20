@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_openwrt_05",
+  "family": "Escalating Command Line Lab",
+  "category": "openwrt_administration",
+  "name": "Overlay exhaustion",
+  "prompt": "Investigate the simulated overlay exhaustion scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "OpenWrt mock",
+  "difficulty": "medium",
+  "difficulty_level": 5,
+  "skills": [
+    "OpenWrt",
+    "UCI",
+    "router administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Overlay exhaustion. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "df -h /overlay": "STEP 1/3: simulated overlay exhaustion evidence for df -h /overlay",
+      "du -h -d 1 /overlay | sort -h": "STEP 2/3: simulated overlay exhaustion evidence for du -h -d 1 /overlay | sort -h",
+      "opkg list-installed": "STEP 3/3: simulated overlay exhaustion evidence for opkg list-installed\nDECISIVE: evidence-cli_exp_openwrt_05"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "df -h /overlay",
+      "du -h -d 1 /overlay | sort -h",
+      "opkg list-installed"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_openwrt_05"
+    ],
+    "required_menu": []
+  }
+}

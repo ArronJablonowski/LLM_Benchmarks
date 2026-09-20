@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_pfsense_06",
+  "family": "Escalating Command Line Lab",
+  "category": "pfsense_administration",
+  "name": "CARP failover",
+  "prompt": "Investigate the simulated carp failover scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "pfSense mock",
+  "difficulty": "hard",
+  "difficulty_level": 6,
+  "skills": [
+    "pfSense",
+    "FreeBSD",
+    "firewall administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: CARP failover. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "ifconfig carp": "STEP 1/3: simulated carp failover evidence for ifconfig carp",
+      "sysctl net.inet.carp": "STEP 2/3: simulated carp failover evidence for sysctl net.inet.carp",
+      "clog /var/log/system.log | grep carp": "STEP 3/3: simulated carp failover evidence for clog /var/log/system.log | grep carp\nDECISIVE: evidence-cli_exp_pfsense_06"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "ifconfig carp",
+      "sysctl net.inet.carp",
+      "clog /var/log/system.log | grep carp"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_pfsense_06"
+    ],
+    "required_menu": []
+  }
+}

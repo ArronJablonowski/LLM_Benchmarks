@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_macos_07",
+  "family": "Escalating Command Line Lab",
+  "category": "macos_operations",
+  "name": "Code-signing investigation",
+  "prompt": "Investigate the simulated code-signing investigation scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "macOS",
+  "difficulty": "hard",
+  "difficulty_level": 7,
+  "skills": [
+    "zsh",
+    "macOS administration",
+    "diagnostics"
+  ],
+  "lab": {
+    "context": "Escalating lab: Code-signing investigation. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "codesign -dv --verbose=4 /Applications/Fixture.app": "STEP 1/3: simulated code-signing investigation evidence for codesign -dv --verbose=4 /Applications/Fixture.app",
+      "spctl -a -vv /Applications/Fixture.app": "STEP 2/3: simulated code-signing investigation evidence for spctl -a -vv /Applications/Fixture.app",
+      "xattr -lr /Applications/Fixture.app": "STEP 3/3: simulated code-signing investigation evidence for xattr -lr /Applications/Fixture.app\nDECISIVE: evidence-cli_exp_macos_07"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "codesign -dv --verbose=4 /Applications/Fixture.app",
+      "spctl -a -vv /Applications/Fixture.app",
+      "xattr -lr /Applications/Fixture.app"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_macos_07"
+    ],
+    "required_menu": []
+  }
+}

@@ -7,7 +7,7 @@ scores and uses the versioned profile `commandline-agent-v1`.
 
 ## Coverage and progression
 
-The initial profile contains 20 original tasks ordered from easy to expert:
+The profile contains 120 original tasks ordered globally from easy to expert:
 
 | Level | Coverage |
 |---|---|
@@ -15,6 +15,13 @@ The initial profile contains 20 original tasks ordered from easy to expert:
 | Medium | SSH jump-host triage, Ubuntu/systemd, RHEL/firewalld, Alpine/OpenRC, four-level custom terminal menus |
 | Hard | Mock pfSense interfaces/NAT/IPsec, mock OpenWrt network/fw4, Linux/macOS/Windows live incident response |
 | Expert | Cross-platform lateral-movement investigation and a multi-firewall pfSense/OpenWrt outage |
+
+Twenty scenarios are individually hand-authored cornerstone labs. A reviewed,
+deterministic catalog generator expands them with 100 additional tasks across
+ten tracks, ten levels per track: Linux, macOS, CMD.exe, PowerShell/WMI,
+SSH/network operations, Linux distributions, nested terminal menus, pfSense,
+OpenWrt, and cross-platform incident response. Generated descriptors are
+checked into the repository and validated exactly like hand-authored tasks.
 
 Tasks evaluate command syntax, evidence interpretation, ordered workflows,
 menu state tracking, least-privilege remediation, and avoidance of destructive

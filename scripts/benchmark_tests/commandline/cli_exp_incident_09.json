@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_incident_09",
+  "family": "Escalating Command Line Lab",
+  "category": "live_incident_response",
+  "name": "Cloud-to-host pivot",
+  "prompt": "Investigate the simulated cloud-to-host pivot scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Cross-platform incident response",
+  "difficulty": "expert",
+  "difficulty_level": 9,
+  "skills": [
+    "incident response",
+    "IOC investigation",
+    "evidence preservation"
+  ],
+  "lab": {
+    "context": "Escalating lab: Cloud-to-host pivot. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "ssh ir@cloud01 'journalctl -u auditd --since -2h'": "STEP 1/3: simulated cloud-to-host pivot evidence for ssh ir@cloud01 'journalctl -u auditd --since -2h'",
+      "ssh ir@app01 'ss -plant'": "STEP 2/3: simulated cloud-to-host pivot evidence for ssh ir@app01 'ss -plant'",
+      "Get-WinEvent -FilterHashtable @{LogName='Security';Id=4624}": "STEP 3/3: simulated cloud-to-host pivot evidence for Get-WinEvent -FilterHashtable @{LogName='Security';Id=4624}\nDECISIVE: evidence-cli_exp_incident_09"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "ssh ir@cloud01 'journalctl -u auditd --since -2h'",
+      "ssh ir@app01 'ss -plant'",
+      "Get-WinEvent -FilterHashtable @{LogName='Security';Id=4624}"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_incident_09"
+    ],
+    "required_menu": []
+  }
+}

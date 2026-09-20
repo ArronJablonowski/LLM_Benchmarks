@@ -42,7 +42,7 @@ results from unlike evaluations from being merged.
 | `coding` | 9 repository projects, including 3 web-development projects | Hidden functional and engineering-quality checks | `coding_agent_report.html` |
 | `creative` | 6 design briefs, including Three.js and animated Next.js | Subjective human review; no automated aesthetic score | `creative_human_review.html` |
 | `cybersecurity` | 24 original tasks across 8 security tracks | Deterministic hidden checks on isolated local fixtures | `cybersecurity_agent_report.html` |
-| `commandline` | 20 escalating shell, administration, menu, firewall, and incident-response labs | Hidden sequence/evidence checks against safe simulated systems | Dedicated CSV and canonical JSONL evidence |
+| `commandline` | 120 escalating shell, administration, menu, firewall, and incident-response labs | Hidden sequence/evidence checks against safe simulated systems | Dedicated CSV and canonical JSONL evidence |
 | `aime2026`, `gpqa-diamond`, `standard-local` | 30, 198, or 228 official offline items | Exact-answer local grading | Standard evidence files, labeled by profile |
 | ExploitGym `sample` / `v1` | 20 / 869 published exploit-development instances | Upstream flag and on-target scoring | Separate section in `cybersecurity_agent_report.html` |
 

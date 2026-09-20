@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_ssh_04",
+  "family": "Escalating Command Line Lab",
+  "category": "ssh_network_operations",
+  "name": "Connection multiplexing",
+  "prompt": "Investigate the simulated connection multiplexing scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Mixed Unix over SSH",
+  "difficulty": "medium",
+  "difficulty_level": 4,
+  "skills": [
+    "SSH",
+    "remote administration",
+    "networking"
+  ],
+  "lab": {
+    "context": "Escalating lab: Connection multiplexing. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "ssh -O check -S /tmp/ctl ops@host01": "STEP 1/3: simulated connection multiplexing evidence for ssh -O check -S /tmp/ctl ops@host01",
+      "ssh -M -S /tmp/ctl -fnNT ops@host01": "STEP 2/3: simulated connection multiplexing evidence for ssh -M -S /tmp/ctl -fnNT ops@host01",
+      "ssh -O forward -S /tmp/ctl -L 9000:localhost:9000 ops@host01": "STEP 3/3: simulated connection multiplexing evidence for ssh -O forward -S /tmp/ctl -L 9000:localhost:9000 ops@host01\nDECISIVE: evidence-cli_exp_ssh_04"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "ssh -O check -S /tmp/ctl ops@host01",
+      "ssh -M -S /tmp/ctl -fnNT ops@host01",
+      "ssh -O forward -S /tmp/ctl -L 9000:localhost:9000 ops@host01"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_ssh_04"
+    ],
+    "required_menu": []
+  }
+}

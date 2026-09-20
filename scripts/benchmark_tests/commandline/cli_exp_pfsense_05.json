@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_pfsense_05",
+  "family": "Escalating Command Line Lab",
+  "category": "pfsense_administration",
+  "name": "State exhaustion",
+  "prompt": "Investigate the simulated state exhaustion scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "pfSense mock",
+  "difficulty": "medium",
+  "difficulty_level": 5,
+  "skills": [
+    "pfSense",
+    "FreeBSD",
+    "firewall administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: State exhaustion. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "pfctl -si": "STEP 1/3: simulated state exhaustion evidence for pfctl -si",
+      "pfctl -ss | wc -l": "STEP 2/3: simulated state exhaustion evidence for pfctl -ss | wc -l",
+      "sysctl net.pf.states_hashsize": "STEP 3/3: simulated state exhaustion evidence for sysctl net.pf.states_hashsize\nDECISIVE: evidence-cli_exp_pfsense_05"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "pfctl -si",
+      "pfctl -ss | wc -l",
+      "sysctl net.pf.states_hashsize"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_pfsense_05"
+    ],
+    "required_menu": []
+  }
+}

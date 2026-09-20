@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_distro_09",
+  "family": "Escalating Command Line Lab",
+  "category": "linux_distribution_admin",
+  "name": "NixOS generation rollback",
+  "prompt": "Investigate the simulated nixos generation rollback scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Multiple Linux distributions",
+  "difficulty": "expert",
+  "difficulty_level": 9,
+  "skills": [
+    "package managers",
+    "service managers",
+    "Linux administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: NixOS generation rollback. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "nixos-version": "STEP 1/3: simulated nixos generation rollback evidence for nixos-version",
+      "nixos-rebuild list-generations": "STEP 2/3: simulated nixos generation rollback evidence for nixos-rebuild list-generations",
+      "journalctl -b -p err": "STEP 3/3: simulated nixos generation rollback evidence for journalctl -b -p err\nDECISIVE: evidence-cli_exp_distro_09"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "nixos-version",
+      "nixos-rebuild list-generations",
+      "journalctl -b -p err"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_distro_09"
+    ],
+    "required_menu": []
+  }
+}

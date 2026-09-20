@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_ssh_02",
+  "family": "Escalating Command Line Lab",
+  "category": "ssh_network_operations",
+  "name": "Jump-host access",
+  "prompt": "Investigate the simulated jump-host access scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "short",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Mixed Unix over SSH",
+  "difficulty": "easy",
+  "difficulty_level": 2,
+  "skills": [
+    "SSH",
+    "remote administration",
+    "networking"
+  ],
+  "lab": {
+    "context": "Escalating lab: Jump-host access. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "ssh -G -J bastion ops@app01": "STEP 1/3: simulated jump-host access evidence for ssh -G -J bastion ops@app01",
+      "ssh -J bastion ops@app01 'uptime'": "STEP 2/3: simulated jump-host access evidence for ssh -J bastion ops@app01 'uptime'",
+      "ssh -J bastion ops@app01 'systemctl --failed'": "STEP 3/3: simulated jump-host access evidence for ssh -J bastion ops@app01 'systemctl --failed'\nDECISIVE: evidence-cli_exp_ssh_02"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "ssh -G -J bastion ops@app01",
+      "ssh -J bastion ops@app01 'uptime'",
+      "ssh -J bastion ops@app01 'systemctl --failed'"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_ssh_02"
+    ],
+    "required_menu": []
+  }
+}

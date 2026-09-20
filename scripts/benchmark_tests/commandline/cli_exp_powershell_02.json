@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_powershell_02",
+  "family": "Escalating Command Line Lab",
+  "category": "powershell_wmi_operations",
+  "name": "Volume health",
+  "prompt": "Investigate the simulated volume health scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "short",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Windows",
+  "difficulty": "easy",
+  "difficulty_level": 2,
+  "skills": [
+    "PowerShell",
+    "CIM",
+    "Windows administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Volume health. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "Get-Volume": "STEP 1/3: simulated volume health evidence for Get-Volume",
+      "Get-PhysicalDisk": "STEP 2/3: simulated volume health evidence for Get-PhysicalDisk",
+      "Get-StorageReliabilityCounter -PhysicalDisk (Get-PhysicalDisk | Select-Object -First 1)": "STEP 3/3: simulated volume health evidence for Get-StorageReliabilityCounter -PhysicalDisk (Get-PhysicalDisk | Select-Object -First 1)\nDECISIVE: evidence-cli_exp_powershell_02"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "Get-Volume",
+      "Get-PhysicalDisk",
+      "Get-StorageReliabilityCounter -PhysicalDisk (Get-PhysicalDisk | Select-Object -First 1)"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_powershell_02"
+    ],
+    "required_menu": []
+  }
+}

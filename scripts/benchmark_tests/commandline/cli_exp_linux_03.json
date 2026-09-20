@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_linux_03",
+  "family": "Escalating Command Line Lab",
+  "category": "linux_operations",
+  "name": "CPU saturation",
+  "prompt": "Investigate the simulated cpu saturation scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Linux",
+  "difficulty": "medium",
+  "difficulty_level": 3,
+  "skills": [
+    "bash",
+    "diagnostics",
+    "administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: CPU saturation. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "uptime": "STEP 1/3: simulated cpu saturation evidence for uptime",
+      "mpstat -P ALL 1 3": "STEP 2/3: simulated cpu saturation evidence for mpstat -P ALL 1 3",
+      "ps -eo pid,stat,comm,%cpu --sort=-%cpu": "STEP 3/3: simulated cpu saturation evidence for ps -eo pid,stat,comm,%cpu --sort=-%cpu\nDECISIVE: evidence-cli_exp_linux_03"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "uptime",
+      "mpstat -P ALL 1 3",
+      "ps -eo pid,stat,comm,%cpu --sort=-%cpu"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_linux_03"
+    ],
+    "required_menu": []
+  }
+}

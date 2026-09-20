@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_openwrt_09",
+  "family": "Escalating Command Line Lab",
+  "category": "openwrt_administration",
+  "name": "DSA VLAN isolation",
+  "prompt": "Investigate the simulated dsa vlan isolation scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "OpenWrt mock",
+  "difficulty": "expert",
+  "difficulty_level": 9,
+  "skills": [
+    "OpenWrt",
+    "UCI",
+    "router administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: DSA VLAN isolation. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "bridge vlan show": "STEP 1/3: simulated dsa vlan isolation evidence for bridge vlan show",
+      "uci show network": "STEP 2/3: simulated dsa vlan isolation evidence for uci show network",
+      "nft list chain inet fw4 forward": "STEP 3/3: simulated dsa vlan isolation evidence for nft list chain inet fw4 forward\nDECISIVE: evidence-cli_exp_openwrt_09"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "bridge vlan show",
+      "uci show network",
+      "nft list chain inet fw4 forward"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_openwrt_09"
+    ],
+    "required_menu": []
+  }
+}

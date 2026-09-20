@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_ssh_05",
+  "family": "Escalating Command Line Lab",
+  "category": "ssh_network_operations",
+  "name": "SFTP permission failure",
+  "prompt": "Investigate the simulated sftp permission failure scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Mixed Unix over SSH",
+  "difficulty": "medium",
+  "difficulty_level": 5,
+  "skills": [
+    "SSH",
+    "remote administration",
+    "networking"
+  ],
+  "lab": {
+    "context": "Escalating lab: SFTP permission failure. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "sftp -vv ops@files01": "STEP 1/3: simulated sftp permission failure evidence for sftp -vv ops@files01",
+      "ssh ops@files01 'namei -l /srv/drop/report.csv'": "STEP 2/3: simulated sftp permission failure evidence for ssh ops@files01 'namei -l /srv/drop/report.csv'",
+      "ssh ops@files01 'getfacl /srv/drop'": "STEP 3/3: simulated sftp permission failure evidence for ssh ops@files01 'getfacl /srv/drop'\nDECISIVE: evidence-cli_exp_ssh_05"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "sftp -vv ops@files01",
+      "ssh ops@files01 'namei -l /srv/drop/report.csv'",
+      "ssh ops@files01 'getfacl /srv/drop'"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_ssh_05"
+    ],
+    "required_menu": []
+  }
+}

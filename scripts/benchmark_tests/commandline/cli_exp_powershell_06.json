@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_powershell_06",
+  "family": "Escalating Command Line Lab",
+  "category": "powershell_wmi_operations",
+  "name": "Defender status",
+  "prompt": "Investigate the simulated defender status scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Windows",
+  "difficulty": "hard",
+  "difficulty_level": 6,
+  "skills": [
+    "PowerShell",
+    "CIM",
+    "Windows administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Defender status. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "Get-MpComputerStatus": "STEP 1/3: simulated defender status evidence for Get-MpComputerStatus",
+      "Get-MpThreatDetection": "STEP 2/3: simulated defender status evidence for Get-MpThreatDetection",
+      "Get-MpPreference": "STEP 3/3: simulated defender status evidence for Get-MpPreference\nDECISIVE: evidence-cli_exp_powershell_06"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "Get-MpComputerStatus",
+      "Get-MpThreatDetection",
+      "Get-MpPreference"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_powershell_06"
+    ],
+    "required_menu": []
+  }
+}

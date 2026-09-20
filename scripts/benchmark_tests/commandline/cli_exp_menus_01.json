@@ -1,0 +1,43 @@
+{
+  "id": "cli_exp_menus_01",
+  "family": "Escalating Command Line Lab",
+  "category": "interactive_terminal_menus",
+  "name": "Two-level status menu",
+  "prompt": "Investigate the simulated two-level status menu scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "short",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Terminal appliances",
+  "difficulty": "easy",
+  "difficulty_level": 1,
+  "skills": [
+    "terminal menus",
+    "state tracking",
+    "administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Two-level status menu. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "show menu": "STEP 1/2: simulated two-level status menu evidence for show menu",
+      "show status": "STEP 2/2: simulated two-level status menu evidence for show status\nDECISIVE: evidence-cli_exp_menus_01"
+    },
+    "menus": {
+      "1>2": "Menu path confirmed for Two-level status menu; DECISIVE: evidence-cli_exp_menus_01"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "show menu",
+      "show status"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_menus_01"
+    ],
+    "required_menu": [
+      "1",
+      "2"
+    ]
+  }
+}

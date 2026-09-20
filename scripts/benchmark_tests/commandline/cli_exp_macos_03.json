@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_macos_03",
+  "family": "Escalating Command Line Lab",
+  "category": "macos_operations",
+  "name": "Launch service failure",
+  "prompt": "Investigate the simulated launch service failure scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "macOS",
+  "difficulty": "medium",
+  "difficulty_level": 3,
+  "skills": [
+    "zsh",
+    "macOS administration",
+    "diagnostics"
+  ],
+  "lab": {
+    "context": "Escalating lab: Launch service failure. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "launchctl print system/com.example.worker": "STEP 1/3: simulated launch service failure evidence for launchctl print system/com.example.worker",
+      "plutil -p /Library/LaunchDaemons/com.example.worker.plist": "STEP 2/3: simulated launch service failure evidence for plutil -p /Library/LaunchDaemons/com.example.worker.plist",
+      "log show --last 30m --predicate 'process == \"launchd\"'": "STEP 3/3: simulated launch service failure evidence for log show --last 30m --predicate 'process == \"launchd\"'\nDECISIVE: evidence-cli_exp_macos_03"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "launchctl print system/com.example.worker",
+      "plutil -p /Library/LaunchDaemons/com.example.worker.plist",
+      "log show --last 30m --predicate 'process == \"launchd\"'"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_macos_03"
+    ],
+    "required_menu": []
+  }
+}

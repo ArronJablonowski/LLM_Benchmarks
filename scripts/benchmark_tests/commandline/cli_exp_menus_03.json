@@ -1,0 +1,44 @@
+{
+  "id": "cli_exp_menus_03",
+  "family": "Escalating Command Line Lab",
+  "category": "interactive_terminal_menus",
+  "name": "Service restart menu",
+  "prompt": "Investigate the simulated service restart menu scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Terminal appliances",
+  "difficulty": "medium",
+  "difficulty_level": 3,
+  "skills": [
+    "terminal menus",
+    "state tracking",
+    "administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Service restart menu. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "show services": "STEP 1/2: simulated service restart menu evidence for show services",
+      "show service api": "STEP 2/2: simulated service restart menu evidence for show service api\nDECISIVE: evidence-cli_exp_menus_03"
+    },
+    "menus": {
+      "3>2>4": "Menu path confirmed for Service restart menu; DECISIVE: evidence-cli_exp_menus_03"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "show services",
+      "show service api"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_menus_03"
+    ],
+    "required_menu": [
+      "3",
+      "2",
+      "4"
+    ]
+  }
+}

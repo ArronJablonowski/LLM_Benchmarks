@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_powershell_09",
+  "family": "Escalating Command Line Lab",
+  "category": "powershell_wmi_operations",
+  "name": "AD replication",
+  "prompt": "Investigate the simulated ad replication scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Windows",
+  "difficulty": "expert",
+  "difficulty_level": 9,
+  "skills": [
+    "PowerShell",
+    "CIM",
+    "Windows administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: AD replication. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "Get-ADReplicationPartnerMetadata -Target * -Scope Forest": "STEP 1/3: simulated ad replication evidence for Get-ADReplicationPartnerMetadata -Target * -Scope Forest",
+      "Get-ADReplicationFailure -Target * -Scope Forest": "STEP 2/3: simulated ad replication evidence for Get-ADReplicationFailure -Target * -Scope Forest",
+      "dcdiag /test:replications": "STEP 3/3: simulated ad replication evidence for dcdiag /test:replications\nDECISIVE: evidence-cli_exp_powershell_09"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "Get-ADReplicationPartnerMetadata -Target * -Scope Forest",
+      "Get-ADReplicationFailure -Target * -Scope Forest",
+      "dcdiag /test:replications"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_powershell_09"
+    ],
+    "required_menu": []
+  }
+}

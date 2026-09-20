@@ -1,0 +1,39 @@
+{
+  "id": "cli_exp_distro_06",
+  "family": "Escalating Command Line Lab",
+  "category": "linux_distribution_admin",
+  "name": "Debian alternatives drift",
+  "prompt": "Investigate the simulated debian alternatives drift scenario. Use terminal_lab.py to run the appropriate commands in a defensible order, interpret the decisive evidence, and create answer.json with commands, findings, safe reversible actions, and any menu path.",
+  "fixture": "cli_tasks/common/workspace",
+  "grader": "cli_tasks/grader.py",
+  "time_class": "extended",
+  "benchmark_origin": "Original Escalating CLI Lab",
+  "platform": "Multiple Linux distributions",
+  "difficulty": "hard",
+  "difficulty_level": 6,
+  "skills": [
+    "package managers",
+    "service managers",
+    "Linux administration"
+  ],
+  "lab": {
+    "context": "Escalating lab: Debian alternatives drift. Inspect evidence before recommending a reversible action.",
+    "commands": {
+      "update-alternatives --get-selections": "STEP 1/3: simulated debian alternatives drift evidence for update-alternatives --get-selections",
+      "readlink -f /usr/bin/python3": "STEP 2/3: simulated debian alternatives drift evidence for readlink -f /usr/bin/python3",
+      "dpkg -S /usr/bin/python3": "STEP 3/3: simulated debian alternatives drift evidence for dpkg -S /usr/bin/python3\nDECISIVE: evidence-cli_exp_distro_06"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "update-alternatives --get-selections",
+      "readlink -f /usr/bin/python3",
+      "dpkg -S /usr/bin/python3"
+    ],
+    "required_findings": [
+      "evidence-cli_exp_distro_06"
+    ],
+    "required_menu": []
+  }
+}
