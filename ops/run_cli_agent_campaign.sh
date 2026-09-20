@@ -21,7 +21,7 @@ if [[ ! -s "$models_file" ]]; then
   exit 1
 fi
 max_timeout=1800
-[[ "$suite" == "coding" || "$suite" == "creative" || "$suite" == "cybersecurity" ]] && max_timeout=14400
+[[ "$suite" == "coding" || "$suite" == "creative" || "$suite" == "cybersecurity" || "$suite" == "commandline" ]] && max_timeout=14400
 if (( timeout < 1 || timeout > max_timeout )); then
   echo "BENCH_TASK_TIMEOUT must be between 1 and $max_timeout for suite $suite" >&2
   exit 1

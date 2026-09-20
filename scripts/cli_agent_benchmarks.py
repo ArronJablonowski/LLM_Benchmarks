@@ -232,6 +232,9 @@ def main(argv=None):
     if args.suite == "cybersecurity":
         from cybersecurity_agent_benchmarks import main as cybersecurity_main
         return cybersecurity_main(argv)
+    if args.suite == "commandline":
+        from coding_agent_benchmarks import main as project_main
+        return project_main(argv)
     if not args.run:
         raise SystemExit("Plan only. Pass --run to execute benchmark observations.")
     if args.timeout < 1 or args.timeout > 1800:

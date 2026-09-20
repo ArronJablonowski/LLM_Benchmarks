@@ -3,8 +3,8 @@
 ## About
 
 Local LLM Benchmark Suite is a reproducible evaluation toolkit for comparing
-local and cloud-connected models on your own hardware. It contains four
-isolated suites—Standard, Coding, Creative, and Cybersecurity—plus guarded,
+local and cloud-connected models on your own hardware. It contains five
+isolated suites—Standard, Coding, Creative, Cybersecurity, and Command Line—plus guarded,
 opt-in published profiles. Each campaign preserves the evidence needed to
 explain a result: model and runtime provenance, agent harness, task outcome,
 response timing, temperature, and peak-memory telemetry. Scores compare the
@@ -42,12 +42,14 @@ results from unlike evaluations from being merged.
 | `coding` | 9 repository projects, including 3 web-development projects | Hidden functional and engineering-quality checks | `coding_agent_report.html` |
 | `creative` | 6 design briefs, including Three.js and animated Next.js | Subjective human review; no automated aesthetic score | `creative_human_review.html` |
 | `cybersecurity` | 24 original tasks across 8 security tracks | Deterministic hidden checks on isolated local fixtures | `cybersecurity_agent_report.html` |
+| `commandline` | 20 escalating shell, administration, menu, firewall, and incident-response labs | Hidden sequence/evidence checks against safe simulated systems | Dedicated CSV and canonical JSONL evidence |
 | `aime2026`, `gpqa-diamond`, `standard-local` | 30, 198, or 228 official offline items | Exact-answer local grading | Standard evidence files, labeled by profile |
 | ExploitGym `sample` / `v1` | 20 / 869 published exploit-development instances | Upstream flag and on-target scoring | Separate section in `cybersecurity_agent_report.html` |
 
 Start with `standard` below. The [Coding](#coding-agent-suite),
 [Creative](#creative-suite), and [Cybersecurity](#cybersecurity-suite) sections
 link to their complete task maps and execution guides.
+The Command Line suite is documented in [`docs/COMMANDLINE_SUITE.md`](docs/COMMANDLINE_SUITE.md).
 
 ## Quick start
 
@@ -158,7 +160,7 @@ complete model × runner × harness combination.
 |---|---|---|
 | Model runners | Ollama, llama.cpp, vLLM, TensorRT-LLM | Direct Standard runs; Ollama or an OpenAI-compatible server beneath tool-agent suites |
 | Standard agent paths | Hermes Agent, OpenClaw, DeepSeek Harness evidence, COH over Ollama | The 18-task Standard comparison; DeepSeek Harness is currently a preserved completed campaign/report source, while COH uses its identity-bound local Ollama adapter for the 17 text tasks |
-| Tool-agent harnesses | Ollama workspace agent, Hermes, OpenClaw, Pi Agent, Goose, OpenHands | Coding and Creative project/artifact campaigns; Pi, Goose, and OpenHands also support Cybersecurity |
+| Tool-agent harnesses | Ollama workspace agent, Hermes, OpenClaw, Pi Agent, Goose, OpenHands | Coding, Creative, Command Line, and Cybersecurity project campaigns |
 | Orchestration check | Gas Town | Disposable operational smoke test only; not accuracy-comparable |
 | External published harness | ExploitGym with Codex, Claude Code, or Gemini CLI | Isolated opt-in Cybersecurity profile using ExploitGym's provider proxy |
 
