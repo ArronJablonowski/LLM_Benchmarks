@@ -81,16 +81,24 @@ def main():
             start_sample = sampler.snapshot_len(); started = time.monotonic()
             command = [str(args.host), "--config", str(args.config), "--workspace", str(workspace),
                        "--model", args.model, "--prompt", prompt, "--timeout", f"{args.timeout}s"]
-            for attempt in range(3):
+            admission_retries = 8
+            for attempt in range(admission_retries):
                 proc = subprocess.run(command, text=True, capture_output=True, timeout=args.timeout + 30,
                                       env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
                 if proc.returncode == 0:
                     break
                 if "local resource capacity unavailable" in proc.stderr or "task admission failed" in proc.stderr:
-                    raise SystemExit(75)
+                    if attempt + 1 == admission_retries:
+                        raise SystemExit(75)
+                    delay = min(5 * (attempt + 1), 30)
+                    print(f"  -> local capacity busy; retry {attempt + 2}/{admission_retries} in {delay}s", flush=True)
+                    time.sleep(delay)
+                    continue
                 if attempt < 2:
                     print(f"  -> transient host failure; retry {attempt + 2}/3", flush=True)
                     time.sleep(5)
+                    continue
+                break
             wall = round(time.monotonic()-started, 3); samples = sampler.get_since(start_sample)
             grading, grader_error = grade_workspace(task, workspace)
             stdout = proc.stdout.strip(); error = (proc.stderr.strip() + ("; " + grader_error if grader_error else ""))[:2000]
