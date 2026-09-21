@@ -50,6 +50,19 @@ def write_csv(path, records):
             w.writerow({k: record["row"].get(k, "") for k in FIELDS})
 
 
+def unload_model(model):
+    stopped = subprocess.run(["ollama", "stop", model], text=True, capture_output=True, timeout=30)
+    if stopped.returncode != 0:
+        return stopped.stderr.strip()[:300] or "ollama stop failed"
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        resident = subprocess.run(["ollama", "ps"], text=True, capture_output=True, timeout=10)
+        if resident.returncode == 0 and model not in resident.stdout:
+            return ""
+        time.sleep(2)
+    return "model remained resident after stop"
+
+
 def main():
     args = parse_args()
     args.host = args.host.expanduser().resolve()
@@ -116,10 +129,9 @@ def main():
             records.append(record); completed.add(task["id"]); write_csv(csv_path,records)
             print(f"  -> {row['status']} {row['verdict']} wall={wall}s",flush=True)
             if args.unload_model:
-                unloaded = subprocess.run(["ollama", "stop", args.unload_model], text=True,
-                                          capture_output=True, timeout=30)
-                if unloaded.returncode != 0:
-                    print(f"  -> model unload failed: {unloaded.stderr.strip()[:300]}", flush=True)
+                unload_error = unload_model(args.unload_model)
+                if unload_error:
+                    print(f"  -> model unload failed: {unload_error}", flush=True)
     finally:
         sampler.stop()
     return 0
