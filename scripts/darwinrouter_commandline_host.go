@@ -176,8 +176,14 @@ func main() {
 			// Persist the canonical operations the simulator actually executed. A
 			// model may describe an equivalent shell alias in its answer, while the
 			// benchmark grades the exact audited simulator operations.
-			value.Commands = append([]string(nil), executedCommands...)
-			value.MenuPath = append([]string(nil), executedMenus...)
+			value.Commands = append([]string{}, executedCommands...)
+			value.MenuPath = append([]string{}, executedMenus...)
+			if value.Findings == nil {
+				value.Findings = []string{}
+			}
+			if value.Actions == nil {
+				value.Actions = []string{}
+			}
 			encoded, err := json.MarshalIndent(value, "", "  ")
 			if err != nil || len(encoded) > 64<<10 {
 				return runtime.ToolResult{Effect: runtime.NoEffect}, errors.New("answer exceeds bounds")

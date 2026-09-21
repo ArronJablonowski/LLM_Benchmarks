@@ -79,10 +79,16 @@ def main():
             workspace = prepare_workspace(args.workspace, "darwinrouter", args.model, task)
             prompt = task["prompt"] + "\n\nUse the supplied benchmark tools and save the final answer.json."
             start_sample = sampler.snapshot_len(); started = time.monotonic()
-            proc = subprocess.run([str(args.host), "--config", str(args.config), "--workspace", str(workspace),
-                                   "--model", args.model, "--prompt", prompt, "--timeout", f"{args.timeout}s"],
-                                  text=True, capture_output=True, timeout=args.timeout + 30,
-                                  env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
+            command = [str(args.host), "--config", str(args.config), "--workspace", str(workspace),
+                       "--model", args.model, "--prompt", prompt, "--timeout", f"{args.timeout}s"]
+            for attempt in range(3):
+                proc = subprocess.run(command, text=True, capture_output=True, timeout=args.timeout + 30,
+                                      env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
+                if proc.returncode == 0:
+                    break
+                if attempt < 2:
+                    print(f"  -> transient host failure; retry {attempt + 2}/3", flush=True)
+                    time.sleep(5)
             wall = round(time.monotonic()-started, 3); samples = sampler.get_since(start_sample)
             grading, grader_error = grade_workspace(task, workspace)
             stdout = proc.stdout.strip(); error = (proc.stderr.strip() + ("; " + grader_error if grader_error else ""))[:2000]
