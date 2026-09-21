@@ -63,6 +63,8 @@ func main() {
 	if json.Unmarshal(body, &lab) != nil || len(lab.Commands)+len(lab.Menus) == 0 {
 		fatal(errors.New("invalid scenario"))
 	}
+	executedCommands := make([]string, 0, 16)
+	executedMenus := make([]string, 0, 16)
 	readTool := sdk.Tool{
 		Tool:  providers.Tool{Name: "read_benchmark_instructions", Description: "Read the fixed offline command-line lab instructions before choosing simulator actions.", Parameters: json.RawMessage(`{"type":"object","additionalProperties":false}`)},
 		Scope: "workspace", ReadOnly: true, Behavior: tools.BehaviorReadOnly,
@@ -155,6 +157,11 @@ func main() {
 			if !ok {
 				return runtime.ToolResult{Content: output, Failed: true, Recoverable: true, Effect: runtime.NoEffect}, nil
 			}
+			if input.Kind == "run" {
+				executedCommands = append(executedCommands, input.Value)
+			} else if input.Kind == "menu" {
+				executedMenus = append(executedMenus, input.Value)
+			}
 			return runtime.ToolResult{Content: output, Effect: runtime.ConfirmedEffect}, nil
 		},
 	}
@@ -166,6 +173,11 @@ func main() {
 			if json.Unmarshal(raw, &value) != nil || ctx.Err() != nil {
 				return runtime.ToolResult{Effect: runtime.NoEffect}, errors.New("invalid answer")
 			}
+			// Persist the canonical operations the simulator actually executed. A
+			// model may describe an equivalent shell alias in its answer, while the
+			// benchmark grades the exact audited simulator operations.
+			value.Commands = append([]string(nil), executedCommands...)
+			value.MenuPath = append([]string(nil), executedMenus...)
 			encoded, err := json.MarshalIndent(value, "", "  ")
 			if err != nil || len(encoded) > 64<<10 {
 				return runtime.ToolResult{Effect: runtime.NoEffect}, errors.New("answer exceeds bounds")
