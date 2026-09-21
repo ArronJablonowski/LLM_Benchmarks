@@ -44,6 +44,9 @@ def main() -> int:
         for unload in [name for _, name in pairs]:
             command.extend(["--ollama-model", unload])
         completed = subprocess.run(command, check=False)
+        if completed.returncode == 75:
+            print(f"Campaign deferred {model}: current host capacity cannot safely admit its advertised context.", file=sys.stderr)
+            continue
         if completed.returncode:
             print(f"Campaign paused after {model} exited {completed.returncode}; rerun resumes completed evidence.", file=sys.stderr)
             return completed.returncode

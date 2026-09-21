@@ -207,4 +207,10 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except RuntimeError as exc:
+        if "campaign paused without grading resource pressure" in str(exc):
+            print(str(exc), file=sys.stderr)
+            raise SystemExit(75)
+        raise
