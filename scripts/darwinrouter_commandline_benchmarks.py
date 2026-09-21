@@ -86,6 +86,8 @@ def main():
                                       env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
                 if proc.returncode == 0:
                     break
+                if "local resource capacity unavailable" in proc.stderr or "task admission failed" in proc.stderr:
+                    raise SystemExit(75)
                 if attempt < 2:
                     print(f"  -> transient host failure; retry {attempt + 2}/3", flush=True)
                     time.sleep(5)
