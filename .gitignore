@@ -23,3 +23,5 @@ logs/
 !data/top_models_report/*.csv
 Local LLM Benchmark Dashboard.html
 Local LLM Model Research/
+
+/scripts/darwinrouter_commandline_host
