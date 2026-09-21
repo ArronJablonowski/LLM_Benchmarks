@@ -145,13 +145,21 @@ def main(argv=None):
                     # reclaimed unified memory. Let host admission observe the
                     # post-unload state instead of turning pressure into rows.
                     time.sleep(5)
-                _, response = request_json(
-                    base_url + "/v1/tasks", token, method="POST",
-                    headers={"Idempotency-Key": f"benchmark-{run_id}-{task['id']}-{uuid.uuid4().hex}"},
-                    payload={"model_id": args.model, "prompt": task["prompt"],
-                             "domain": task["category"], "profile": "benchmark",
-                             "local_required": args.local_required}, timeout=args.timeout,
-                )
+                for attempt in range(3):
+                    try:
+                        _, response = request_json(
+                            base_url + "/v1/tasks", token, method="POST",
+                            headers={"Idempotency-Key": f"benchmark-{run_id}-{task['id']}-{uuid.uuid4().hex}"},
+                            payload={"model_id": args.model, "prompt": task["prompt"],
+                                     "domain": task["category"], "profile": "benchmark",
+                                     "local_required": args.local_required}, timeout=args.timeout,
+                        )
+                        break
+                    except RuntimeError as exc:
+                        if "execution_failed" not in str(exc) or attempt == 2:
+                            raise
+                        print(f"  -> transient execution failure; retry {attempt + 2}/3", flush=True)
+                        time.sleep(5)
                 if not response.get("task_id") or not isinstance(response.get("text"), str):
                     raise RuntimeError("DarwinRouter task response omitted task_id or text")
             except Exception as exc:
