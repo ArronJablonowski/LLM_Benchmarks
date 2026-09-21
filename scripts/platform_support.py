@@ -332,14 +332,21 @@ class MactopSampler(BaseSampler):
                 buffer = candidate[offset:]
                 try:
                     soc = obj.get("soc_metrics") or {}
+                    cpu_temp = number(soc.get("cpu_temp"))
+                    gpu_temp = number(soc.get("gpu_temp"))
+                    soc_temp = number(soc.get("soc_temp"))
                     sample = {
                         "t": time.monotonic(),
                         "timestamp": obj.get("timestamp"),
                         "cpu_usage_pct": number(obj.get("cpu_usage")),
                         "gpu_usage_pct": number(obj.get("gpu_usage")),
-                        "cpu_temp_c": number(soc.get("cpu_temp")),
-                        "gpu_temp_c": number(soc.get("gpu_temp")),
-                        "soc_temp_c": number(soc.get("soc_temp")),
+                        "cpu_temp_c": cpu_temp,
+                        "gpu_temp_c": gpu_temp,
+                        "soc_temp_c": soc_temp,
+                        "host_temp_c": max(
+                            value for value in (cpu_temp, gpu_temp, soc_temp)
+                            if value is not None
+                        ) if any(value is not None for value in (cpu_temp, gpu_temp, soc_temp)) else None,
                         "cpu_power_w": number(soc.get("cpu_power")),
                         "gpu_power_w": number(soc.get("gpu_power")),
                         "system_power_w": number(soc.get("system_power")),
