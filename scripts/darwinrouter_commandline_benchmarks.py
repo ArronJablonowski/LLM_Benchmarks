@@ -104,6 +104,10 @@ def main():
                 if "local resource capacity unavailable" in proc.stderr or "task admission failed" in proc.stderr:
                     if attempt + 1 == admission_retries:
                         raise SystemExit(75)
+                    if args.unload_model:
+                        unload_error = unload_model(args.unload_model)
+                        if unload_error:
+                            print(f"  -> model unload failed during admission retry: {unload_error}", flush=True)
                     delay = min(5 * (attempt + 1), 30)
                     print(f"  -> local capacity busy; retry {attempt + 2}/{admission_retries} in {delay}s", flush=True)
                     time.sleep(delay)
