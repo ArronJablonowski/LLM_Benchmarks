@@ -39,6 +39,7 @@ def parse_args(argv=None):
     parser.add_argument("--base-url", default="http://127.0.0.1:7788")
     parser.add_argument("--token-env", default="DARWIN_API_TOKEN")
     parser.add_argument("--model", default="auto")
+    parser.add_argument("--ollama-model", action="append", default=[], help="Unload this local Ollama model before each task so host admission observes free memory (repeatable)")
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument("--tasks", "--test", dest="tasks", nargs="*")
@@ -73,6 +74,20 @@ def write_csv(path, records):
         writer.writeheader()
         for record in records:
             writer.writerow({field: record["row"].get(field, "") for field in FIELDS})
+
+
+def unload_ollama(model):
+    if not model:
+        return
+    request = urllib.request.Request(
+        "http://127.0.0.1:11434/api/generate",
+        data=json.dumps({"model": model, "keep_alive": 0}).encode(),
+        headers={"Content-Type": "application/json"}, method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        if response.status != 200:
+            raise RuntimeError(f"Ollama unload returned HTTP {response.status}")
+        response.read(1 << 20)
 
 
 def main(argv=None):
@@ -121,10 +136,13 @@ def main(argv=None):
             error = ""
             response = {}
             try:
+                for ollama_model in args.ollama_model:
+                    unload_ollama(ollama_model)
                 _, response = request_json(
                     base_url + "/v1/tasks", token, method="POST",
                     headers={"Idempotency-Key": f"benchmark-{run_id}-{task['id']}-{uuid.uuid4().hex}"},
-                    payload={"model_id": args.model, "prompt": task["prompt"]}, timeout=args.timeout,
+                    payload={"model_id": args.model, "prompt": task["prompt"],
+                             "domain": task["category"], "profile": "benchmark"}, timeout=args.timeout,
                 )
                 if not response.get("task_id") or not isinstance(response.get("text"), str):
                     raise RuntimeError("DarwinRouter task response omitted task_id or text")

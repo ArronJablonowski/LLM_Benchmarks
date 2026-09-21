@@ -617,3 +617,4 @@ each hardware result remains attributable to its originating machine.
 For Spark-specific preflight and telemetry details, see
 [`docs/DGX_SPARK.md`](docs/DGX_SPARK.md). The canonical remote is
 [ArronJablonowski/LLM_Benchmarks](https://github.com/ArronJablonowski/LLM_Benchmarks).
+DarwinRouter can compare configured local models independently and then run a held-out automatic-routing validation with `scripts/darwinrouter_learning_campaign.py`. Each model writes to its own resumable evidence directory, and the standard adapter records deterministic accepted/rejected feedback in DarwinRouter after every completed task.
