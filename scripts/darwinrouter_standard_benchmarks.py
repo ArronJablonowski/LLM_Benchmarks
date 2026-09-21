@@ -138,6 +138,11 @@ def main(argv=None):
             try:
                 for ollama_model in args.ollama_model:
                     unload_ollama(ollama_model)
+                if args.ollama_model:
+                    # Ollama acknowledges unload before macOS has necessarily
+                    # reclaimed unified memory. Let host admission observe the
+                    # post-unload state instead of turning pressure into rows.
+                    time.sleep(5)
                 _, response = request_json(
                     base_url + "/v1/tasks", token, method="POST",
                     headers={"Idempotency-Key": f"benchmark-{run_id}-{task['id']}-{uuid.uuid4().hex}"},
@@ -147,6 +152,8 @@ def main(argv=None):
                 if not response.get("task_id") or not isinstance(response.get("text"), str):
                     raise RuntimeError("DarwinRouter task response omitted task_id or text")
             except Exception as exc:
+                if "admission_denied" in str(exc):
+                    raise RuntimeError("DarwinRouter admission denied after model unload; campaign paused without grading resource pressure") from exc
                 error = repr(exc)
             wall = round(time.monotonic() - started, 3)
             samples = sampler.get_since(sample_start)
