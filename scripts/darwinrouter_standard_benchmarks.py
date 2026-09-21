@@ -40,6 +40,7 @@ def parse_args(argv=None):
     parser.add_argument("--base-url", default="http://127.0.0.1:7788")
     parser.add_argument("--token-env", default="DARWIN_API_TOKEN")
     parser.add_argument("--model", default="auto")
+    parser.add_argument("--local-required", action="store_true", help="Require DarwinRouter to select a local model")
     parser.add_argument("--ollama-model", action="append", default=[], help="Unload this local Ollama model before each task so host admission observes free memory (repeatable)")
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--timeout", type=int, default=300)
@@ -148,7 +149,8 @@ def main(argv=None):
                     base_url + "/v1/tasks", token, method="POST",
                     headers={"Idempotency-Key": f"benchmark-{run_id}-{task['id']}-{uuid.uuid4().hex}"},
                     payload={"model_id": args.model, "prompt": task["prompt"],
-                             "domain": task["category"], "profile": "benchmark"}, timeout=args.timeout,
+                             "domain": task["category"], "profile": "benchmark",
+                             "local_required": args.local_required}, timeout=args.timeout,
                 )
                 if not response.get("task_id") or not isinstance(response.get("text"), str):
                     raise RuntimeError("DarwinRouter task response omitted task_id or text")

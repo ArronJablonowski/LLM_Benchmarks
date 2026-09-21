@@ -38,6 +38,10 @@ def main() -> int:
         ]
         if args.tasks is not None:
             command.extend(["--tasks", *args.tasks])
+        # This campaign measures and teaches local-model routing. Without this
+        # constraint the held-out auto phase may select the cloud commander,
+        # which neither validates local learning nor local context tiers.
+        command.append("--local-required")
         # Clear every campaign model before every task. Ollama can retain the
         # previous model after a route completes; unloading only the incoming
         # model makes host admission correctly reject the combined footprint.
