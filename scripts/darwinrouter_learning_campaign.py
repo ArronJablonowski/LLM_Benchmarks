@@ -38,8 +38,10 @@ def main() -> int:
         ]
         if args.tasks is not None:
             command.extend(["--tasks", *args.tasks])
-        unloads = [ollama] if ollama else [name for _, name in pairs]
-        for unload in unloads:
+        # Clear every campaign model before every task. Ollama can retain the
+        # previous model after a route completes; unloading only the incoming
+        # model makes host admission correctly reject the combined footprint.
+        for unload in [name for _, name in pairs]:
             command.extend(["--ollama-model", unload])
         completed = subprocess.run(command, check=False)
         if completed.returncode:
