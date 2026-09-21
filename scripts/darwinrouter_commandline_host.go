@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -105,7 +106,21 @@ func main() {
 				}
 			}
 			if input.Value == "python3 terminal_lab.py help" || input.Value == "help" {
-				return runtime.ToolResult{Content: "Use kind=run with the inner command, kind=menu with the inner menu path, or kind=context; then call save_benchmark_answer.", Effect: runtime.NoEffect}, nil
+				commands := make([]string, 0, len(lab.Commands))
+				for command := range lab.Commands {
+					commands = append(commands, command)
+				}
+				sort.Strings(commands)
+				menus := make([]string, 0, len(lab.Menus))
+				for menu := range lab.Menus {
+					menus = append(menus, menu)
+				}
+				sort.Strings(menus)
+				content := "Use kind=run with one available command, kind=menu with one available menu path, or kind=context; then call save_benchmark_answer.\nAvailable commands:\n- " + strings.Join(commands, "\n- ")
+				if len(menus) > 0 {
+					content += "\nAvailable menu paths:\n- " + strings.Join(menus, "\n- ")
+				}
+				return runtime.ToolResult{Content: content, Effect: runtime.NoEffect}, nil
 			}
 			if input.Kind == "run" {
 				for available := range lab.Commands {
