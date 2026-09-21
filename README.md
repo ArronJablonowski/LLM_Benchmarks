@@ -218,6 +218,23 @@ toolsets. OpenClaw uses unique benchmark sessions and an explicit per-run
 The runners use the same core task registry. Run each path separately so
 their scores remain attributable to their actual transport and agent behavior.
 
+### DarwinRouter Standard path
+
+DarwinRouter has a native Standard-suite adapter that submits each text task
+through the authenticated durable task API with `model_id: auto`. It preserves
+the Darwin task ID, deterministic grade, route estimate, response digest, and
+macOS/NVIDIA telemetry. When the route reports an observed attempt cost, the
+adapter records the deterministic pass/fail result through DarwinRouter's
+feedback API so later automatic routes can use the benchmark evidence.
+
+```bash
+DARWIN_API_TOKEN=... python3 scripts/darwinrouter_standard_benchmarks.py \
+  --output-dir reports/darwinrouter-standard --run
+```
+
+The adapter is resumable from its JSONL evidence and excludes the core image
+task until DarwinRouter exposes a qualified multimodal request contract.
+
 ### COH Ollama
 
 COH's benchmark-only command must be built from the reviewed COH checkout. The
