@@ -74,11 +74,12 @@ func main() {
 			if err != nil || len(instructions) > 16<<10 {
 				return runtime.ToolResult{Effect: runtime.NoEffect}, errors.New("benchmark instructions unavailable")
 			}
-			return runtime.ToolResult{Content: string(instructions), Effect: runtime.NoEffect}, nil
+			toolNote := "\nDarwinRouter tool mapping: call run_terminal_lab with kind=run and only the inner command (for example, uname -a), kind=menu and only the inner menu path, or kind=context. Do not include the python3 terminal_lab.py wrapper. Finish by calling save_benchmark_answer.\n"
+			return runtime.ToolResult{Content: string(instructions) + toolNote, Effect: runtime.NoEffect}, nil
 		},
 	}
 	runTool := sdk.Tool{
-		Tool:  providers.Tool{Name: "run_terminal_lab", Description: "Run one exact command or menu path in the deterministic offline terminal simulator. Nothing is executed on the benchmark host.", Parameters: json.RawMessage(`{"type":"object","properties":{"kind":{"type":"string","enum":["run","menu","context"]},"value":{"type":"string","maxLength":4096}},"required":["kind","value"],"additionalProperties":false}`)},
+		Tool:  providers.Tool{Name: "run_terminal_lab", Description: "Run one exact command or menu path in the deterministic offline terminal simulator. Use kind run or command for shell commands. Nothing is executed on the benchmark host.", Parameters: json.RawMessage(`{"type":"object","properties":{"kind":{"type":"string","enum":["run","command","shell","menu","context"]},"value":{"type":"string","maxLength":4096}},"required":["kind","value"],"additionalProperties":false}`)},
 		Scope: "workspace", Behavior: tools.BehaviorIdempotentWrite,
 		Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
 			var input struct{ Kind, Value string }
@@ -86,6 +87,47 @@ func main() {
 				return runtime.ToolResult{Effect: runtime.NoEffect}, errors.New("invalid simulator request")
 			}
 			input.Value = strings.TrimSpace(input.Value)
+			if input.Kind == "command" || input.Kind == "shell" {
+				input.Kind = "run"
+			}
+			// The fixture README documents the standalone terminal_lab.py syntax.
+			// Accept that syntax too, so an agent following the supplied instructions
+			// reaches the same deterministic simulator rather than the host shell.
+			for prefix, kind := range map[string]string{
+				"python3 terminal_lab.py run ":  "run",
+				"python3 terminal_lab.py menu ": "menu",
+			} {
+				if strings.HasPrefix(input.Value, prefix) {
+					input.Kind = kind
+					input.Value = strings.Trim(strings.TrimSpace(strings.TrimPrefix(input.Value, prefix)), "'\"")
+				}
+			}
+			if input.Value == "python3 terminal_lab.py help" || input.Value == "help" {
+				return runtime.ToolResult{Content: "Use kind=run with the inner command, kind=menu with the inner menu path, or kind=context; then call save_benchmark_answer.", Effect: runtime.NoEffect}, nil
+			}
+			if input.Kind == "run" {
+				for available := range lab.Commands {
+					if strings.HasPrefix(input.Value, available+" | head") {
+						input.Value = available
+						break
+					}
+				}
+				if _, exact := lab.Commands[input.Value]; !exact {
+					binary := strings.Fields(input.Value)
+					matches := make([]string, 0, 1)
+					if len(binary) > 0 {
+						for available := range lab.Commands {
+							fields := strings.Fields(available)
+							if len(fields) > 0 && fields[0] == binary[0] {
+								matches = append(matches, available)
+							}
+						}
+					}
+					if len(matches) == 1 {
+						input.Value = matches[0]
+					}
+				}
+			}
 			output, ok := "", true
 			switch input.Kind {
 			case "context":
@@ -135,8 +177,12 @@ func main() {
 		},
 	}
 	client, err := sdk.New(sdk.ConfigOptions{
-		ProjectFile:  *configPath,
-		Overrides:    map[string]string{"telemetry.database": filepath.Join(root, "darwinrouter.db")},
+		ProjectFile: *configPath,
+		Overrides: map[string]string{
+			"telemetry.database": filepath.Join(root, "darwinrouter.db"),
+			"runtime.max_turns":  "32",
+			"tools.max_turns":    "32",
+		},
 		LookupSecret: os.Getenv,
 		Tools:        []sdk.Tool{readTool, runTool, saveTool},
 		ToolPolicy:   &sdk.ToolPolicy{Default: tools.Ask},
