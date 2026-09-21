@@ -32,6 +32,7 @@ def parse_args():
     p.add_argument("--output-dir", type=Path, required=True)
     p.add_argument("--workspace", type=Path, required=True)
     p.add_argument("--timeout", type=int, default=900)
+    p.add_argument("--unload-model", help="Ollama model identity to unload after each isolated task")
     p.add_argument("--tasks", nargs="*")
     p.add_argument("--run", action="store_true")
     return p.parse_args()
@@ -114,6 +115,11 @@ def main():
             with jsonl.open("a",encoding="utf-8") as f: f.write(json.dumps(record)+"\n")
             records.append(record); completed.add(task["id"]); write_csv(csv_path,records)
             print(f"  -> {row['status']} {row['verdict']} wall={wall}s",flush=True)
+            if args.unload_model:
+                unloaded = subprocess.run(["ollama", "stop", args.unload_model], text=True,
+                                          capture_output=True, timeout=30)
+                if unloaded.returncode != 0:
+                    print(f"  -> model unload failed: {unloaded.stderr.strip()[:300]}", flush=True)
     finally:
         sampler.stop()
     return 0
