@@ -10,9 +10,8 @@ from grader_support import Checks, has_student_tests, import_path, python_files_
 
 def main(workspace: Path) -> int:
     checks = Checks()
-    module = import_path(workspace / "layered_config.py", "graded_layered_config")
-
     def behavior():
+        module = import_path(workspace / "layered_config.py", "graded_layered_config")
         base = {"db": {"host": "a", "opts": {"ssl": True}}, "tags": ["old"], "keep": 1}
         overlay = {"db": {"host": "b", "opts": {"timeout": 5}}, "tags": ["new"], "keep": None}
         before_base, before_overlay = copy.deepcopy(base), copy.deepcopy(overlay)
