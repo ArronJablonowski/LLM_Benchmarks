@@ -159,6 +159,11 @@ def main(argv=None):
                         if "execution_failed" not in str(exc) or attempt == 2:
                             raise
                         print(f"  -> transient execution failure; retry {attempt + 2}/3", flush=True)
+                        for ollama_model in args.ollama_model:
+                            unload_ollama(ollama_model)
+                        # A failed local call can leave its model resident. Clear
+                        # it before retry admission so the host guard does not
+                        # double-count the same model as old plus incoming load.
                         time.sleep(5)
                 if not response.get("task_id") or not isinstance(response.get("text"), str):
                     raise RuntimeError("DarwinRouter task response omitted task_id or text")
