@@ -26,13 +26,14 @@ const outputLimit = 64 << 10
 
 func main() {
 	config := flag.String("config", "", "DarwinRouter configuration")
+	database := flag.String("database", "", "campaign telemetry database")
 	workspace := flag.String("workspace", "", "absolute isolated workspace")
 	model := flag.String("model", "auto", "DarwinRouter model ID")
 	prompt := flag.String("prompt", "", "coding task")
 	timeout := flag.Duration("timeout", 2*time.Hour, "task deadline")
 	flag.Parse()
-	if *config == "" || *workspace == "" || *prompt == "" || !filepath.IsAbs(*workspace) {
-		fatal(errors.New("config, absolute workspace, and prompt are required"))
+	if *config == "" || *database == "" || *workspace == "" || *prompt == "" || !filepath.IsAbs(*workspace) || !filepath.IsAbs(*database) {
+		fatal(errors.New("config, database, absolute workspace, and prompt are required"))
 	}
 	root, err := filepath.EvalSymlinks(*workspace)
 	if err != nil {
@@ -50,7 +51,7 @@ func main() {
 		}
 		return path, nil
 	}
-	list := sdk.Tool{Tool: providers.Tool{Name: "list_files", Description: "List regular files in the coding workspace recursively.", Parameters: json.RawMessage(`{"type":"object","additionalProperties":false}`)}, Scope: "workspace", ReadOnly: true, Behavior: tools.BehaviorReadOnly, Handler: func(ctx context.Context, _ json.RawMessage) (runtime.ToolResult, error) {
+	list := sdk.Tool{Tool: providers.Tool{Name: "benchmark_list_files", Description: "List regular files in the coding workspace recursively.", Parameters: json.RawMessage(`{"type":"object","additionalProperties":false}`)}, Scope: "workspace", ReadOnly: true, Behavior: tools.BehaviorReadOnly, Handler: func(ctx context.Context, _ json.RawMessage) (runtime.ToolResult, error) {
 		var names []string
 		err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 			if err != nil {
@@ -78,7 +79,7 @@ func main() {
 		sort.Strings(names)
 		return runtime.ToolResult{Content: strings.Join(names, "\n"), Effect: runtime.NoEffect}, nil
 	}}
-	read := sdk.Tool{Tool: providers.Tool{Name: "read_file", Description: "Read one UTF-8 file relative to the coding workspace, up to 64 KiB.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","minLength":1,"maxLength":4096}},"required":["path"],"additionalProperties":false}`)}, Scope: "workspace", ReadOnly: true, Behavior: tools.BehaviorReadOnly, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
+	read := sdk.Tool{Tool: providers.Tool{Name: "benchmark_read_file", Description: "Read one UTF-8 file relative to the coding workspace, up to 64 KiB.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","minLength":1,"maxLength":4096}},"required":["path"],"additionalProperties":false}`)}, Scope: "workspace", ReadOnly: true, Behavior: tools.BehaviorReadOnly, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
 		var in struct {
 			Path string `json:"path"`
 		}
@@ -98,7 +99,7 @@ func main() {
 		}
 		return runtime.ToolResult{Content: string(body), Effect: runtime.NoEffect}, nil
 	}}
-	write := sdk.Tool{Tool: providers.Tool{Name: "write_file", Description: "Create or replace one UTF-8 file relative to the coding workspace.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","minLength":1,"maxLength":4096},"content":{"type":"string","maxLength":131072}},"required":["path","content"],"additionalProperties":false}`)}, Scope: "workspace", Behavior: tools.BehaviorIdempotentWrite, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
+	write := sdk.Tool{Tool: providers.Tool{Name: "benchmark_write_file", Description: "Create or replace one UTF-8 file relative to the coding workspace.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","minLength":1,"maxLength":4096},"content":{"type":"string","maxLength":131072}},"required":["path","content"],"additionalProperties":false}`)}, Scope: "workspace", Behavior: tools.BehaviorIdempotentWrite, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
 		var in struct {
 			Path    string `json:"path"`
 			Content string `json:"content"`
@@ -121,7 +122,7 @@ func main() {
 		}
 		return runtime.ToolResult{Content: "file written", Effect: runtime.ConfirmedEffect}, nil
 	}}
-	run := sdk.Tool{Tool: providers.Tool{Name: "run_command", Description: "Run a shell command inside the isolated coding workspace. Use this to inspect files and execute tests; output is capped at 64 KiB.", Parameters: json.RawMessage(`{"type":"object","properties":{"command":{"type":"string","minLength":1,"maxLength":8192}},"required":["command"],"additionalProperties":false}`)}, Scope: "workspace", Behavior: tools.BehaviorIdempotentWrite, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
+	run := sdk.Tool{Tool: providers.Tool{Name: "benchmark_run_command", Description: "Run a shell command inside the isolated coding workspace. Use this to inspect files and execute tests; output is capped at 64 KiB.", Parameters: json.RawMessage(`{"type":"object","properties":{"command":{"type":"string","minLength":1,"maxLength":8192}},"required":["command"],"additionalProperties":false}`)}, Scope: "workspace", Behavior: tools.BehaviorIdempotentWrite, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
 		var in struct {
 			Command string `json:"command"`
 		}
@@ -139,13 +140,13 @@ func main() {
 		}
 		result := runtime.ToolResult{Content: string(body), Effect: runtime.ConfirmedEffect}
 		if err != nil {
-			result.Failed = true
-			result.Recoverable = true
-			result.Content += fmt.Sprintf("\ncommand error: %v", err)
+			// A non-zero command is observation for an agentic coding loop, not a
+			// host-tool failure. Let the model inspect it and repair the code.
+			result.Content += fmt.Sprintf("\ncommand exited non-zero: %v", err)
 		}
 		return result, nil
 	}}
-	client, err := sdk.New(sdk.ConfigOptions{ProjectFile: *config, Overrides: map[string]string{"runtime.max_turns": "100", "tools.max_turns": "100"}, LookupSecret: os.Getenv, Tools: []sdk.Tool{list, read, write, run}, ToolPolicy: &sdk.ToolPolicy{Default: tools.Ask}, ApprovalReviewer: func(_ context.Context, p sdk.ApprovalPrompt) (string, bool, error) {
+	client, err := sdk.New(sdk.ConfigOptions{ProjectFile: *config, Overrides: map[string]string{"telemetry.database": *database, "runtime.max_turns": "32", "tools.max_turns": "32"}, LookupSecret: os.Getenv, Tools: []sdk.Tool{list, read, write, run}, ToolPolicy: &sdk.ToolPolicy{Default: tools.Ask}, ApprovalReviewer: func(_ context.Context, p sdk.ApprovalPrompt) (string, bool, error) {
 		return "coding-benchmark", true, nil
 	}})
 	if err != nil {

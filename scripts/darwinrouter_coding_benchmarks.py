@@ -2,7 +2,7 @@
 """Run repository-level coding tasks through DarwinRouter's native SDK host."""
 from __future__ import annotations
 
-import argparse, csv, hashlib, json, os, subprocess, time, urllib.request
+import argparse, csv, hashlib, json, os, subprocess, time
 from pathlib import Path
 
 from benchmark_tests import suite_task_catalog
@@ -15,10 +15,9 @@ def maximum(samples, key):
     values=[x.get(key) for x in samples if x.get(key) is not None]
     return max(values) if values else ""
 
-def request_feedback(base, token, task_id, accepted):
-    body=json.dumps({"task_id":task_id,"outcome":"accepted" if accepted else "rejected","attempt_cost":0}).encode()
-    req=urllib.request.Request(base.rstrip("/")+"/v1/feedback",data=body,method="POST",headers={"Authorization":"Bearer "+token,"Content-Type":"application/json"})
-    with urllib.request.urlopen(req,timeout=15) as response: response.read()
+def record_feedback(darwin, database, task_id, accepted):
+    proc=subprocess.run([darwin,"feedback","--db",str(database),"--task",task_id,"--outcome","accepted" if accepted else "rejected","--attempt-cost","0"],text=True,capture_output=True,timeout=30)
+    if proc.returncode:raise RuntimeError(proc.stderr.strip() or "feedback failed")
 
 def stop_model(name):
     subprocess.run(["ollama","stop",name],capture_output=True,timeout=30,check=False)
@@ -34,7 +33,7 @@ def main():
     p.add_argument("--host",type=Path,required=True);p.add_argument("--config",type=Path,required=True)
     p.add_argument("--models",nargs="+",default=["local-muse-glimmer","local-qwen3-coder","auto"])
     p.add_argument("--ollama-model",action="append",default=[]);p.add_argument("--output-dir",type=Path,required=True);p.add_argument("--workspace",type=Path,required=True)
-    p.add_argument("--base-url",default="http://127.0.0.1:7788");p.add_argument("--token-env",default="DARWIN_API_TOKEN")
+    p.add_argument("--darwin",default="/Users/aj_lobster/DarwinRouter/bin/darwin")
     p.add_argument("--timeout",type=int,default=1800);p.add_argument("--tasks",nargs="*");p.add_argument("--run",action="store_true")
     args=p.parse_args(); tasks=suite_task_catalog("coding")
     if args.tasks:
@@ -42,9 +41,8 @@ def main():
         if wanted-{t["id"] for t in tasks}:raise SystemExit("unknown coding task")
     total=len(args.models)*len(tasks);print(f"Suite: coding (coding-agent-v2-web); harness: DarwinRouter; observations: {total}",flush=True)
     if not args.run:return 0
-    token=os.environ.get(args.token_env,"");
-    if len(token)<32:raise SystemExit(f"{args.token_env} is required")
     args.output_dir.mkdir(parents=True,exist_ok=True);args.workspace.mkdir(parents=True,exist_ok=True)
+    database=(args.output_dir/"darwinrouter-coding.db").resolve()
     jsonl=args.output_dir/"darwinrouter_coding.jsonl";csv_path=args.output_dir/"darwinrouter_coding.csv"
     records=[json.loads(x) for x in jsonl.read_text().splitlines()] if jsonl.exists() else []
     completed={(r["row"]["model"],r["row"]["task_id"]) for r in records};run_id=records[0]["row"]["run_id"] if records else time.strftime("%Y%m%d_%H%M%S")
@@ -57,7 +55,7 @@ def main():
         for name in args.ollama_model:stop_model(name)
         work=prepare_workspace(args.workspace,"darwinrouter",model,task);before=fingerprint_tree(work)
         prompt=task["prompt"]+"\n\nWork only inside: "+str(work)
-        command=[str(args.host),"--config",str(args.config),"--workspace",str(work),"--model",model,"--prompt",prompt,"--timeout",f"{args.timeout}s"]
+        command=[str(args.host),"--config",str(args.config),"--database",str(database),"--workspace",str(work),"--model",model,"--prompt",prompt,"--timeout",f"{args.timeout}s"]
         start_sample=sampler.snapshot_len();started=time.monotonic();proc=None
         for attempt in range(5):
             proc=subprocess.run(command,text=True,capture_output=True,timeout=args.timeout+60,env={**os.environ,"PYTHONDONTWRITEBYTECODE":"1"})
@@ -74,7 +72,7 @@ def main():
         except Exception:result={}
         feedback=False
         if task_id:
-            try:request_feedback(args.base_url,token,task_id,grading.get("verdict")=="pass");feedback=True
+            try:record_feedback(args.darwin,database,task_id,grading.get("verdict")=="pass");feedback=True
             except Exception as exc:error=(error+f"; feedback: {exc}")[:3000]
         row={"run_id":run_id,"benchmark_profile":"coding-agent-v2-web","harness":"darwinrouter","model":model,"task_id":task["id"],"task_name":task["name"],"status":"ok" if proc.returncode==0 else "error","verdict":grading.get("verdict","grader_error"),"checks_passed":grading.get("passed",0),"checks_total":grading.get("total",0),"wall_seconds":wall,"exit_code":proc.returncode,"files_changed":len(changed),"student_test_files":count_student_tests(work),"feedback_recorded":str(feedback).lower(),"context_tokens":context_tokens,"max_gpu_temp_c":maximum(samples,"gpu_temp_c"),"max_host_temp_c":maximum(samples,"host_temp_c"),"max_host_memory_used_bytes":maximum(samples,"host_memory_used_bytes"),"max_host_memory_pct":maximum(samples,"host_memory_pct"),"max_gpu_usage_pct":maximum(samples,"gpu_usage_pct"),"sample_count":len(samples),"error":error}
         record={"row":row,"darwin_response":result,"grading":grading,"changed_files":changed,"telemetry_samples":samples}
