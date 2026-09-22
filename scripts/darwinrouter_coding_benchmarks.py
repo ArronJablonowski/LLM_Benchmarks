@@ -37,6 +37,13 @@ def stop_model(name):
         time.sleep(2)
     raise RuntimeError(f"model remained resident: {name}")
 
+def stop_all_models():
+    ps=subprocess.run(["ollama","ps"],text=True,capture_output=True,timeout=10)
+    if ps.returncode:return
+    for line in ps.stdout.splitlines()[1:]:
+        fields=line.split()
+        if fields:stop_model(fields[0])
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--host",type=Path,required=True);p.add_argument("--config",type=Path,required=True)
@@ -61,7 +68,7 @@ def main():
        for task in tasks:
         if (model,task["id"]) in completed:continue
         print(f"[{len(completed)+1}/{total}] DarwinRouter {model} :: {task['id']}",flush=True)
-        for name in args.ollama_model:stop_model(name)
+        stop_all_models()
         work=prepare_workspace(args.workspace,"darwinrouter",model,task).resolve();before=fingerprint_tree(work)
         prompt=task["prompt"]+"\n\nWork only inside: "+str(work)
         command=[str(args.host),"--config",str(args.config),"--database",str(database),"--workspace",str(work),"--model",model,"--prompt",prompt,"--timeout",f"{args.timeout}s"]
@@ -73,7 +80,7 @@ def main():
             if interim.get("verdict")=="pass":
                 print("  -> objective grader passed despite non-zero host completion",flush=True);break
             if attempt<4:
-                for name in args.ollama_model:stop_model(name)
+                stop_all_models()
                 print(f"  -> host retry {attempt+2}/5",flush=True);time.sleep(min(5*(attempt+1),20))
         wall=round(time.monotonic()-started,3);samples=sampler.get_since(start_sample)
         grading,grader_error=grade_workspace(task,work);after=fingerprint_tree(work);changed=sorted(set(before)|set(after));changed=[x for x in changed if before.get(x)!=after.get(x)]
@@ -96,7 +103,7 @@ def main():
         with csv_path.open("w",newline="") as f:
             w=csv.DictWriter(f,fieldnames=FIELDS);w.writeheader();[w.writerow({k:r["row"].get(k,"") for k in FIELDS}) for r in records]
         print(f"  -> {row['status']} {row['verdict']} {row['checks_passed']}/{row['checks_total']} wall={wall}s feedback={feedback}",flush=True)
-        for name in args.ollama_model:stop_model(name)
+        stop_all_models()
     finally:sampler.stop()
     return 0
 
