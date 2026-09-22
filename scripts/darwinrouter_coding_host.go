@@ -40,11 +40,13 @@ func main() {
 		fatal(err)
 	}
 	resolve := func(name string) (string, error) {
-		if name == "" || filepath.IsAbs(name) {
+		if name == "" {
 			return "", errors.New("invalid workspace path")
 		}
-		clean := filepath.Clean(name)
-		path := filepath.Join(root, clean)
+		path := filepath.Clean(name)
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(root, path)
+		}
 		rel, err := filepath.Rel(root, path)
 		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
 			return "", errors.New("path escapes workspace")
@@ -88,11 +90,19 @@ func main() {
 		}
 		path, err := resolve(in.Path)
 		if err != nil {
-			return runtime.ToolResult{Effect: runtime.NoEffect}, err
+			return runtime.ToolResult{Content: "invalid workspace path: " + err.Error(), Effect: runtime.NoEffect}, nil
+		}
+		if entries, dirErr := os.ReadDir(path); dirErr == nil {
+			names := make([]string, 0, len(entries))
+			for _, entry := range entries {
+				names = append(names, entry.Name())
+			}
+			sort.Strings(names)
+			return runtime.ToolResult{Content: strings.Join(names, "\n"), Effect: runtime.NoEffect}, nil
 		}
 		body, err := os.ReadFile(path)
 		if err != nil || len(body) > outputLimit {
-			return runtime.ToolResult{Effect: runtime.NoEffect}, errors.New("file unavailable or too large")
+			return runtime.ToolResult{Content: "file unavailable or too large", Effect: runtime.NoEffect}, nil
 		}
 		if ctx.Err() != nil {
 			return runtime.ToolResult{Effect: runtime.NoEffect}, ctx.Err()
