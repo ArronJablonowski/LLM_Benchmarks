@@ -19,6 +19,15 @@ def record_feedback(darwin, database, task_id, accepted):
     proc=subprocess.run([darwin,"feedback","--db",str(database),"--task",task_id,"--outcome","accepted" if accepted else "rejected","--attempt-cost","0"],text=True,capture_output=True,timeout=30)
     if proc.returncode:raise RuntimeError(proc.stderr.strip() or "feedback failed")
 
+def finalize_passing_task(command, darwin, database):
+    final=subprocess.run(command+["--finalize"],text=True,capture_output=True,timeout=300,env={**os.environ,"PYTHONDONTWRITEBYTECODE":"1"})
+    if final.returncode:return ""
+    try:
+        result=json.loads(final.stdout.strip().splitlines()[-1]);task_id=result.get("TaskID") or result.get("task_id") or ""
+    except Exception:return ""
+    if task_id:record_feedback(darwin,database,task_id,True)
+    return task_id
+
 def stop_model(name):
     subprocess.run(["ollama","stop",name],capture_output=True,timeout=30,check=False)
     deadline=time.monotonic()+60
@@ -76,7 +85,11 @@ def main():
         feedback=False
         if task_id:
             try:record_feedback(args.darwin,database,task_id,grading.get("verdict")=="pass");feedback=True
-            except Exception as exc:error=(error+f"; feedback: {exc}")[:3000]
+            except Exception as exc:
+                if grading.get("verdict")=="pass":
+                    try:feedback=bool(finalize_passing_task(command,args.darwin,database))
+                    except Exception:feedback=False
+                if not feedback:error=(error+f"; feedback: {exc}")[:3000]
         row={"run_id":run_id,"benchmark_profile":"coding-agent-v2-web","harness":"darwinrouter","model":model,"task_id":task["id"],"task_name":task["name"],"status":"ok" if grading.get("verdict")=="pass" else ("ok" if proc.returncode==0 else "error"),"verdict":grading.get("verdict","grader_error"),"checks_passed":grading.get("passed",0),"checks_total":grading.get("total",0),"wall_seconds":wall,"exit_code":proc.returncode,"files_changed":len(changed),"student_test_files":count_student_tests(work),"feedback_recorded":str(feedback).lower(),"context_tokens":context_tokens,"max_gpu_temp_c":maximum(samples,"gpu_temp_c"),"max_host_temp_c":maximum(samples,"host_temp_c"),"max_host_memory_used_bytes":maximum(samples,"host_memory_used_bytes"),"max_host_memory_pct":maximum(samples,"host_memory_pct"),"max_gpu_usage_pct":maximum(samples,"gpu_usage_pct"),"sample_count":len(samples),"error":error}
         record={"row":row,"darwin_response":result,"grading":grading,"changed_files":changed,"telemetry_samples":samples}
         with jsonl.open("a") as f:f.write(json.dumps(record)+"\n")

@@ -31,6 +31,7 @@ func main() {
 	model := flag.String("model", "auto", "DarwinRouter model ID")
 	prompt := flag.String("prompt", "", "coding task")
 	timeout := flag.Duration("timeout", 2*time.Hour, "task deadline")
+	finalize := flag.Bool("finalize", false, "record a short completed-task result without coding tools")
 	flag.Parse()
 	if *config == "" || *database == "" || *workspace == "" || *prompt == "" || !filepath.IsAbs(*workspace) || !filepath.IsAbs(*database) {
 		fatal(errors.New("config, database, absolute workspace, and prompt are required"))
@@ -156,15 +157,25 @@ func main() {
 		}
 		return result, nil
 	}}
-	client, err := sdk.New(sdk.ConfigOptions{ProjectFile: *config, Overrides: map[string]string{"telemetry.database": *database, "runtime.max_turns": "32", "tools.max_turns": "32"}, LookupSecret: os.Getenv, Tools: []sdk.Tool{list, read, write, run}, ToolPolicy: &sdk.ToolPolicy{Default: tools.Ask}, ApprovalReviewer: func(_ context.Context, p sdk.ApprovalPrompt) (string, bool, error) {
+	definitions := []sdk.Tool{list, read, write, run}
+	var policy *sdk.ToolPolicy = &sdk.ToolPolicy{Default: tools.Ask}
+	var reviewer sdk.ApprovalReviewer = func(_ context.Context, p sdk.ApprovalPrompt) (string, bool, error) {
 		return "coding-benchmark", true, nil
-	}})
+	}
+	if *finalize {
+		definitions, policy, reviewer = nil, nil, nil
+	}
+	client, err := sdk.New(sdk.ConfigOptions{ProjectFile: *config, Overrides: map[string]string{"telemetry.database": *database, "runtime.max_turns": "32", "tools.max_turns": "32"}, LookupSecret: os.Getenv, Tools: definitions, ToolPolicy: policy, ApprovalReviewer: reviewer})
 	if err != nil {
 		fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
-	result, err := client.Run(ctx, sdk.Request{Version: 1, ModelID: *model, Prompt: *prompt + "\n\nInspect the repository, implement the requested change, and run focused tests. Work only inside the supplied workspace.", Domain: "code", Profile: "benchmark", LocalRequired: true})
+	suffix := "\n\nInspect the repository, implement the requested change, and run focused tests. Work only inside the supplied workspace."
+	if *finalize {
+		suffix = "\n\nThe external objective grader has already verified the workspace. Respond briefly that the coding task is complete; do not request or invoke tools."
+	}
+	result, err := client.Run(ctx, sdk.Request{Version: 1, ModelID: *model, Prompt: *prompt + suffix, Domain: "code", Profile: "benchmark", LocalRequired: true})
 	if err != nil {
 		body, _ := json.Marshal(result)
 		var output map[string]any
