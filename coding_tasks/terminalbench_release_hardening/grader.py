@@ -31,7 +31,10 @@ def main(workspace: Path) -> int:
                 names = archive.getnames(); assert all(not name.startswith("/") and ".." not in Path(name).parts for name in names)
                 member = next(item for item in archive.getmembers() if item.name.endswith("run.sh")); assert member.mode & stat.S_IXUSR
             marker = root / "pwned"
-            try: build_archive(source, root / "three.tar.gz", ["printf", "x;touch", str(marker)])
+            # A safely executed argv leaves the marker untouched and emits no
+            # output that can corrupt the grader's JSON protocol. A vulnerable
+            # shell-joined command interprets the semicolon and creates it.
+            try: build_archive(source, root / "three.tar.gz", ["true", ";touch", str(marker)])
             except Exception: pass
             assert not marker.exists()
 
