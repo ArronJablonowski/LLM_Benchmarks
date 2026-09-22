@@ -173,7 +173,7 @@ func main() {
 	defer cancel()
 	suffix := "\n\nInspect the repository, implement the requested change, and run focused tests. Work only inside the supplied workspace."
 	if *finalize {
-		suffix = "\n\nThe external objective grader has already verified the workspace. Respond briefly that the coding task is complete; do not request or invoke tools."
+		suffix = "\n\nThe external objective grader has finished evaluating the workspace. Respond briefly that the evaluation handoff is complete; do not request or invoke tools."
 	}
 	result, err := client.Run(ctx, sdk.Request{Version: 1, ModelID: *model, Prompt: *prompt + suffix, Domain: "code", Profile: "benchmark", LocalRequired: true})
 	if err != nil {
