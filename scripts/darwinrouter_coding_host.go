@@ -54,9 +54,23 @@ func main() {
 		}
 		return path, nil
 	}
-	list := sdk.Tool{Tool: providers.Tool{Name: "benchmark_list_files", Description: "List regular files in the coding workspace recursively.", Parameters: json.RawMessage(`{"type":"object","additionalProperties":false}`)}, Scope: "workspace", ReadOnly: true, Behavior: tools.BehaviorReadOnly, Handler: func(ctx context.Context, _ json.RawMessage) (runtime.ToolResult, error) {
+	list := sdk.Tool{Tool: providers.Tool{Name: "benchmark_list_files", Description: "List regular files recursively. Optionally start at a path inside the coding workspace.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","minLength":1,"maxLength":4096}},"additionalProperties":false}`)}, Scope: "workspace", ReadOnly: true, Behavior: tools.BehaviorReadOnly, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
+		var in struct {
+			Path string `json:"path"`
+		}
+		if err := json.Unmarshal(raw, &in); err != nil {
+			return runtime.ToolResult{Effect: runtime.NoEffect}, errors.New("invalid arguments")
+		}
+		start := root
+		if in.Path != "" {
+			var err error
+			start, err = resolve(in.Path)
+			if err != nil {
+				return runtime.ToolResult{Content: "invalid workspace path: " + err.Error(), Effect: runtime.NoEffect}, nil
+			}
+		}
 		var names []string
-		err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		err := filepath.WalkDir(start, func(path string, entry fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
