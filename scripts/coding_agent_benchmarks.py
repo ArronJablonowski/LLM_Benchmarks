@@ -224,11 +224,14 @@ def prepare_workspace(base: Path, harness: str, model: str, task: dict) -> Path:
 
 
 def grade_workspace(task: dict, workspace: Path) -> tuple[dict, str]:
-    proc = subprocess.run(
-        [sys.executable, str(ROOT / task["grader"]), str(workspace)],
-        text=True, capture_output=True, timeout=180, check=False,
-        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
-    )
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / task["grader"]), str(workspace)],
+            text=True, capture_output=True, timeout=180, check=False,
+            env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+        )
+    except subprocess.TimeoutExpired:
+        return {"verdict": "grader_error", "passed": 0, "total": 0}, "grader timed out after 180 seconds"
     try:
         payload = json.loads(proc.stdout.strip().splitlines()[-1])
     except (IndexError, json.JSONDecodeError) as exc:
