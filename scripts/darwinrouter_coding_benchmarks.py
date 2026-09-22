@@ -53,7 +53,7 @@ def main():
         if (model,task["id"]) in completed:continue
         print(f"[{len(completed)+1}/{total}] DarwinRouter {model} :: {task['id']}",flush=True)
         for name in args.ollama_model:stop_model(name)
-        work=prepare_workspace(args.workspace,"darwinrouter",model,task);before=fingerprint_tree(work)
+        work=prepare_workspace(args.workspace,"darwinrouter",model,task).resolve();before=fingerprint_tree(work)
         prompt=task["prompt"]+"\n\nWork only inside: "+str(work)
         command=[str(args.host),"--config",str(args.config),"--database",str(database),"--workspace",str(work),"--model",model,"--prompt",prompt,"--timeout",f"{args.timeout}s"]
         start_sample=sampler.snapshot_len();started=time.monotonic();proc=None
