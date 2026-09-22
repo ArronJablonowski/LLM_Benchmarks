@@ -89,8 +89,11 @@ def main():
         try:
             result=json.loads(stdout.splitlines()[-1]);task_id=result.get("TaskID") or result.get("task_id") or "";usage=result.get("Usage") or result.get("usage") or {};context_tokens=usage.get("InputTokens") or usage.get("input_tokens") or ""
         except Exception:result={}
+        host_error=result.get("error", "") if isinstance(result, dict) else ""
+        if host_error:error=(error+f"; host: {host_error}").strip("; ")[:3000]
+        completed_output=(proc.returncode==0 and not host_error) or (grading.get("verdict")=="pass" and bool(changed))
         feedback=False
-        if task_id:
+        if task_id and completed_output:
             try:record_feedback(args.darwin,database,task_id,grading.get("verdict")=="pass");feedback=True
             except Exception as exc:
                 try:feedback=bool(finalize_graded_task(command,args.darwin,database,grading.get("verdict")=="pass"))
