@@ -60,6 +60,9 @@ def main():
         for attempt in range(5):
             proc=subprocess.run(command,text=True,capture_output=True,timeout=args.timeout+60,env={**os.environ,"PYTHONDONTWRITEBYTECODE":"1"})
             if proc.returncode==0:break
+            interim,_=grade_workspace(task,work)
+            if interim.get("verdict")=="pass":
+                print("  -> objective grader passed despite non-zero host completion",flush=True);break
             if attempt<4:
                 for name in args.ollama_model:stop_model(name)
                 print(f"  -> host retry {attempt+2}/5",flush=True);time.sleep(min(5*(attempt+1),20))
@@ -74,7 +77,7 @@ def main():
         if task_id:
             try:record_feedback(args.darwin,database,task_id,grading.get("verdict")=="pass");feedback=True
             except Exception as exc:error=(error+f"; feedback: {exc}")[:3000]
-        row={"run_id":run_id,"benchmark_profile":"coding-agent-v2-web","harness":"darwinrouter","model":model,"task_id":task["id"],"task_name":task["name"],"status":"ok" if proc.returncode==0 else "error","verdict":grading.get("verdict","grader_error"),"checks_passed":grading.get("passed",0),"checks_total":grading.get("total",0),"wall_seconds":wall,"exit_code":proc.returncode,"files_changed":len(changed),"student_test_files":count_student_tests(work),"feedback_recorded":str(feedback).lower(),"context_tokens":context_tokens,"max_gpu_temp_c":maximum(samples,"gpu_temp_c"),"max_host_temp_c":maximum(samples,"host_temp_c"),"max_host_memory_used_bytes":maximum(samples,"host_memory_used_bytes"),"max_host_memory_pct":maximum(samples,"host_memory_pct"),"max_gpu_usage_pct":maximum(samples,"gpu_usage_pct"),"sample_count":len(samples),"error":error}
+        row={"run_id":run_id,"benchmark_profile":"coding-agent-v2-web","harness":"darwinrouter","model":model,"task_id":task["id"],"task_name":task["name"],"status":"ok" if grading.get("verdict")=="pass" else ("ok" if proc.returncode==0 else "error"),"verdict":grading.get("verdict","grader_error"),"checks_passed":grading.get("passed",0),"checks_total":grading.get("total",0),"wall_seconds":wall,"exit_code":proc.returncode,"files_changed":len(changed),"student_test_files":count_student_tests(work),"feedback_recorded":str(feedback).lower(),"context_tokens":context_tokens,"max_gpu_temp_c":maximum(samples,"gpu_temp_c"),"max_host_temp_c":maximum(samples,"host_temp_c"),"max_host_memory_used_bytes":maximum(samples,"host_memory_used_bytes"),"max_host_memory_pct":maximum(samples,"host_memory_pct"),"max_gpu_usage_pct":maximum(samples,"gpu_usage_pct"),"sample_count":len(samples),"error":error}
         record={"row":row,"darwin_response":result,"grading":grading,"changed_files":changed,"telemetry_samples":samples}
         with jsonl.open("a") as f:f.write(json.dumps(record)+"\n")
         records.append(record);completed.add((model,task["id"]));

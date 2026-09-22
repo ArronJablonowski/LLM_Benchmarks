@@ -166,7 +166,13 @@ func main() {
 	defer cancel()
 	result, err := client.Run(ctx, sdk.Request{Version: 1, ModelID: *model, Prompt: *prompt + "\n\nInspect the repository, implement the requested change, and run focused tests. Work only inside the supplied workspace.", Domain: "code", Profile: "benchmark", LocalRequired: true})
 	if err != nil {
-		fatal(err)
+		body, _ := json.Marshal(result)
+		var output map[string]any
+		_ = json.Unmarshal(body, &output)
+		output["error"] = err.Error()
+		encoded, _ := json.Marshal(output)
+		fmt.Println(string(encoded))
+		os.Exit(1)
 	}
 	encoded, _ := json.Marshal(result)
 	fmt.Println(string(encoded))
