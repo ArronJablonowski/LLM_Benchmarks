@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/ArronJablonowski/DarwinRouter/providers"
@@ -192,6 +193,9 @@ func main() {
 		bounded, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
 		cmd := exec.CommandContext(bounded, "/bin/zsh", "-lc", in.Command)
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+		cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
+		cmd.WaitDelay = 2 * time.Second
 		cmd.Dir = root
 		toolHome := filepath.Join(filepath.Dir(root), ".benchmark-home", filepath.Base(root))
 		if err := os.MkdirAll(toolHome, 0700); err != nil {
