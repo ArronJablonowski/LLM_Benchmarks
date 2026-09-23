@@ -70,6 +70,7 @@ func main() {
 			}
 		}
 		var names []string
+		truncated := false
 		err := filepath.WalkDir(start, func(path string, entry fs.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -77,7 +78,7 @@ func main() {
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
-			if entry.IsDir() && (entry.Name() == ".git" || entry.Name() == "node_modules" || entry.Name() == "__pycache__") && path != root {
+			if entry.IsDir() && (entry.Name() == ".git" || entry.Name() == "node_modules" || entry.Name() == "__pycache__" || entry.Name() == ".venv" || entry.Name() == ".cache") && path != root {
 				return filepath.SkipDir
 			}
 			if !entry.Type().IsRegular() {
@@ -85,8 +86,9 @@ func main() {
 			}
 			rel, _ := filepath.Rel(root, path)
 			names = append(names, rel)
-			if len(names) > 512 {
-				return errors.New("too many files")
+			if len(names) >= 512 {
+				truncated = true
+				return filepath.SkipAll
 			}
 			return nil
 		})
@@ -94,6 +96,9 @@ func main() {
 			return runtime.ToolResult{Effect: runtime.NoEffect}, err
 		}
 		sort.Strings(names)
+		if truncated {
+			names = append(names, "[file list truncated at 512 entries]")
+		}
 		return runtime.ToolResult{Content: strings.Join(names, "\n"), Effect: runtime.NoEffect}, nil
 	}}
 	read := sdk.Tool{Tool: providers.Tool{Name: "benchmark_read_file", Description: "Read one UTF-8 file relative to the coding workspace, up to 64 KiB.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","minLength":1,"maxLength":4096}},"required":["path"],"additionalProperties":false}`)}, Scope: "workspace", ReadOnly: true, Behavior: tools.BehaviorReadOnly, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
@@ -158,7 +163,11 @@ func main() {
 		defer cancel()
 		cmd := exec.CommandContext(bounded, "/bin/zsh", "-lc", in.Command)
 		cmd.Dir = root
-		cmd.Env = append(os.Environ(), "HOME="+root, "PYTHONDONTWRITEBYTECODE=1")
+		toolHome := filepath.Join(filepath.Dir(root), ".benchmark-home", filepath.Base(root))
+		if err := os.MkdirAll(toolHome, 0700); err != nil {
+			return runtime.ToolResult{Effect: runtime.NoEffect}, err
+		}
+		cmd.Env = append(os.Environ(), "HOME="+toolHome, "PYTHONDONTWRITEBYTECODE=1")
 		body, err := cmd.CombinedOutput()
 		if len(body) > outputLimit {
 			body = body[len(body)-outputLimit:]
