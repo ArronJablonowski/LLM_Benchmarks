@@ -166,7 +166,7 @@ func main() {
 		}
 		path, err := resolve(in.Path)
 		if err != nil {
-			return runtime.ToolResult{Effect: runtime.NoEffect}, err
+			return runtime.ToolResult{Content: "No file was changed: " + err.Error() + ". Write only inside the supplied workspace.", Effect: runtime.NoEffect}, nil
 		}
 		if in.Content == nil {
 			return runtime.ToolResult{Content: "No file was changed. Supply content to replace the file, or use benchmark_run_command to apply a patch. Use benchmark_read_file to inspect lines.", Effect: runtime.NoEffect}, nil
@@ -182,7 +182,7 @@ func main() {
 		}
 		return runtime.ToolResult{Content: "file written", Effect: runtime.ConfirmedEffect}, nil
 	}}
-	run := sdk.Tool{Tool: providers.Tool{Name: "benchmark_run_command", Description: "Run a shell command inside the isolated coding workspace. Use this to inspect files and execute tests; output is capped at 64 KiB.", Parameters: json.RawMessage(`{"type":"object","properties":{"command":{"type":"string","minLength":1,"maxLength":8192}},"required":["command"],"additionalProperties":false}`)}, Scope: "workspace", Behavior: tools.BehaviorIdempotentWrite, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
+	run := sdk.Tool{Tool: providers.Tool{Name: "benchmark_run_command", Description: "Run a shell command inside the isolated coding workspace. Optional path or workdir fields do not change that workspace. Output is capped at 64 KiB.", Parameters: json.RawMessage(`{"type":"object","properties":{"command":{"type":"string","minLength":1,"maxLength":8192},"path":{"type":"string","maxLength":4096},"workdir":{"type":"string","maxLength":4096}},"required":["command"],"additionalProperties":false}`)}, Scope: "workspace", Behavior: tools.BehaviorIdempotentWrite, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
 		var in struct {
 			Command string `json:"command"`
 		}
