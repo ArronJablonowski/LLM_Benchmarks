@@ -153,10 +153,13 @@ func main() {
 		}
 		return runtime.ToolResult{Content: string(body), Effect: runtime.NoEffect}, nil
 	}}
-	write := sdk.Tool{Tool: providers.Tool{Name: "benchmark_write_file", Description: "Create or replace one UTF-8 file relative to the coding workspace.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","minLength":1,"maxLength":4096},"content":{"type":"string","maxLength":131072}},"required":["path","content"],"additionalProperties":false}`)}, Scope: "workspace", Behavior: tools.BehaviorIdempotentWrite, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
+	write := sdk.Tool{Tool: providers.Tool{Name: "benchmark_write_file", Description: "Create or replace one UTF-8 file relative to the coding workspace. Supply content for a full replacement; use benchmark_run_command for patches.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","minLength":1,"maxLength":4096},"content":{"type":"string","maxLength":131072},"patch":{"type":"string","maxLength":131072},"line_start":{"type":"integer","minimum":1},"line_end":{"type":"integer","minimum":1}},"required":["path"],"additionalProperties":false}`)}, Scope: "workspace", Behavior: tools.BehaviorIdempotentWrite, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
 		var in struct {
-			Path    string `json:"path"`
-			Content string `json:"content"`
+			Path      string  `json:"path"`
+			Content   *string `json:"content"`
+			Patch     string  `json:"patch"`
+			LineStart int     `json:"line_start"`
+			LineEnd   int     `json:"line_end"`
 		}
 		if json.Unmarshal(raw, &in) != nil {
 			return runtime.ToolResult{Effect: runtime.NoEffect}, errors.New("invalid arguments")
@@ -165,13 +168,16 @@ func main() {
 		if err != nil {
 			return runtime.ToolResult{Effect: runtime.NoEffect}, err
 		}
+		if in.Content == nil {
+			return runtime.ToolResult{Content: "No file was changed. Supply content to replace the file, or use benchmark_run_command to apply a patch. Use benchmark_read_file to inspect lines.", Effect: runtime.NoEffect}, nil
+		}
 		if ctx.Err() != nil {
 			return runtime.ToolResult{Effect: runtime.NoEffect}, ctx.Err()
 		}
 		if err = os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 			return runtime.ToolResult{Effect: runtime.UncertainEffect}, err
 		}
-		if err = os.WriteFile(path, []byte(in.Content), 0600); err != nil {
+		if err = os.WriteFile(path, []byte(*in.Content), 0600); err != nil {
 			return runtime.ToolResult{Effect: runtime.UncertainEffect}, err
 		}
 		return runtime.ToolResult{Content: "file written", Effect: runtime.ConfirmedEffect}, nil
