@@ -54,9 +54,10 @@ func main() {
 		}
 		return path, nil
 	}
-	list := sdk.Tool{Tool: providers.Tool{Name: "benchmark_list_files", Description: "List regular files recursively. Optionally start at a path inside the coding workspace.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","minLength":1,"maxLength":4096}},"additionalProperties":false}`)}, Scope: "workspace", ReadOnly: true, Behavior: tools.BehaviorReadOnly, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
+	list := sdk.Tool{Tool: providers.Tool{Name: "benchmark_list_files", Description: "List regular files recursively. An empty path lists the workspace root; depth optionally limits directory traversal.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","maxLength":4096},"depth":{"type":"integer","minimum":1,"maximum":32}},"additionalProperties":false}`)}, Scope: "workspace", ReadOnly: true, Behavior: tools.BehaviorReadOnly, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
 		var in struct {
-			Path string `json:"path"`
+			Path  string `json:"path"`
+			Depth int    `json:"depth"`
 		}
 		if err := json.Unmarshal(raw, &in); err != nil {
 			return runtime.ToolResult{Effect: runtime.NoEffect}, errors.New("invalid arguments")
@@ -77,6 +78,12 @@ func main() {
 			}
 			if ctx.Err() != nil {
 				return ctx.Err()
+			}
+			if in.Depth > 0 && entry.IsDir() && path != start {
+				rel, _ := filepath.Rel(start, path)
+				if strings.Count(rel, string(os.PathSeparator))+1 >= in.Depth {
+					return filepath.SkipDir
+				}
 			}
 			if entry.IsDir() && (entry.Name() == ".git" || entry.Name() == "node_modules" || entry.Name() == "__pycache__" || entry.Name() == ".venv" || entry.Name() == ".cache") && path != root {
 				return filepath.SkipDir
@@ -101,9 +108,11 @@ func main() {
 		}
 		return runtime.ToolResult{Content: strings.Join(names, "\n"), Effect: runtime.NoEffect}, nil
 	}}
-	read := sdk.Tool{Tool: providers.Tool{Name: "benchmark_read_file", Description: "Read one UTF-8 file relative to the coding workspace, up to 64 KiB.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","minLength":1,"maxLength":4096}},"required":["path"],"additionalProperties":false}`)}, Scope: "workspace", ReadOnly: true, Behavior: tools.BehaviorReadOnly, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
+	read := sdk.Tool{Tool: providers.Tool{Name: "benchmark_read_file", Description: "Read one UTF-8 file relative to the coding workspace, up to 64 KiB. Optional line_start and line_end select an inclusive line range.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","minLength":1,"maxLength":4096},"line_start":{"type":"integer","minimum":1},"line_end":{"type":"integer","minimum":1}},"required":["path"],"additionalProperties":false}`)}, Scope: "workspace", ReadOnly: true, Behavior: tools.BehaviorReadOnly, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
 		var in struct {
-			Path string `json:"path"`
+			Path      string `json:"path"`
+			LineStart int    `json:"line_start"`
+			LineEnd   int    `json:"line_end"`
 		}
 		if json.Unmarshal(raw, &in) != nil {
 			return runtime.ToolResult{Effect: runtime.NoEffect}, errors.New("invalid arguments")
@@ -126,6 +135,21 @@ func main() {
 		}
 		if ctx.Err() != nil {
 			return runtime.ToolResult{Effect: runtime.NoEffect}, ctx.Err()
+		}
+		if in.LineStart > 0 || in.LineEnd > 0 {
+			lines := strings.Split(string(body), "\n")
+			start := in.LineStart
+			if start == 0 {
+				start = 1
+			}
+			end := in.LineEnd
+			if end == 0 || end > len(lines) {
+				end = len(lines)
+			}
+			if start > end {
+				return runtime.ToolResult{Content: "line range is empty", Effect: runtime.NoEffect}, nil
+			}
+			body = []byte(strings.Join(lines[start-1:end], "\n"))
 		}
 		return runtime.ToolResult{Content: string(body), Effect: runtime.NoEffect}, nil
 	}}
