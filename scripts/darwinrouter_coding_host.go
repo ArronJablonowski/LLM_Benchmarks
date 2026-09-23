@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -41,6 +42,10 @@ func main() {
 	if err != nil {
 		fatal(err)
 	}
+	// Each benchmark task owns a distinct workspace. Keep its durable tool
+	// leases separate so an interrupted task cannot block unrelated fixtures.
+	workspaceDigest := sha256.Sum256([]byte(root))
+	toolScope := fmt.Sprintf("benchmark-%x", workspaceDigest[:16])
 	resolve := func(name string) (string, error) {
 		if name == "" {
 			return "", errors.New("invalid workspace path")
@@ -55,7 +60,7 @@ func main() {
 		}
 		return path, nil
 	}
-	list := sdk.Tool{Tool: providers.Tool{Name: "benchmark_list_files", Description: "List regular files recursively. An empty path lists the workspace root; depth optionally limits directory traversal.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","maxLength":4096},"depth":{"type":"integer","minimum":1,"maximum":32}},"additionalProperties":false}`)}, Scope: "workspace", ReadOnly: true, Behavior: tools.BehaviorReadOnly, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
+	list := sdk.Tool{Tool: providers.Tool{Name: "benchmark_list_files", Description: "List regular files recursively. An empty path lists the workspace root; depth optionally limits directory traversal.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","maxLength":4096},"depth":{"type":"integer","minimum":1,"maximum":32}},"additionalProperties":false}`)}, Scope: toolScope, ReadOnly: true, Behavior: tools.BehaviorReadOnly, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
 		var in struct {
 			Path  string `json:"path"`
 			Depth int    `json:"depth"`
@@ -109,7 +114,7 @@ func main() {
 		}
 		return runtime.ToolResult{Content: strings.Join(names, "\n"), Effect: runtime.NoEffect}, nil
 	}}
-	read := sdk.Tool{Tool: providers.Tool{Name: "benchmark_read_file", Description: "Read one UTF-8 file relative to the coding workspace, up to 64 KiB. Optional line_start and line_end select an inclusive line range.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","minLength":1,"maxLength":4096},"line_start":{"type":"integer","minimum":1},"line_end":{"type":"integer","minimum":1}},"required":["path"],"additionalProperties":false}`)}, Scope: "workspace", ReadOnly: true, Behavior: tools.BehaviorReadOnly, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
+	read := sdk.Tool{Tool: providers.Tool{Name: "benchmark_read_file", Description: "Read one UTF-8 file relative to the coding workspace, up to 64 KiB. Optional line_start and line_end select an inclusive line range.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","minLength":1,"maxLength":4096},"line_start":{"type":"integer","minimum":1},"line_end":{"type":"integer","minimum":1}},"required":["path"],"additionalProperties":false}`)}, Scope: toolScope, ReadOnly: true, Behavior: tools.BehaviorReadOnly, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
 		var in struct {
 			Path      string `json:"path"`
 			LineStart int    `json:"line_start"`
@@ -154,7 +159,7 @@ func main() {
 		}
 		return runtime.ToolResult{Content: string(body), Effect: runtime.NoEffect}, nil
 	}}
-	write := sdk.Tool{Tool: providers.Tool{Name: "benchmark_write_file", Description: "Create or replace one UTF-8 file relative to the coding workspace. Supply content for a full replacement; use benchmark_run_command for patches.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","minLength":1,"maxLength":4096},"content":{"type":"string","maxLength":131072},"patch":{"type":"string","maxLength":131072},"line_start":{"type":"integer","minimum":1},"line_end":{"type":"integer","minimum":1}},"required":["path"],"additionalProperties":false}`)}, Scope: "workspace", Behavior: tools.BehaviorIdempotentWrite, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
+	write := sdk.Tool{Tool: providers.Tool{Name: "benchmark_write_file", Description: "Create or replace one UTF-8 file relative to the coding workspace. Supply content for a full replacement; use benchmark_run_command for patches.", Parameters: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","minLength":1,"maxLength":4096},"content":{"type":"string","maxLength":131072},"patch":{"type":"string","maxLength":131072},"line_start":{"type":"integer","minimum":1},"line_end":{"type":"integer","minimum":1}},"required":["path"],"additionalProperties":false}`)}, Scope: toolScope, Behavior: tools.BehaviorIdempotentWrite, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
 		var in struct {
 			Path      string  `json:"path"`
 			Content   *string `json:"content"`
@@ -183,7 +188,7 @@ func main() {
 		}
 		return runtime.ToolResult{Content: "file written", Effect: runtime.ConfirmedEffect}, nil
 	}}
-	run := sdk.Tool{Tool: providers.Tool{Name: "benchmark_run_command", Description: "Run a shell command inside the isolated coding workspace. Optional path or workdir fields do not change that workspace. Output is capped at 64 KiB.", Parameters: json.RawMessage(`{"type":"object","properties":{"command":{"type":"string","minLength":1,"maxLength":8192},"path":{"type":"string","maxLength":4096},"workdir":{"type":"string","maxLength":4096}},"required":["command"],"additionalProperties":false}`)}, Scope: "workspace", Behavior: tools.BehaviorIdempotentWrite, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
+	run := sdk.Tool{Tool: providers.Tool{Name: "benchmark_run_command", Description: "Run a shell command inside the isolated coding workspace. Optional path or workdir fields do not change that workspace. Output is capped at 64 KiB.", Parameters: json.RawMessage(`{"type":"object","properties":{"command":{"type":"string","minLength":1,"maxLength":8192},"path":{"type":"string","maxLength":4096},"workdir":{"type":"string","maxLength":4096}},"required":["command"],"additionalProperties":false}`)}, Scope: toolScope, Behavior: tools.BehaviorIdempotentWrite, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
 		var in struct {
 			Command string `json:"command"`
 		}
