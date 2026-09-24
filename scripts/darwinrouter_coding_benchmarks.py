@@ -32,20 +32,28 @@ def record_feedback(darwin, database, task_id, accepted):
     # kill it at the old 30s deadline before feedback can commit.
     # A retry can race with a completed write whose CLI acknowledgement was
     # lost. Inspect the durable history before retrying or reporting failure.
+    error = "feedback failed"
     for attempt in range(3):
-        proc=subprocess.run(command,text=True,capture_output=True,timeout=150)
-        if proc.returncode==0:return
-        shown=subprocess.run([darwin,"feedback","show","--db",str(database),"--task",task_id],text=True,capture_output=True,timeout=150)
-        if shown.returncode==0:
+        try:
+            proc=subprocess.run(command,text=True,capture_output=True,timeout=150)
+            if proc.returncode==0:return
+            error=proc.stderr.strip() or "feedback failed"
+        except subprocess.TimeoutExpired:
+            error="feedback acknowledgement timed out"
+        try:
+            shown=subprocess.run([darwin,"feedback","show","--db",str(database),"--task",task_id],text=True,capture_output=True,timeout=150)
+        except subprocess.TimeoutExpired:
+            shown=None
+        if shown is not None and shown.returncode==0:
             try:
                 history=json.loads(shown.stdout)
-                if len(history)==1 and history[0].get("TaskID")==task_id and any(
+                if isinstance(history,list) and len(history)==1 and history[0].get("TaskID")==task_id and history[0].get("Checks") and all(
                     check.get("Source")=="user_feedback" and check.get("Passed") is accepted
                     for check in history[0].get("Checks",[])
                 ):return
-            except (TypeError,ValueError,KeyError):pass
+            except (AttributeError,TypeError,ValueError,KeyError):pass
         if attempt<2:time.sleep(attempt+1)
-    raise RuntimeError(proc.stderr.strip() or "feedback failed")
+    raise RuntimeError(error)
 
 def stop_model(name):
     subprocess.run(["ollama","stop",name],capture_output=True,timeout=30,check=False)

@@ -121,7 +121,7 @@ def main(argv=None):
     args.output_dir.mkdir(parents=True, exist_ok=True)
     jsonl_path = args.output_dir / "darwinrouter_standard.jsonl"
     csv_path = args.output_dir / "darwinrouter_standard.csv"
-    records = [json.loads(line) for line in jsonl_path.read_text(encoding="utf-8").splitlines()] if jsonl_path.exists() else []
+    records = [json.loads(line) for line in jsonl_path.read_text(encoding="utf-8").split("\n") if line] if jsonl_path.exists() else []
     completed = {record["row"]["task_id"] for record in records}
     if len(completed) != len(records):
         raise RuntimeError("Existing DarwinRouter evidence contains duplicate task IDs")
@@ -179,7 +179,7 @@ def main(argv=None):
             feedback_recorded = False
             task_id = response.get("task_id", "")
             route_cost = response.get("route_estimated_cost")
-            if task_id and status == "ok" and route_cost is not None:
+            if task_id and status == "ok" and route_cost is not None and grading.get("verdict") in ("pass", "fail"):
                 outcome = "accepted" if grading["verdict"] == "pass" else "rejected"
                 try:
                     request_json(
