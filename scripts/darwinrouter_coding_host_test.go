@@ -85,6 +85,14 @@ func TestCodingCommandsConfineWorkspaceAndDoNotInheritSecrets(t *testing.T) {
 	if err := os.WriteFile(outside, []byte("hidden solution"), 0600); err != nil {
 		t.Fatal(err)
 	}
+	canonicalOutside, err := filepath.EvalSymlinks(outside)
+	if err != nil {
+		t.Fatal(err)
+	}
+	alias := "/System/Volumes/Data" + canonicalOutside
+	if _, err := os.Stat(alias); err != nil {
+		t.Fatal("missing alias test fixture", err)
+	}
 	home := filepath.Join(base, "home")
 	t.Setenv("DARWIN_TEST_SECRET", "must-not-reach-command")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { t.Error("sandboxed command accessed network") }))
@@ -95,6 +103,7 @@ func TestCodingCommandsConfineWorkspaceAndDoNotInheritSecrets(t *testing.T) {
 	}{
 		{`printf ok > local.txt; cat local.txt; test -z "$DARWIN_TEST_SECRET"`, true},
 		{fmt.Sprintf("cat %q", outside), false},
+		{fmt.Sprintf("cat %q", alias), false},
 		{fmt.Sprintf("/usr/bin/curl --max-time 2 %q", server.URL), false},
 		{fmt.Sprintf("printf bad > %q", outside), false},
 		{fmt.Sprintf("ln -s %q link; cat link", outside), false},
