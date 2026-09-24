@@ -233,11 +233,12 @@ func main() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
-	suffix := "\n\nInspect the repository, implement the requested change, and run focused tests. Work only inside the supplied workspace."
+	suffix := "\n\nInspect the repository, implement the requested change, and run focused tests. Work only inside the supplied workspace. Invoke the provided tools through native function calls; writing tool-call markup in your answer does not execute a tool."
 	if *finalize {
 		suffix = "\n\nThe external objective grader has finished evaluating the workspace. Respond briefly that the evaluation handoff is complete; do not request or invoke tools."
 	}
-	result, err := client.Run(ctx, sdk.Request{Version: 1, ModelID: *model, Prompt: *prompt + suffix, Domain: "code", Profile: "benchmark", LocalRequired: true})
+	request := sdk.Request{Version: 1, ModelID: *model, Prompt: *prompt + suffix, Domain: "code", Profile: "benchmark", LocalRequired: true}
+	result, err := runWithToolRepair(ctx, client.Run, request, !*finalize)
 	if err != nil {
 		body, _ := json.Marshal(result)
 		var output map[string]any
@@ -249,6 +250,38 @@ func main() {
 	}
 	encoded, _ := json.Marshal(result)
 	fmt.Println(string(encoded))
+}
+
+func runWithToolRepair(ctx context.Context, run func(context.Context, sdk.Request) (sdk.Result, error), request sdk.Request, repairEnabled bool) (sdk.Result, error) {
+	result, err := run(ctx, request)
+	// Some local models emit their tool template as answer text. Never execute
+	// that text. Give the model a bounded opportunity to use the native tool
+	// protocol through a durable continuation, with the same workspace policy.
+	for repair := 0; repairEnabled && err == nil && repair < 2 && textualToolCall(result.Text); repair++ {
+		previous := result
+		request.ContinueTaskID = previous.TaskID
+		request.Prompt = "Your last answer contained tool-call markup as plain text, so that text executed no tool. Continue the original task using the provided native function-call interface. Do not repeat XML or tool-call markup in your final answer. Implement and test the changes before reporting completion."
+		result, err = run(ctx, request)
+		result.PreviousTaskIDs = append(append(append([]string{}, previous.PreviousTaskIDs...), previous.TaskID), result.PreviousTaskIDs...)
+		if previous.RouteEstimatedCost != nil && result.RouteEstimatedCost != nil {
+			cost := *previous.RouteEstimatedCost + *result.RouteEstimatedCost
+			result.RouteEstimatedCost = &cost
+		}
+		if previous.Usage != nil && result.Usage != nil {
+			result.Usage.InputTokens += previous.Usage.InputTokens
+			result.Usage.OutputTokens += previous.Usage.OutputTokens
+		} else {
+			result.Usage = nil
+		}
+	}
+	if err == nil && repairEnabled && textualToolCall(result.Text) {
+		err = errors.New("native tool-call protocol repair exhausted")
+	}
+	return result, err
+}
+
+func textualToolCall(text string) bool {
+	return strings.Contains(text, "</tool_call>") && strings.Contains(text, "<function=benchmark_")
 }
 
 func fatal(err error) {

@@ -2,7 +2,7 @@
 """Run repository-level coding tasks through DarwinRouter's native SDK host."""
 from __future__ import annotations
 
-import argparse, csv, hashlib, json, os, subprocess, time
+import argparse, csv, hashlib, json, os, sqlite3, subprocess, time
 from pathlib import Path
 
 from benchmark_tests import suite_task_catalog
@@ -10,6 +10,17 @@ from coding_agent_benchmarks import prepare_workspace, grade_workspace, fingerpr
 from platform_support import create_sampler
 
 FIELDS = ["run_id","benchmark_profile","harness","model","task_id","task_name","status","verdict","checks_passed","checks_total","wall_seconds","exit_code","files_changed","student_test_files","feedback_recorded","context_tokens","max_gpu_temp_c","max_host_temp_c","max_host_memory_used_bytes","max_host_memory_pct","max_gpu_usage_pct","sample_count","error"]
+FIELDS += ["darwin_task_id", "resolved_model", "context_window_tokens", "input_tokens", "previous_task_ids"]
+
+def task_metadata(database, task_id):
+    if not task_id:
+        return {}
+    with sqlite3.connect(database.as_uri()+"?mode=ro", uri=True, timeout=5) as connection:
+        first=connection.execute("SELECT body FROM events WHERE task_id=? AND sequence=1", (task_id,)).fetchone()
+    if not first:
+        return {}
+    event=json.loads(first[0])
+    return event.get("data", {}) if event.get("kind")=="task.started" else {}
 
 def maximum(samples, key):
     values=[x.get(key) for x in samples if x.get(key) is not None]
@@ -18,15 +29,6 @@ def maximum(samples, key):
 def record_feedback(darwin, database, task_id, accepted):
     proc=subprocess.run([darwin,"feedback","--db",str(database),"--task",task_id,"--outcome","accepted" if accepted else "rejected","--attempt-cost","0"],text=True,capture_output=True,timeout=30)
     if proc.returncode:raise RuntimeError(proc.stderr.strip() or "feedback failed")
-
-def finalize_graded_task(command, darwin, database, accepted):
-    final=subprocess.run(command+["--finalize"],text=True,capture_output=True,timeout=300,env={**os.environ,"PYTHONDONTWRITEBYTECODE":"1"})
-    if final.returncode:return ""
-    try:
-        result=json.loads(final.stdout.strip().splitlines()[-1]);task_id=result.get("TaskID") or result.get("task_id") or ""
-    except Exception:return ""
-    if task_id:record_feedback(darwin,database,task_id,accepted)
-    return task_id
 
 def stop_model(name):
     subprocess.run(["ollama","stop",name],capture_output=True,timeout=30,check=False)
@@ -50,6 +52,7 @@ def main():
     p.add_argument("--models",nargs="+",default=["local-muse-glimmer","local-qwen3-coder","auto"])
     p.add_argument("--ollama-model",action="append",default=[]);p.add_argument("--output-dir",type=Path,required=True);p.add_argument("--workspace",type=Path,required=True)
     p.add_argument("--darwin",default="/Users/aj_lobster/DarwinRouter/bin/darwin")
+    p.add_argument("--database",type=Path,help="DarwinRouter learning database; use the daemon's database to share learned model/context fitness")
     p.add_argument("--timeout",type=int,default=1800);p.add_argument("--tasks",nargs="*");p.add_argument("--run",action="store_true")
     args=p.parse_args(); tasks=suite_task_catalog("coding")
     if args.tasks:
@@ -58,7 +61,7 @@ def main():
     total=len(args.models)*len(tasks);print(f"Suite: coding (coding-agent-v2-web); harness: DarwinRouter; observations: {total}",flush=True)
     if not args.run:return 0
     args.output_dir.mkdir(parents=True,exist_ok=True);args.workspace.mkdir(parents=True,exist_ok=True)
-    database=(args.output_dir/"darwinrouter-coding.db").resolve()
+    database=(args.database or args.output_dir/"darwinrouter-coding.db").resolve()
     jsonl=args.output_dir/"darwinrouter_coding.jsonl";csv_path=args.output_dir/"darwinrouter_coding.csv"
     records=[json.loads(x) for x in jsonl.read_text().splitlines()] if jsonl.exists() else []
     completed={(r["row"]["model"],r["row"]["task_id"]) for r in records};run_id=records[0]["row"]["run_id"] if records else time.strftime("%Y%m%d_%H%M%S")
@@ -96,11 +99,21 @@ def main():
         if task_id and completed_output and grading.get("verdict") in ("pass", "fail"):
             try:record_feedback(args.darwin,database,task_id,grading.get("verdict")=="pass");feedback=True
             except Exception as exc:
-                try:feedback=bool(finalize_graded_task(command,args.darwin,database,grading.get("verdict")=="pass"))
-                except Exception:feedback=False
-                if not feedback:error=(error+f"; feedback: {exc}")[:3000]
+                # Never replace the evaluated attempt with an unrelated
+                # acknowledgement task (auto routing could choose a different
+                # model). Preserve its ID and expose the missing feedback.
+                error=(error+f"; feedback: {exc}")[:3000]
         row={"run_id":run_id,"benchmark_profile":"coding-agent-v2-web","harness":"darwinrouter","model":model,"task_id":task["id"],"task_name":task["name"],"status":"ok" if grading.get("verdict")=="pass" else ("ok" if proc.returncode==0 else "error"),"verdict":grading.get("verdict","grader_error"),"checks_passed":grading.get("passed",0),"checks_total":grading.get("total",0),"wall_seconds":wall,"exit_code":proc.returncode,"files_changed":len(changed),"student_test_files":count_student_tests(work),"feedback_recorded":str(feedback).lower(),"context_tokens":context_tokens,"max_gpu_temp_c":maximum(samples,"gpu_temp_c"),"max_host_temp_c":maximum(samples,"host_temp_c"),"max_host_memory_used_bytes":maximum(samples,"host_memory_used_bytes"),"max_host_memory_pct":maximum(samples,"host_memory_pct"),"max_gpu_usage_pct":maximum(samples,"gpu_usage_pct"),"sample_count":len(samples),"error":error}
-        record={"row":row,"darwin_response":result,"grading":grading,"changed_files":changed,"telemetry_samples":samples}
+        try:
+            metadata=task_metadata(database, task_id)
+        except (sqlite3.Error, ValueError) as exc:
+            metadata={}
+            row["error"]=(row["error"]+f"; task metadata: {exc}")[:3000]
+        # Historical context_tokens contains cumulative input-token usage, not
+        # the allocated window. Keep it for compatibility and name both values
+        # unambiguously in new evidence.
+        row.update(darwin_task_id=task_id, resolved_model=metadata.get("model_id", ""), context_window_tokens=metadata.get("context_tokens", ""), input_tokens=context_tokens, previous_task_ids=json.dumps(result.get("PreviousTaskIDs") or []))
+        record={"row":row,"darwin_response":result,"grading":grading,"changed_files":changed,"telemetry_samples":samples,"learning_database":str(database)}
         with jsonl.open("a") as f:f.write(json.dumps(record)+"\n")
         records.append(record);completed.add((model,task["id"]));
         with csv_path.open("w",newline="") as f:
