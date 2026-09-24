@@ -28,12 +28,14 @@ def maximum(samples, key):
 
 def record_feedback(darwin, database, task_id, accepted):
     command=[darwin,"feedback","--db",str(database),"--task",task_id,"--outcome","accepted" if accepted else "rejected","--attempt-cost","0"]
+    # The CLI allows 120s for cold database validation; the parent must not
+    # kill it at the old 30s deadline before feedback can commit.
     # A retry can race with a completed write whose CLI acknowledgement was
     # lost. Inspect the durable history before retrying or reporting failure.
     for attempt in range(3):
-        proc=subprocess.run(command,text=True,capture_output=True,timeout=30)
+        proc=subprocess.run(command,text=True,capture_output=True,timeout=150)
         if proc.returncode==0:return
-        shown=subprocess.run([darwin,"feedback","show","--db",str(database),"--task",task_id],text=True,capture_output=True,timeout=30)
+        shown=subprocess.run([darwin,"feedback","show","--db",str(database),"--task",task_id],text=True,capture_output=True,timeout=150)
         if shown.returncode==0:
             try:
                 history=json.loads(shown.stdout)
