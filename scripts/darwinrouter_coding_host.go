@@ -35,10 +35,11 @@ func main() {
 	model := flag.String("model", "auto", "DarwinRouter model ID")
 	prompt := flag.String("prompt", "", "coding task")
 	timeout := flag.Duration("timeout", 2*time.Hour, "task deadline")
+	maxTurns := flag.Int("max-turns", 96, "maximum coding-agent turns")
 	finalize := flag.Bool("finalize", false, "record a short completed-task result without coding tools")
 	flag.Parse()
-	if *config == "" || *database == "" || *workspace == "" || *prompt == "" || !filepath.IsAbs(*workspace) || !filepath.IsAbs(*database) {
-		fatal(errors.New("config, database, absolute workspace, and prompt are required"))
+	if *config == "" || *database == "" || *workspace == "" || *prompt == "" || !filepath.IsAbs(*workspace) || !filepath.IsAbs(*database) || *maxTurns < 2 || *maxTurns > 96 {
+		fatal(errors.New("config, database, absolute workspace, prompt, and max-turns in 2..96 are required"))
 	}
 	root, err := filepath.EvalSymlinks(*workspace)
 	if err != nil {
@@ -233,7 +234,8 @@ func main() {
 	if *finalize {
 		definitions, policy, reviewer = nil, nil, nil
 	}
-	client, err := sdk.New(sdk.ConfigOptions{ProjectFile: *config, Overrides: map[string]string{"telemetry.database": *database, "runtime.max_turns": "32", "tools.max_turns": "32", "tools.read_root": root}, LookupSecret: os.Getenv, Tools: definitions, ToolPolicy: policy, ApprovalReviewer: reviewer})
+	turnLimit := strconv.Itoa(*maxTurns)
+	client, err := sdk.New(sdk.ConfigOptions{ProjectFile: *config, Overrides: map[string]string{"telemetry.database": *database, "runtime.max_turns": turnLimit, "tools.max_turns": turnLimit, "tools.read_root": root}, LookupSecret: os.Getenv, Tools: definitions, ToolPolicy: policy, ApprovalReviewer: reviewer})
 	if err != nil {
 		fatal(err)
 	}
