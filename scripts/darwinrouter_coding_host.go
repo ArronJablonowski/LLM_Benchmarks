@@ -50,9 +50,18 @@ func main() {
 		fatal(err)
 	}
 	defer workspaceFS.Close()
-	// Each benchmark task owns a distinct workspace. Keep its durable tool
-	// leases separate so an interrupted task cannot block unrelated fixtures.
-	workspaceDigest := sha256.Sum256([]byte(root))
+	// A recovered fixture is renamed and replaced at the same path. Include its
+	// filesystem identity so an interrupted prior attempt cannot block the new
+	// fixture, while retries against the same directory retain their lease scope.
+	workspaceInfo, err := workspaceFS.Stat(".")
+	if err != nil {
+		fatal(err)
+	}
+	workspaceStat, ok := workspaceInfo.Sys().(*syscall.Stat_t)
+	if !ok {
+		fatal(errors.New("workspace identity unavailable"))
+	}
+	workspaceDigest := sha256.Sum256([]byte(fmt.Sprintf("%s:%d:%d", root, workspaceStat.Dev, workspaceStat.Ino)))
 	toolScope := fmt.Sprintf("benchmark-%x", workspaceDigest[:16])
 	resolve := func(name string) (string, error) {
 		if name == "" {
