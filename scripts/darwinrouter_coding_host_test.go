@@ -3,6 +3,12 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ArronJablonowski/DarwinRouter/providers"
@@ -63,5 +69,48 @@ func TestToolRepairKeepsIncompleteAccountingUnknown(t *testing.T) {
 	out, err := runWithToolRepair(context.Background(), run, sdk.Request{}, true)
 	if err != nil || out.RouteEstimatedCost != nil || out.Usage != nil {
 		t.Fatal("partial accounting presented as total", out, err)
+	}
+}
+
+func TestCodingCommandsConfineWorkspaceAndDoNotInheritSecrets(t *testing.T) {
+	if _, err := os.Stat("/usr/bin/sandbox-exec"); err != nil {
+		t.Skip("requires macOS sandbox-exec")
+	}
+	base := t.TempDir()
+	root := filepath.Join(base, "workspace")
+	if err := os.Mkdir(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(base, "other-solution.txt")
+	if err := os.WriteFile(outside, []byte("hidden solution"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	home := filepath.Join(base, "home")
+	t.Setenv("DARWIN_TEST_SECRET", "must-not-reach-command")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { t.Error("sandboxed command accessed network") }))
+	defer server.Close()
+	for _, tc := range []struct {
+		command string
+		success bool
+	}{
+		{`printf ok > local.txt; cat local.txt; test -z "$DARWIN_TEST_SECRET"`, true},
+		{fmt.Sprintf("cat %q", outside), false},
+		{fmt.Sprintf("/usr/bin/curl --max-time 2 %q", server.URL), false},
+		{fmt.Sprintf("printf bad > %q", outside), false},
+		{fmt.Sprintf("ln -s %q link; cat link", outside), false},
+		{`python3 -c 'import sqlite3, json, sys; assert sys.version_info >= (3,10); print(json.dumps(sqlite3.connect(":memory:").execute("select 1").fetchone()))'`, true},
+	} {
+		cmd, err := codingCommand(context.Background(), root, home, tc.command)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out, err := cmd.CombinedOutput()
+		if (err == nil) != tc.success || strings.Contains(string(out), "hidden solution") {
+			t.Fatalf("%q: %s %v", tc.command, out, err)
+		}
+	}
+	body, err := os.ReadFile(outside)
+	if err != nil || string(body) != "hidden solution" {
+		t.Fatal("outside file changed", err)
 	}
 }

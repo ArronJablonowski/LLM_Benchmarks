@@ -54,6 +54,7 @@ def main():
     p.add_argument("--darwin",default="/Users/aj_lobster/DarwinRouter/bin/darwin")
     p.add_argument("--database",type=Path,help="DarwinRouter learning database; use the daemon's database to share learned model/context fitness")
     p.add_argument("--timeout",type=int,default=1800);p.add_argument("--tasks",nargs="*");p.add_argument("--run",action="store_true")
+    p.add_argument("--max-attempts", type=int, choices=range(1,6), default=1, help="Explicit whole-host attempt budget; each retry reuses the preserved workspace")
     args=p.parse_args(); tasks=suite_task_catalog("coding")
     if args.tasks:
         wanted=set(args.tasks);tasks=[t for t in tasks if t["id"] in wanted]
@@ -76,15 +77,15 @@ def main():
         prompt=task["prompt"]+"\n\nWork only inside: "+str(work)
         command=[str(args.host),"--config",str(args.config),"--database",str(database),"--workspace",str(work),"--model",model,"--prompt",prompt,"--timeout",f"{args.timeout}s"]
         start_sample=sampler.snapshot_len();started=time.monotonic();proc=None
-        for attempt in range(5):
+        for attempt in range(args.max_attempts):
             proc=subprocess.run(command,text=True,capture_output=True,timeout=args.timeout+60,env={**os.environ,"PYTHONDONTWRITEBYTECODE":"1"})
             if proc.returncode==0:break
             interim,_=grade_workspace(task,work)
             if interim.get("verdict")=="pass":
                 print("  -> objective grader passed despite non-zero host completion",flush=True);break
-            if attempt<4:
+            if attempt+1<args.max_attempts:
                 stop_all_models()
-                print(f"  -> host retry {attempt+2}/5",flush=True);time.sleep(min(5*(attempt+1),20))
+                print(f"  -> host retry {attempt+2}/{args.max_attempts}",flush=True);time.sleep(min(5*(attempt+1),20))
         wall=round(time.monotonic()-started,3);samples=sampler.get_since(start_sample)
         grading,grader_error=grade_workspace(task,work);after=fingerprint_tree(work);changed=sorted(set(before)|set(after));changed=[x for x in changed if before.get(x)!=after.get(x)]
         stdout=(proc.stdout or "").strip();error=((proc.stderr or "").strip()+("; "+grader_error if grader_error else ""))[:3000]
@@ -113,7 +114,7 @@ def main():
         # the allocated window. Keep it for compatibility and name both values
         # unambiguously in new evidence.
         row.update(darwin_task_id=task_id, resolved_model=metadata.get("model_id", ""), context_window_tokens=metadata.get("context_tokens", ""), input_tokens=context_tokens, previous_task_ids=json.dumps(result.get("PreviousTaskIDs") or []))
-        record={"row":row,"darwin_response":result,"grading":grading,"changed_files":changed,"telemetry_samples":samples,"learning_database":str(database)}
+        record={"row":row,"darwin_response":result,"grading":grading,"changed_files":changed,"telemetry_samples":samples,"learning_database":str(database),"host_attempts":attempt+1}
         with jsonl.open("a") as f:f.write(json.dumps(record)+"\n")
         records.append(record);completed.add((model,task["id"]));
         with csv_path.open("w",newline="") as f:
