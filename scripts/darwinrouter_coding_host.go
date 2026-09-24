@@ -200,7 +200,7 @@ func main() {
 		}
 		return runtime.ToolResult{Content: "file written", Effect: runtime.ConfirmedEffect}, nil
 	}}
-	run := sdk.Tool{Tool: providers.Tool{Name: "benchmark_run_command", Description: "Run a shell command inside the isolated coding workspace. Optional path or workdir fields do not change that workspace. Output is capped at 64 KiB.", Parameters: json.RawMessage(`{"type":"object","properties":{"command":{"type":"string","minLength":1,"maxLength":8192},"path":{"type":"string","maxLength":4096},"workdir":{"type":"string","maxLength":4096}},"required":["command"],"additionalProperties":false}`)}, Scope: toolScope, Behavior: tools.BehaviorIdempotentWrite, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
+	run := sdk.Tool{Tool: providers.Tool{Name: "benchmark_run_command", Description: "Run a shell command inside the isolated coding workspace. Paths outside this workspace are unreadable. Read the fixture specification, create the implementation here, and run its tests; searching for another solution is prohibited. Output is capped at 64 KiB.", Parameters: json.RawMessage(`{"type":"object","properties":{"command":{"type":"string","minLength":1,"maxLength":8192},"path":{"type":"string","maxLength":4096},"workdir":{"type":"string","maxLength":4096}},"required":["command"],"additionalProperties":false}`)}, Scope: toolScope, Behavior: tools.BehaviorIdempotentWrite, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
 		var in struct {
 			Command string `json:"command"`
 		}
@@ -241,7 +241,7 @@ func main() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
-	suffix := "\n\nInspect the repository, implement the requested change, and run focused tests. Work only inside the supplied workspace. If implementation files are absent, create them from the specification; do not search other workspaces for a solution. Invoke the provided tools through native function calls; writing tool-call markup in your answer does not execute a tool."
+	suffix := "\n\nThis isolated benchmark fixture may contain only a specification and project metadata. There is no existing solution to locate. Read the fixture specification, create the missing implementation files in this workspace immediately, then run focused tests and repair failures. Do not search outside this workspace for code or fixtures; those paths are inaccessible. Invoke the provided tools through native function calls; writing tool-call markup in your answer does not execute a tool."
 	if *finalize {
 		suffix = "\n\nThe external objective grader has finished evaluating the workspace. Respond briefly that the evaluation handoff is complete; do not request or invoke tools."
 	}
