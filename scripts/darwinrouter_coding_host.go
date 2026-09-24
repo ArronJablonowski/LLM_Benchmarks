@@ -339,6 +339,15 @@ func codingCommand(ctx context.Context, root, home, command string) (*exec.Cmd, 
 	for _, path := range []string{"/System", "/usr", "/bin", "/sbin", "/Library", "/opt/homebrew", "/private/etc", "/dev", root, home} {
 		profile += "(allow file-read* (subpath " + strconv.Quote(path) + "))"
 	}
+	// The Python launchers resolve symlinks through these parent paths. Grant
+	// metadata for the path components only, never directory enumeration outside
+	// the fixture; a global metadata grant lets agents search other workspaces.
+	for _, path := range []string{"/opt", "/var", "/private", "/private/var", "/private/var/select", "/private/var/select/developer_dir"} {
+		profile += "(allow file-read-metadata (literal " + strconv.Quote(path) + "))"
+	}
+	for parent := filepath.Dir(root); parent != "/"; parent = filepath.Dir(parent) {
+		profile += "(allow file-read-metadata (literal " + strconv.Quote(parent) + "))"
+	}
 	for _, path := range []string{root, home, "/dev/null"} {
 		profile += "(allow file-write* (subpath " + strconv.Quote(path) + "))"
 	}
