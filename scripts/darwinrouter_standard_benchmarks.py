@@ -179,7 +179,7 @@ def main(argv=None):
             feedback_recorded = False
             task_id = response.get("task_id", "")
             route_cost = response.get("route_estimated_cost")
-            if task_id and status == "ok" and route_cost is not None and grading.get("verdict") in ("pass", "fail"):
+            if task_id and status == "ok" and route_cost is not None and grading.get("verdict") in ("pass", "content_mismatch", "fail"):
                 outcome = "accepted" if grading["verdict"] == "pass" else "rejected"
                 try:
                     request_json(

@@ -54,7 +54,7 @@ class DarwinFeedbackTests(unittest.TestCase):
 
     def test_standard_feedback_only_uses_valid_grades_and_resumes_unicode(self):
         task = {"id": "one", "category": "coding", "name": "Test", "prompt": "test"}
-        for verdict in ("pass", "fail", "grader_error", "ungraded"):
+        for verdict in ("pass", "content_mismatch", "fail", "grader_error", "ungraded"):
             with self.subTest(verdict=verdict), tempfile.TemporaryDirectory() as tmp:
                 calls = []
 
@@ -79,12 +79,12 @@ class DarwinFeedbackTests(unittest.TestCase):
                     # not split one preserved observation into two JSON rows.
                     self.assertEqual(standard.main(args), 0)
                 feedback = [kw for url, kw in calls if url.endswith("/v1/feedback")]
-                self.assertEqual(len(feedback), int(verdict in ("pass", "fail")))
+                self.assertEqual(len(feedback), int(verdict in ("pass", "content_mismatch", "fail")))
                 if feedback:
                     self.assertEqual(feedback[0]["payload"]["outcome"], "accepted" if verdict == "pass" else "rejected")
                 self.assertEqual(sum(url.endswith("/v1/tasks") for url, _ in calls), 1)
                 row = json.loads((Path(tmp) / "darwinrouter_standard.jsonl").read_text())["row"]
-                self.assertEqual(row["feedback_recorded"], str(verdict in ("pass", "fail")).lower())
+                self.assertEqual(row["feedback_recorded"], str(verdict in ("pass", "content_mismatch", "fail")).lower())
 
 
 if __name__ == "__main__":
