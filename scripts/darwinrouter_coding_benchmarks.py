@@ -27,8 +27,23 @@ def maximum(samples, key):
     return max(values) if values else ""
 
 def record_feedback(darwin, database, task_id, accepted):
-    proc=subprocess.run([darwin,"feedback","--db",str(database),"--task",task_id,"--outcome","accepted" if accepted else "rejected","--attempt-cost","0"],text=True,capture_output=True,timeout=30)
-    if proc.returncode:raise RuntimeError(proc.stderr.strip() or "feedback failed")
+    command=[darwin,"feedback","--db",str(database),"--task",task_id,"--outcome","accepted" if accepted else "rejected","--attempt-cost","0"]
+    # A retry can race with a completed write whose CLI acknowledgement was
+    # lost. Inspect the durable history before retrying or reporting failure.
+    for attempt in range(3):
+        proc=subprocess.run(command,text=True,capture_output=True,timeout=30)
+        if proc.returncode==0:return
+        shown=subprocess.run([darwin,"feedback","show","--db",str(database),"--task",task_id],text=True,capture_output=True,timeout=30)
+        if shown.returncode==0:
+            try:
+                history=json.loads(shown.stdout)
+                if len(history)==1 and history[0].get("TaskID")==task_id and any(
+                    check.get("Source")=="user_feedback" and check.get("Passed") is accepted
+                    for check in history[0].get("Checks",[])
+                ):return
+            except (TypeError,ValueError,KeyError):pass
+        if attempt<2:time.sleep(attempt+1)
+    raise RuntimeError(proc.stderr.strip() or "feedback failed")
 
 def stop_model(name):
     subprocess.run(["ollama","stop",name],capture_output=True,timeout=30,check=False)
