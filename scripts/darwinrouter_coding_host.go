@@ -243,7 +243,14 @@ func main() {
 	if *finalize {
 		suffix = "\n\nThe external objective grader has finished evaluating the workspace. Respond briefly that the evaluation handoff is complete; do not request or invoke tools."
 	}
-	request := sdk.Request{Version: 1, ModelID: *model, Prompt: *prompt + suffix, Domain: "code", Profile: "benchmark", LocalRequired: true}
+	request := sdk.Request{Version: 1, ModelID: *model, Messages: []providers.Message{
+		{Role: "system", Content: "You are an autonomous coding agent. Complete the requested implementation by editing files in the supplied workspace, then run focused tests and fix errors. The workspace may contain only a specification and scaffolding; missing implementation files are your responsibility to create. Inspect the workspace briefly, then implement. Do not search system directories or other workspaces for pre-existing solutions. Use native tool calls, not printed tool markup. Do not finish with a plan or claim changes you did not make."},
+		{Role: "user", Content: *prompt + suffix},
+	}, Domain: "code", Profile: "benchmark", LocalRequired: true}
+	if *finalize {
+		request.Messages = nil
+		request.Prompt = *prompt + suffix
+	}
 	result, err := runWithToolRepair(ctx, client.Run, request, !*finalize)
 	if err != nil {
 		body, _ := json.Marshal(result)
@@ -266,6 +273,7 @@ func runWithToolRepair(ctx context.Context, run func(context.Context, sdk.Reques
 	for repair := 0; repairEnabled && err == nil && repair < 2 && textualToolCall(result.Text); repair++ {
 		previous := result
 		request.ContinueTaskID = previous.TaskID
+		request.Messages = nil
 		request.Prompt = "Your last answer contained tool-call markup as plain text, so that text executed no tool. Continue the original task using the provided native function-call interface. Do not repeat XML or tool-call markup in your final answer. Implement and test the changes before reporting completion."
 		result, err = run(ctx, request)
 		result.PreviousTaskIDs = append(append(append([]string{}, previous.PreviousTaskIDs...), previous.TaskID), result.PreviousTaskIDs...)

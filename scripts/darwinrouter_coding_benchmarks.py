@@ -63,6 +63,7 @@ def main():
     if not args.run:return 0
     args.output_dir.mkdir(parents=True,exist_ok=True);args.workspace.mkdir(parents=True,exist_ok=True)
     database=(args.database or args.output_dir/"darwinrouter-coding.db").resolve()
+    host_digest=hashlib.sha256(args.host.read_bytes()).hexdigest()
     jsonl=args.output_dir/"darwinrouter_coding.jsonl";csv_path=args.output_dir/"darwinrouter_coding.csv"
     records=[json.loads(x) for x in jsonl.read_text().splitlines()] if jsonl.exists() else []
     completed={(r["row"]["model"],r["row"]["task_id"]) for r in records};run_id=records[0]["row"]["run_id"] if records else time.strftime("%Y%m%d_%H%M%S")
@@ -114,7 +115,7 @@ def main():
         # the allocated window. Keep it for compatibility and name both values
         # unambiguously in new evidence.
         row.update(darwin_task_id=task_id, resolved_model=metadata.get("model_id", ""), context_window_tokens=metadata.get("context_tokens", ""), input_tokens=context_tokens, previous_task_ids=json.dumps(result.get("PreviousTaskIDs") or []))
-        record={"row":row,"darwin_response":result,"grading":grading,"changed_files":changed,"telemetry_samples":samples,"learning_database":str(database),"host_attempts":attempt+1}
+        record={"row":row,"darwin_response":result,"grading":grading,"changed_files":changed,"telemetry_samples":samples,"learning_database":str(database),"host_attempts":attempt+1,"host_sha256":host_digest}
         with jsonl.open("a") as f:f.write(json.dumps(record)+"\n")
         records.append(record);completed.add((model,task["id"]));
         with csv_path.open("w",newline="") as f:
