@@ -266,6 +266,8 @@ func runWithToolRepair(ctx context.Context, run func(context.Context, sdk.Reques
 		if previous.RouteEstimatedCost != nil && result.RouteEstimatedCost != nil {
 			cost := *previous.RouteEstimatedCost + *result.RouteEstimatedCost
 			result.RouteEstimatedCost = &cost
+		} else {
+			result.RouteEstimatedCost = nil
 		}
 		if previous.Usage != nil && result.Usage != nil {
 			result.Usage.InputTokens += previous.Usage.InputTokens

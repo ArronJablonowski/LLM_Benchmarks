@@ -49,3 +49,19 @@ func TestToolRepairIsBoundedAndDoesNotRetryExecutionErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestToolRepairKeepsIncompleteAccountingUnknown(t *testing.T) {
+	calls := 0
+	run := func(context.Context, sdk.Request) (sdk.Result, error) {
+		calls++
+		if calls == 1 {
+			return sdk.Result{TaskID: "first", Text: "<function=benchmark_read_file></tool_call>"}, nil
+		}
+		cost := 1.0
+		return sdk.Result{TaskID: "second", Text: "done", RouteEstimatedCost: &cost, Usage: &providers.Usage{InputTokens: 20}}, nil
+	}
+	out, err := runWithToolRepair(context.Background(), run, sdk.Request{}, true)
+	if err != nil || out.RouteEstimatedCost != nil || out.Usage != nil {
+		t.Fatal("partial accounting presented as total", out, err)
+	}
+}
