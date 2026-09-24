@@ -93,7 +93,7 @@ def main():
         if host_error:error=(error+f"; host: {host_error}").strip("; ")[:3000]
         completed_output=(proc.returncode==0 and not host_error) or (grading.get("verdict")=="pass" and bool(changed))
         feedback=False
-        if task_id and completed_output:
+        if task_id and completed_output and grading.get("verdict") in ("pass", "fail"):
             try:record_feedback(args.darwin,database,task_id,grading.get("verdict")=="pass");feedback=True
             except Exception as exc:
                 try:feedback=bool(finalize_graded_task(command,args.darwin,database,grading.get("verdict")=="pass"))
