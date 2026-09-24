@@ -326,7 +326,7 @@ func codingCommand(ctx context.Context, root, home, command string) (*exec.Cmd, 
 	if err != nil {
 		return nil, err
 	}
-	profile := `(version 1)(deny default)(allow process*)(allow sysctl-read)(allow mach-lookup)(allow file-read-metadata)(allow file-read* (literal "/"))`
+	profile := `(version 1)(deny default)(allow process*)(allow sysctl-read)(allow mach-lookup)(allow file-read* (literal "/"))`
 	for _, path := range []string{"/System", "/usr", "/bin", "/sbin", "/Library", "/opt/homebrew", "/private/etc", "/dev", root, home} {
 		profile += "(allow file-read* (subpath " + strconv.Quote(path) + "))"
 	}
