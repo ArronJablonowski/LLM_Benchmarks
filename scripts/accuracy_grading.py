@@ -19,7 +19,7 @@ import tempfile
 from pathlib import Path
 
 
-GRADING_PROFILE = "behavioral-v1"
+GRADING_PROFILE = "behavioral-v1.1"
 DEFAULT_PYTHON_GRADER_TIMEOUT_SECONDS = 5.0
 MAX_GRADER_DETAIL_CHARS = 2000
 
@@ -396,7 +396,7 @@ ALLOWED_IMPORT_SYMBOLS = {
 }
 
 SAFE_BUILTIN_NAMES = (
-    "Exception", "IndexError", "KeyError", "OverflowError", "TypeError", "ValueError",
+    "AttributeError", "Exception", "IndexError", "KeyError", "OverflowError", "TypeError", "ValueError",
     "abs", "all", "any", "bool", "dict", "enumerate", "filter", "float", "int",
     "isinstance", "len", "list", "map", "max", "min", "range", "reversed", "round",
     "set", "sorted", "str", "sum", "tuple", "zip",

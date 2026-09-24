@@ -904,7 +904,7 @@ class ExecutionGuardTests(unittest.TestCase):
         self.assertEqual(0, exit_code)
         self.assertEqual("262144", row["requested_num_ctx"])
         self.assertEqual("262144", row["model_context_length"])
-        self.assertEqual("behavioral-v1", row["grading_profile"])
+        self.assertEqual(grading.GRADING_PROFILE, row["grading_profile"])
         self.assertEqual("exact_text", row["grader_type"])
         self.assertEqual("pass", row["verdict"])
         self.assertTrue(row["runner_sha256"])
@@ -1668,6 +1668,12 @@ def count_unique_ips(lines):
         self.assertEqual("content_mismatch", result["verdict"])
         self.assertLess(result["tests_passed"], result["tests_total"])
         self.assertTrue(any("raised" in failure or "expected False" in failure for failure in result["failures"]))
+
+    def test_private_ipv4_accepts_standard_exception_tuple(self):
+        candidate = self.ROBUST_PRIVATE.replace("except ValueError:", "except (ValueError, AttributeError):")
+        result = grading.grade_python_function(candidate, grading.PRIVATE_IPV4_GRADER)
+        self.assertEqual("pass", result["verdict"], result)
+        self.assertEqual(result["tests_total"], result["tests_passed"])
 
     def test_private_ipv4_rejects_ipaddress_is_private_overbreadth(self):
         candidate = """\
