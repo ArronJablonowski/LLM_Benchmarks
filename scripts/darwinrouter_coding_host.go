@@ -401,8 +401,13 @@ func codingCommand(ctx context.Context, root, home, command string) (*exec.Cmd, 
 	for _, path := range []string{"/opt", "/var", "/private", "/private/var", "/private/var/select", "/private/var/select/developer_dir"} {
 		profile += "(allow file-read-metadata (literal " + strconv.Quote(path) + "))"
 	}
-	for parent := filepath.Dir(root); parent != "/"; parent = filepath.Dir(parent) {
-		profile += "(allow file-read-metadata (literal " + strconv.Quote(parent) + "))"
+	// SQLite resolves every component of its scratch database path. The
+	// isolated home is a sibling of the workspace, so its ancestors also
+	// need metadata access (not directory listing or file contents).
+	for _, base := range []string{root, home} {
+		for parent := filepath.Dir(base); parent != "/"; parent = filepath.Dir(parent) {
+			profile += "(allow file-read-metadata (literal " + strconv.Quote(parent) + "))"
+		}
 	}
 	for _, path := range []string{root, home, "/dev/null"} {
 		profile += "(allow file-write* (subpath " + strconv.Quote(path) + "))"

@@ -185,3 +185,15 @@ func TestCodingCommandOutputDistinguishesEmptyDiscoveryFromPassingTests(t *testi
 		t.Fatal("command failure misreported", failed)
 	}
 }
+
+func TestCodingCommandSQLiteTemporaryDatabase(t *testing.T) {
+	root := t.TempDir()
+	home := filepath.Join(filepath.Dir(root), ".benchmark-home", filepath.Base(root))
+	cmd, err := codingCommand(context.Background(), root, home, `python3 -c 'import tempfile, sqlite3; f=tempfile.NamedTemporaryFile(); c=sqlite3.connect(f.name); c.execute("create table t(x)"); c.execute("insert into t values (42)"); c.commit(); assert c.execute("select x from t").fetchone()==(42,)'`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("SQLite scratch database failed: %v: %s", err, out)
+	}
+}
