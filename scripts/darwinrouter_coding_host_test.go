@@ -197,3 +197,15 @@ func TestCodingCommandSQLiteTemporaryDatabase(t *testing.T) {
 		t.Fatalf("SQLite scratch database failed: %v: %s", err, out)
 	}
 }
+
+func TestCodingCommandHeredocInIsolatedScratchHome(t *testing.T) {
+	root := t.TempDir()
+	home := filepath.Join(filepath.Dir(root), ".benchmark-home", filepath.Base(root))
+	cmd, err := codingCommand(context.Background(), root, home, "python3 - <<'PY'\nprint('heredoc-ok')\nPY")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out, err := cmd.CombinedOutput(); err != nil || !strings.Contains(string(out), "heredoc-ok") {
+		t.Fatalf("heredoc failed: %v: %s", err, out)
+	}
+}

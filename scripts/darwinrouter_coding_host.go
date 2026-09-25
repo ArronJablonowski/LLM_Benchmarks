@@ -418,6 +418,6 @@ func codingCommand(ctx context.Context, root, home, command string) (*exec.Cmd, 
 	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
 	cmd.WaitDelay = 2 * time.Second
 	// Preserve tool discovery, not ambient credentials or shell startup hooks.
-	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + home, "TMPDIR=" + filepath.Join(home, "tmp"), "LANG=en_US.UTF-8", "PYTHONDONTWRITEBYTECODE=1"}
+	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + home, "TMPDIR=" + filepath.Join(home, "tmp"), "TMPPREFIX=" + filepath.Join(home, "tmp", "zsh"), "LANG=en_US.UTF-8", "PYTHONDONTWRITEBYTECODE=1"}
 	return cmd, nil
 }
