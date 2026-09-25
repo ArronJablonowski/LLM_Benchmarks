@@ -1687,6 +1687,31 @@ def is_private_ipv4(ip):
         result = grading.grade_python_function(candidate, grading.PRIVATE_IPV4_GRADER)
         self.assertEqual("content_mismatch", result["verdict"])
 
+    def test_private_ipv4_accepts_public_packed_address_octets(self):
+        candidate = """\
+import ipaddress
+def is_private_ipv4(ip):
+    try:
+        octets = ipaddress.IPv4Address(ip).packed
+        return (octets[0] == 10 or
+                (octets[0] == 172 and 16 <= octets[1] <= 31) or
+                (octets[0] == 192 and octets[1] == 168))
+    except ValueError:
+        return False
+"""
+        result = grading.grade_python_function(candidate, grading.PRIVATE_IPV4_GRADER)
+        self.assertEqual("pass", result["verdict"], result)
+        self.assertEqual(25, result["tests_passed"])
+
+        # Public address bytes must not enable reflective access to objects or
+        # modules. Retain the existing attribute and builtin restrictions.
+        for attribute in ("__class__", "__dict__", "real_import"):
+            with self.subTest(attribute=attribute):
+                unsafe = candidate.replace(".packed", f".{attribute}")
+                rejected = grading.grade_python_function(unsafe, grading.PRIVATE_IPV4_GRADER)
+                self.assertEqual("content_mismatch", rejected["verdict"])
+                self.assertIn("unsafe attribute", rejected["error"])
+
     def test_mbpp_behavioral_grader_accepts_real_logic_and_rejects_marker_code(self):
         good = grading.grade_python_function(self.GOOD_MBPP, grading.COUNT_UNIQUE_IPS_GRADER)
         self.assertEqual("pass", good["verdict"])

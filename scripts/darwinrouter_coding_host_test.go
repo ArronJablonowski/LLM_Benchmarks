@@ -123,3 +123,65 @@ func TestCodingCommandsConfineWorkspaceAndDoNotInheritSecrets(t *testing.T) {
 		t.Fatal("outside file changed", err)
 	}
 }
+
+func TestCodingCommandDirectoryHonorsSubdirectoriesAndRejectsEscapes(t *testing.T) {
+	base := t.TempDir()
+	root := filepath.Join(base, "workspace")
+	subdir := filepath.Join(root, "package")
+	if err := os.MkdirAll(subdir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(base, filepath.Join(root, "escape")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "file.txt"), []byte("file"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	want, err := filepath.EvalSymlinks(subdir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][2]string{{"", "package"}, {"package", ""}, {"", subdir}, {"package", "./package"}} {
+		got, err := codingCommandDirectory(root, args[0], args[1])
+		if err != nil || got != want {
+			t.Fatalf("%v: directory=%q err=%v", args, got, err)
+		}
+	}
+	for _, args := range [][2]string{{"", ".."}, {"", base}, {"", "escape"}, {"", "file.txt"}, {"", "missing"}, {"package", "."}} {
+		if got, err := codingCommandDirectory(root, args[0], args[1]); err == nil {
+			t.Fatalf("unsafe or invalid directory accepted: %v => %s", args, got)
+		}
+	}
+	if _, err := os.Stat("/usr/bin/sandbox-exec"); err != nil {
+		t.Skip("subdirectory execution requires macOS sandbox-exec")
+	}
+	cmd, err := codingCommand(context.Background(), root, filepath.Join(base, "home"), "pwd; printf done > result.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd.Dir = want
+	if output, err := cmd.CombinedOutput(); err != nil || !strings.Contains(string(output), want) {
+		t.Fatalf("command used wrong directory: %s %v", output, err)
+	}
+	if _, err := os.Stat(filepath.Join(subdir, "result.txt")); err != nil {
+		t.Fatal("command did not execute in subdirectory", err)
+	}
+}
+
+func TestCodingCommandOutputDistinguishesEmptyDiscoveryFromPassingTests(t *testing.T) {
+	for _, output := range []string{"Ran 0 tests in 0.000s\n\nOK", "NO TESTS RAN", "ℹ tests 0\nℹ pass 0", "=== no tests ran in 0.01s ==="} {
+		result := codingCommandOutput([]byte(output), nil)
+		if !strings.Contains(result, output) || !strings.Contains(result, "command exit code: 0") || !strings.Contains(result, "Verification incomplete") {
+			t.Fatal("empty discovery was not explained", result)
+		}
+	}
+	for _, output := range []string{"Ran 3 tests in 0.001s\n\nOK", "ℹ tests 1\nℹ pass 1", "value = 'Ran 0 tests'"} {
+		if result := codingCommandOutput([]byte(output), nil); strings.Contains(result, "Verification incomplete") {
+			t.Fatal("ordinary output classified as empty discovery", result)
+		}
+	}
+	failed := codingCommandOutput([]byte("ImportError: missing public export"), errors.New("exit status 1"))
+	if !strings.Contains(failed, "ImportError") || !strings.Contains(failed, "command exited non-zero") || strings.Contains(failed, "exit code: 0") {
+		t.Fatal("command failure misreported", failed)
+	}
+}

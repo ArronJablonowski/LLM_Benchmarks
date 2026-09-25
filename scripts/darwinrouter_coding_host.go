@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -209,12 +210,18 @@ func main() {
 		}
 		return runtime.ToolResult{Content: "file written", Effect: runtime.ConfirmedEffect}, nil
 	}}
-	run := sdk.Tool{Tool: providers.Tool{Name: "benchmark_run_command", Description: "Run a shell command inside the isolated coding workspace. Paths outside this workspace are unreadable. Read the fixture specification, create the implementation here, and run its tests; searching for another solution is prohibited. Output is capped at 64 KiB.", Parameters: json.RawMessage(`{"type":"object","properties":{"command":{"type":"string","minLength":1,"maxLength":8192},"path":{"type":"string","maxLength":4096},"workdir":{"type":"string","maxLength":4096}},"required":["command"],"additionalProperties":false}`)}, Scope: toolScope, Behavior: tools.BehaviorIdempotentWrite, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
+	run := sdk.Tool{Tool: providers.Tool{Name: "benchmark_run_command", Description: "Run a shell command inside the isolated coding workspace. Optional workdir (or path alias) selects an existing subdirectory. Paths outside this workspace are unreadable. Read the fixture specification, create the implementation here, and run its tests; searching for another solution is prohibited. Output is capped at 64 KiB and includes command status; zero discovered tests do not validate the implementation.", Parameters: json.RawMessage(`{"type":"object","properties":{"command":{"type":"string","minLength":1,"maxLength":8192},"path":{"type":"string","maxLength":4096},"workdir":{"type":"string","maxLength":4096}},"required":["command"],"additionalProperties":false}`)}, Scope: toolScope, Behavior: tools.BehaviorIdempotentWrite, Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
 		var in struct {
 			Command string `json:"command"`
+			Path    string `json:"path"`
+			Workdir string `json:"workdir"`
 		}
 		if json.Unmarshal(raw, &in) != nil || strings.ContainsRune(in.Command, '\x00') {
 			return runtime.ToolResult{Effect: runtime.NoEffect}, errors.New("invalid command")
+		}
+		workdir, err := codingCommandDirectory(root, in.Path, in.Workdir)
+		if err != nil {
+			return runtime.ToolResult{Content: "No command was executed: " + err.Error(), Effect: runtime.NoEffect, Failed: true, Recoverable: true}, nil
 		}
 		bounded, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
@@ -223,17 +230,11 @@ func main() {
 		if err != nil {
 			return runtime.ToolResult{Effect: runtime.NoEffect}, err
 		}
+		cmd.Dir = workdir
 		body, err := cmd.CombinedOutput()
-		if len(body) > outputLimit {
-			body = body[len(body)-outputLimit:]
-		}
-		result := runtime.ToolResult{Content: string(body), Effect: runtime.ConfirmedEffect}
-		if err != nil {
-			// A non-zero command is observation for an agentic coding loop, not a
-			// host-tool failure. Let the model inspect it and repair the code.
-			result.Content += fmt.Sprintf("\ncommand exited non-zero: %v", err)
-		}
-		return result, nil
+		// Non-zero exits and empty test discovery are observations for the coding
+		// loop. Keep them visible so the agent can repair its code or test command.
+		return runtime.ToolResult{Content: codingCommandOutput(body, err), Effect: runtime.ConfirmedEffect}, nil
 	}}
 	definitions := []sdk.Tool{list, read, write, run}
 	var policy *sdk.ToolPolicy = &sdk.ToolPolicy{Default: tools.Ask}
@@ -255,7 +256,7 @@ func main() {
 		suffix = "\n\nThe external objective grader has finished evaluating the workspace. Respond briefly that the evaluation handoff is complete; do not request or invoke tools."
 	}
 	request := sdk.Request{Version: 1, ModelID: *model, Messages: []providers.Message{
-		{Role: "system", Content: "You are an autonomous coding agent. Complete the requested implementation by editing files in the supplied workspace, then run focused tests and fix errors. The workspace may contain only a specification and scaffolding; missing implementation files are your responsibility to create. Inspect the workspace briefly, then implement. Do not search system directories or other workspaces for pre-existing solutions. Use native tool calls, not printed tool markup. Do not finish with a plan or claim changes you did not make."},
+		{Role: "system", Content: "You are an autonomous coding agent. Complete the requested implementation by editing files in the supplied workspace, then run focused tests and fix errors. The workspace may contain only a specification and scaffolding; missing implementation files are your responsibility to create. Inspect the specification, package entry points, and existing tests briefly, then implement. Preserve the public names, imports, exports, and call signatures required by the specification and existing callers. Verify those public interfaces with import or invocation smoke checks. Use the project's existing test framework and command; for standard-library-only Python without a configured framework, use discoverable unittest.TestCase tests. Confirm that tests were actually discovered and executed: a zero-test run or a successful import alone does not validate behavior. Do not remove or weaken existing tests to obtain a passing run. Do not search system directories or other workspaces for pre-existing solutions. Use native tool calls, not printed tool markup. Do not finish with a plan or claim changes you did not make. Report the exact checks run and any failures or unverified requirements."},
 		{Role: "user", Content: *prompt + suffix},
 	}, Domain: "code", Profile: "benchmark", LocalRequired: true}
 	if *finalize {
@@ -315,6 +316,57 @@ func fatal(err error) {
 	body, _ := json.Marshal(map[string]string{"error": err.Error()})
 	fmt.Fprintln(os.Stderr, string(body))
 	os.Exit(1)
+}
+
+func codingCommandDirectory(root, path, workdir string) (string, error) {
+	if path != "" && workdir != "" && filepath.Clean(path) != filepath.Clean(workdir) {
+		return "", errors.New("path and workdir must identify the same directory; supply only one")
+	}
+	if workdir == "" {
+		workdir = path
+	}
+	if workdir == "" {
+		workdir = "."
+	}
+	if !filepath.IsAbs(workdir) {
+		workdir = filepath.Join(root, workdir)
+	}
+	root, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return "", err
+	}
+	workdir, err = filepath.EvalSymlinks(workdir)
+	if err != nil {
+		return "", errors.New("command directory does not exist")
+	}
+	rel, err := filepath.Rel(root, workdir)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return "", errors.New("command directory escapes workspace")
+	}
+	info, err := os.Stat(workdir)
+	if err != nil || !info.IsDir() {
+		return "", errors.New("command workdir must be a directory")
+	}
+	return workdir, nil
+}
+
+var zeroTestsOutput = regexp.MustCompile(`(?im)^\s*(?:Ran 0 tests\b|NO TESTS RAN\b|(?:ℹ\s*)?tests\s*[:=]?\s+0\b|(?:=+\s*)?no tests ran\b)`)
+
+func codingCommandOutput(body []byte, err error) string {
+	emptyTests := zeroTestsOutput.Match(body)
+	if len(body) > outputLimit {
+		body = body[len(body)-outputLimit:]
+	}
+	result := string(body)
+	if err != nil {
+		result += fmt.Sprintf("\ncommand exited non-zero: %v", err)
+	} else {
+		result += "\ncommand exit code: 0"
+	}
+	if emptyTests {
+		result += "\nVerification incomplete: the test runner discovered zero tests. Check the working directory, discovery pattern, and test framework, then run actual behavioral tests before claiming success."
+	}
+	return result
 }
 
 // codingCommand enforces the same workspace boundary for shell subprocesses

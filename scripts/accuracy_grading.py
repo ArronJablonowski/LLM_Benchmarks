@@ -19,7 +19,7 @@ import tempfile
 from pathlib import Path
 
 
-GRADING_PROFILE = "behavioral-v1.1"
+GRADING_PROFILE = "behavioral-v1.2"
 DEFAULT_PYTHON_GRADER_TIMEOUT_SECONDS = 5.0
 MAX_GRADER_DETAIL_CHARS = 2000
 
@@ -386,7 +386,9 @@ ALLOWED_ATTRIBUTES = {
     "IPv4Address", "IPv4Network", "add", "append", "compile", "count",
     "discard", "endswith", "extend", "find", "findall", "finditer", "fullmatch",
     "group", "groups", "ip_address", "ip_network", "is_private", "isdigit", "join",
-    "lower", "match", "replace", "search", "split", "splitlines", "startswith",
+    # IPv4Address.packed is the public, immutable byte representation of an
+    # address; candidates may inspect its octets without bypassing validation.
+    "lower", "match", "packed", "replace", "search", "split", "splitlines", "startswith",
     "strip", "update", "upper", "version",
 }
 
