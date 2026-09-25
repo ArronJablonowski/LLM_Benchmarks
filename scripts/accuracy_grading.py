@@ -19,7 +19,7 @@ import tempfile
 from pathlib import Path
 
 
-GRADING_PROFILE = "behavioral-v1.2"
+GRADING_PROFILE = "behavioral-v1.3"
 DEFAULT_PYTHON_GRADER_TIMEOUT_SECONDS = 5.0
 MAX_GRADER_DETAIL_CHARS = 2000
 
@@ -414,6 +414,18 @@ def _validate_candidate(tree, allowed_imports):
     def safe_name(name):
         return bool(name) and not name.startswith("_") and name not in FORBIDDEN_NAMES
 
+    # A single underscore is a normal local identifier, commonly used when
+    # discarding unpacked values. Permit it only inside function bodies; keep
+    # module targets, import aliases, private attributes and other underscored
+    # names subject to the existing restrictions.
+    local_discard_names = {
+        id(child)
+        for function in ast.walk(tree) if isinstance(function, ast.FunctionDef)
+        for statement in function.body
+        for child in ast.walk(statement)
+        if isinstance(child, ast.Name) and child.id == "_"
+    }
+
     def safe_constant_expression(node):
         if isinstance(node, ast.Constant):
             return not isinstance(node.value, (str, bytes)) or len(node.value) <= 10000
@@ -459,7 +471,10 @@ def _validate_candidate(tree, allowed_imports):
     for node in ast.walk(tree):
         if isinstance(node, FORBIDDEN_AST_NODES):
             raise ValueError(f"unsupported Python construct: {type(node).__name__}")
-        if isinstance(node, ast.Name) and (node.id.startswith("_") or node.id in FORBIDDEN_NAMES):
+        if isinstance(node, ast.Name) and (
+            (node.id.startswith("_") and id(node) not in local_discard_names)
+            or node.id in FORBIDDEN_NAMES
+        ):
             raise ValueError(f"unsafe name: {node.id}")
         if isinstance(node, ast.Attribute) and node.attr not in ALLOWED_ATTRIBUTES:
             raise ValueError(f"unsafe attribute: {node.attr}")
