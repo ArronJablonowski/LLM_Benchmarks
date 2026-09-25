@@ -70,6 +70,16 @@ def stop_owned_models(names):
         stop_model(name)
 
 
+def quality_verdict(returncode, host_error, grader_error, grading):
+    # Partial workspaces may satisfy checks after a capacity/transport failure;
+    # they remain diagnostic artifacts, not completed model-quality evidence.
+    if returncode != 0 or host_error:
+        return "infrastructure_error"
+    if grader_error or grading.get("verdict") not in ("pass", "fail"):
+        return "grader_error"
+    return grading["verdict"]
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--host",type=Path,required=True);p.add_argument("--config",type=Path,required=True)
@@ -124,7 +134,8 @@ def main():
         except Exception:result={}
         host_error=result.get("error", "") if isinstance(result, dict) else ""
         if host_error:error=(error+f"; host: {host_error}").strip("; ")[:3000]
-        completed_output=(proc.returncode==0 and not host_error) or (grading.get("verdict")=="pass" and bool(changed))
+        verdict=quality_verdict(proc.returncode, host_error, grader_error, grading)
+        completed_output=verdict in ("pass", "fail")
         feedback=False
         if task_id and completed_output and grading.get("verdict") in ("pass", "fail"):
             try:record_feedback(args.darwin,database,task_id,grading.get("verdict")=="pass");feedback=True
@@ -133,7 +144,7 @@ def main():
                 # acknowledgement task (auto routing could choose a different
                 # model). Preserve its ID and expose the missing feedback.
                 error=(error+f"; feedback: {exc}")[:3000]
-        row={"run_id":run_id,"benchmark_profile":"coding-agent-v2-web","harness":"darwinrouter","model":model,"task_id":task["id"],"task_name":task["name"],"status":"ok" if grading.get("verdict")=="pass" else ("ok" if proc.returncode==0 else "error"),"verdict":grading.get("verdict","grader_error"),"checks_passed":grading.get("passed",0),"checks_total":grading.get("total",0),"wall_seconds":wall,"exit_code":proc.returncode,"files_changed":len(changed),"student_test_files":count_student_tests(work),"feedback_recorded":str(feedback).lower(),"context_tokens":context_tokens,"max_gpu_temp_c":maximum(samples,"gpu_temp_c"),"max_host_temp_c":maximum(samples,"host_temp_c"),"max_host_memory_used_bytes":maximum(samples,"host_memory_used_bytes"),"max_host_memory_pct":maximum(samples,"host_memory_pct"),"max_gpu_usage_pct":maximum(samples,"gpu_usage_pct"),"sample_count":len(samples),"error":error}
+        row={"run_id":run_id,"benchmark_profile":"coding-agent-v2-web","harness":"darwinrouter","model":model,"task_id":task["id"],"task_name":task["name"],"status":"ok" if completed_output else "error","verdict":verdict,"checks_passed":grading.get("passed",0),"checks_total":grading.get("total",0),"wall_seconds":wall,"exit_code":proc.returncode,"files_changed":len(changed),"student_test_files":count_student_tests(work),"feedback_recorded":str(feedback).lower(),"context_tokens":context_tokens,"max_gpu_temp_c":maximum(samples,"gpu_temp_c"),"max_host_temp_c":maximum(samples,"host_temp_c"),"max_host_memory_used_bytes":maximum(samples,"host_memory_used_bytes"),"max_host_memory_pct":maximum(samples,"host_memory_pct"),"max_gpu_usage_pct":maximum(samples,"gpu_usage_pct"),"sample_count":len(samples),"error":error}
         try:
             metadata=task_metadata(database, task_id)
         except (sqlite3.Error, ValueError) as exc:
