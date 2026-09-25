@@ -64,12 +64,11 @@ def stop_model(name):
         time.sleep(2)
     raise RuntimeError(f"model remained resident: {name}")
 
-def stop_all_models():
-    ps=subprocess.run(["ollama","ps"],text=True,capture_output=True,timeout=10)
-    if ps.returncode:return
-    for line in ps.stdout.splitlines()[1:]:
-        fields=line.split()
-        if fields:stop_model(fields[0])
+def stop_owned_models(names):
+    # Ownership must be explicit. Never unload unrelated resident models.
+    for name in dict.fromkeys(names):
+        stop_model(name)
+
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
@@ -80,7 +79,10 @@ def main():
     p.add_argument("--database",type=Path,help="DarwinRouter learning database; use the daemon's database to share learned model/context fitness")
     p.add_argument("--timeout",type=int,default=1800);p.add_argument("--tasks",nargs="*");p.add_argument("--run",action="store_true")
     p.add_argument("--max-attempts", type=int, choices=range(1,6), default=1, help="Explicit whole-host attempt budget; each retry reuses the preserved workspace")
-    args=p.parse_args(); tasks=suite_task_catalog("coding")
+    p.add_argument("--context-tokens", type=int, default=0, help="Explicit context budget; 0 keeps automatic selection and normal admission")
+    args=p.parse_args()
+    if not 0 <= args.context_tokens <= 1048576:p.error("context-tokens must be in 0..1048576")
+    tasks=suite_task_catalog("coding")
     if args.tasks:
         wanted=set(args.tasks);tasks=[t for t in tasks if t["id"] in wanted]
         if wanted-{t["id"] for t in tasks}:raise SystemExit("unknown coding task")
@@ -98,10 +100,11 @@ def main():
        for task in tasks:
         if (model,task["id"]) in completed:continue
         print(f"[{len(completed)+1}/{total}] DarwinRouter {model} :: {task['id']}",flush=True)
-        stop_all_models()
+        stop_owned_models(args.ollama_model)
         work=prepare_workspace(args.workspace,"darwinrouter",model,task).resolve();before=fingerprint_tree(work)
         prompt=task["prompt"]+"\n\nWork only inside: "+str(work)
         command=[str(args.host),"--config",str(args.config),"--database",str(database),"--workspace",str(work),"--model",model,"--prompt",prompt,"--timeout",f"{args.timeout}s"]
+        command += ["--context-tokens", str(args.context_tokens)]
         start_sample=sampler.snapshot_len();started=time.monotonic();proc=None
         for attempt in range(args.max_attempts):
             proc=subprocess.run(command,text=True,capture_output=True,timeout=args.timeout+60,env={**os.environ,"PYTHONDONTWRITEBYTECODE":"1"})
@@ -110,7 +113,7 @@ def main():
             if interim.get("verdict")=="pass":
                 print("  -> objective grader passed despite non-zero host completion",flush=True);break
             if attempt+1<args.max_attempts:
-                stop_all_models()
+                stop_owned_models(args.ollama_model)
                 print(f"  -> host retry {attempt+2}/{args.max_attempts}",flush=True);time.sleep(min(5*(attempt+1),20))
         wall=round(time.monotonic()-started,3);samples=sampler.get_since(start_sample)
         grading,grader_error=grade_workspace(task,work);after=fingerprint_tree(work);changed=sorted(set(before)|set(after));changed=[x for x in changed if before.get(x)!=after.get(x)]
@@ -140,13 +143,13 @@ def main():
         # the allocated window. Keep it for compatibility and name both values
         # unambiguously in new evidence.
         row.update(darwin_task_id=task_id, resolved_model=metadata.get("model_id", ""), context_window_tokens=metadata.get("context_tokens", ""), input_tokens=context_tokens, previous_task_ids=json.dumps(result.get("PreviousTaskIDs") or []))
-        record={"row":row,"darwin_response":result,"grading":grading,"changed_files":changed,"telemetry_samples":samples,"learning_database":str(database),"host_attempts":attempt+1,"host_sha256":host_digest}
+        record={"row":row,"darwin_response":result,"grading":grading,"changed_files":changed,"telemetry_samples":samples,"learning_database":str(database),"host_attempts":attempt+1,"host_sha256":host_digest,"requested_context_tokens":args.context_tokens}
         with jsonl.open("a") as f:f.write(json.dumps(record)+"\n")
         records.append(record);completed.add((model,task["id"]));
         with csv_path.open("w",newline="") as f:
             w=csv.DictWriter(f,fieldnames=FIELDS);w.writeheader();[w.writerow({k:r["row"].get(k,"") for k in FIELDS}) for r in records]
         print(f"  -> {row['status']} {row['verdict']} {row['checks_passed']}/{row['checks_total']} wall={wall}s feedback={feedback}",flush=True)
-        stop_all_models()
+        stop_owned_models(args.ollama_model)
     finally:sampler.stop()
     return 0
 

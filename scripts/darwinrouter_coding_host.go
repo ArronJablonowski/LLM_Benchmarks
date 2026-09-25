@@ -36,9 +36,13 @@ func main() {
 	model := flag.String("model", "auto", "DarwinRouter model ID")
 	prompt := flag.String("prompt", "", "coding task")
 	timeout := flag.Duration("timeout", 2*time.Hour, "task deadline")
+	contextTokens := flag.Int("context-tokens", 0, "explicit context budget; zero selects automatically")
 	maxTurns := flag.Int("max-turns", 96, "maximum coding-agent turns")
 	finalize := flag.Bool("finalize", false, "record a short completed-task result without coding tools")
 	flag.Parse()
+	if *contextTokens < 0 || int64(*contextTokens) > providers.MaxOutputTokens {
+		fatal(errors.New("invalid context token budget"))
+	}
 	if *config == "" || *database == "" || *workspace == "" || *prompt == "" || !filepath.IsAbs(*workspace) || !filepath.IsAbs(*database) || *maxTurns < 2 || *maxTurns > 96 {
 		fatal(errors.New("config, database, absolute workspace, prompt, and max-turns in 2..96 are required"))
 	}
@@ -258,7 +262,7 @@ func main() {
 	request := sdk.Request{Version: 1, ModelID: *model, Messages: []providers.Message{
 		{Role: "system", Content: "You are an autonomous coding agent. Complete the requested implementation by editing files in the supplied workspace, then run focused tests and fix errors. The workspace may contain only a specification and scaffolding; missing implementation files are your responsibility to create. Inspect the specification, package entry points, and existing tests briefly, then implement. Preserve the public names, imports, exports, and call signatures required by the specification and existing callers. Verify those public interfaces with import or invocation smoke checks. Use the project's existing test framework and command; for standard-library-only Python without a configured framework, use discoverable unittest.TestCase tests. Confirm that tests were actually discovered and executed: a zero-test run or a successful import alone does not validate behavior. Do not remove or weaken existing tests to obtain a passing run. Do not search system directories or other workspaces for pre-existing solutions. Use native tool calls, not printed tool markup. Do not finish with a plan or claim changes you did not make. Report the exact checks run and any failures or unverified requirements."},
 		{Role: "user", Content: *prompt + suffix},
-	}, Domain: "code", Profile: "benchmark", LocalRequired: true}
+	}, Domain: "code", Profile: "benchmark", LocalRequired: true, ContextTokens: *contextTokens}
 	if *finalize {
 		request.Messages = nil
 		request.Prompt = *prompt + suffix
