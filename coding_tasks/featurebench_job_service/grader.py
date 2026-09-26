@@ -13,6 +13,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from grader_support import Checks, python_files_parse, run_project_tests
 
 
+def assert_invalid_transition(store, job_id):
+    before = store.get(job_id)
+    try:
+        store.succeed(job_id)
+    except Exception:
+        # The specification permits custom exception hierarchies. Verify the
+        # rejected operation did not mutate persisted state or payload.
+        assert store.get(job_id) == before, "rejected transition mutated job"
+    else:
+        raise AssertionError("invalid queued→succeeded transition accepted")
+
+
 def main(workspace: Path) -> int:
     checks = Checks(); sys.path.insert(0, str(workspace))
 
@@ -28,9 +40,7 @@ def main(workspace: Path) -> int:
             assert store.fail(first["id"], retry_at=due_at)["state"] == "failed"
             assert first["id"] in {job["id"] for job in store.due(datetime.now(timezone.utc))}
             assert store.retry(first["id"])["state"] == "queued"
-            try: store.succeed(first["id"])
-            except (ValueError, RuntimeError): pass
-            else: raise AssertionError("invalid queued→succeeded transition accepted")
+            assert_invalid_transition(store, first["id"])
 
     checks.call("persistent lifecycle and idempotency", lifecycle)
 
