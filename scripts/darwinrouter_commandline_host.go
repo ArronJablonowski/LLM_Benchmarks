@@ -44,6 +44,7 @@ type answer struct {
 
 func main() {
 	configPath := flag.String("config", "", "DarwinRouter project configuration")
+	database := flag.String("database", "", "shared DarwinRouter learning database")
 	workspace := flag.String("workspace", "", "isolated command-line benchmark workspace")
 	model := flag.String("model", "local-worker", "configured local DarwinRouter model ID")
 	prompt := flag.String("prompt", "", "benchmark prompt")
@@ -209,10 +210,14 @@ func main() {
 			return runtime.ToolResult{Content: "answer.json saved", Effect: runtime.ConfirmedEffect}, nil
 		},
 	}
+	dbPath := *database
+	if dbPath == "" {
+		dbPath = filepath.Join(root, "darwinrouter.db")
+	}
 	client, err := sdk.New(sdk.ConfigOptions{
 		ProjectFile: *configPath,
 		Overrides: map[string]string{
-			"telemetry.database": filepath.Join(root, "darwinrouter.db"),
+			"telemetry.database": dbPath,
 			"runtime.max_turns":  "32",
 			"tools.max_turns":    "32",
 		},
@@ -231,6 +236,8 @@ func main() {
 	defer cancel()
 	result, err := client.Run(ctx, sdk.Request{Version: 1, ModelID: *model, Prompt: *prompt, Domain: "commandline", Profile: "benchmark", LocalRequired: true})
 	if err != nil {
+		encoded, _ := json.Marshal(result)
+		fmt.Println(string(encoded))
 		fatal(err)
 	}
 	encoded, _ := json.Marshal(result)
