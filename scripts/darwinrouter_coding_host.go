@@ -21,6 +21,8 @@ import (
 	"syscall"
 	"time"
 
+	musecounter "local-llm-benchmark-suite/adapters/musecounter"
+
 	"github.com/ArronJablonowski/DarwinRouter/providers"
 	"github.com/ArronJablonowski/DarwinRouter/runtime"
 	sdk "github.com/ArronJablonowski/DarwinRouter/sdk/v1"
@@ -249,7 +251,11 @@ func main() {
 		definitions, policy, reviewer = nil, nil, nil
 	}
 	turnLimit := strconv.Itoa(*maxTurns)
-	client, err := sdk.New(sdk.ConfigOptions{ProjectFile: *config, Overrides: map[string]string{"telemetry.database": *database, "runtime.max_turns": turnLimit, "tools.max_turns": turnLimit, "tools.read_root": root}, LookupSecret: os.Getenv, Tools: definitions, ToolPolicy: policy, ApprovalReviewer: reviewer})
+	estimatorFactory, err := codingEstimatorFactory(os.Getenv("DARWIN_BENCH_MUSE_IDENTITY"))
+	if err != nil {
+		fatal(err)
+	}
+	client, err := sdk.New(sdk.ConfigOptions{ContextEstimatorFactory: estimatorFactory, ProjectFile: *config, Overrides: map[string]string{"telemetry.database": *database, "runtime.max_turns": turnLimit, "tools.max_turns": turnLimit, "tools.read_root": root}, LookupSecret: os.Getenv, Tools: definitions, ToolPolicy: policy, ApprovalReviewer: reviewer})
 	if err != nil {
 		fatal(err)
 	}
@@ -420,4 +426,33 @@ func codingCommand(ctx context.Context, root, home, command string) (*exec.Cmd, 
 	// Preserve tool discovery, not ambient credentials or shell startup hooks.
 	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + home, "TMPDIR=" + filepath.Join(home, "tmp"), "TMPPREFIX=" + filepath.Join(home, "tmp", "zsh"), "LANG=en_US.UTF-8", "PYTHONDONTWRITEBYTECODE=1"}
 	return cmd, nil
+}
+
+// Explicit opt-in file contains accepted identity and verified asset paths.
+// Absence preserves the normal conservative estimator.
+func codingEstimatorFactory(path string) (sdk.ContextEstimatorFactory, error) {
+	if path == "" {
+		return nil, nil
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	var cfg struct {
+		Identity                  musecounter.Identity
+		TokenizerPath, ConfigPath string
+	}
+	decoder := json.NewDecoder(io.LimitReader(f, 16385))
+	decoder.DisallowUnknownFields()
+	if err = decoder.Decode(&cfg); err != nil {
+		return nil, err
+	}
+	var extra any
+	if err = decoder.Decode(&extra); err != io.EOF {
+		return nil, errors.New("invalid accounting configuration")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return musecounter.NewFactory(ctx, cfg.Identity, cfg.TokenizerPath, cfg.ConfigPath)
 }
