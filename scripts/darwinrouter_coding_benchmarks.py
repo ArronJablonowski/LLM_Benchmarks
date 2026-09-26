@@ -87,6 +87,7 @@ def main():
     p.add_argument("--ollama-model",action="append",default=[]);p.add_argument("--output-dir",type=Path,required=True);p.add_argument("--workspace",type=Path,required=True)
     p.add_argument("--darwin",default="/Users/aj_lobster/DarwinRouter/bin/darwin")
     p.add_argument("--database",type=Path,help="DarwinRouter learning database; use the daemon's database to share learned model/context fitness")
+    p.add_argument("--telemetry", choices=["auto", "mactop", "nvidia-smi", "none"], default="auto")
     p.add_argument("--timeout",type=int,default=1800);p.add_argument("--tasks",nargs="*");p.add_argument("--run",action="store_true")
     p.add_argument("--max-attempts", type=int, choices=range(1,6), default=1, help="Explicit whole-host attempt budget; each retry reuses the preserved workspace")
     p.add_argument("--context-tokens", type=int, default=0, help="Explicit context budget; 0 keeps automatic selection and normal admission")
@@ -104,7 +105,7 @@ def main():
     jsonl=args.output_dir/"darwinrouter_coding.jsonl";csv_path=args.output_dir/"darwinrouter_coding.csv"
     records=[json.loads(x) for x in jsonl.read_text().splitlines()] if jsonl.exists() else []
     completed={(r["row"]["model"],r["row"]["task_id"]) for r in records};run_id=records[0]["row"]["run_id"] if records else time.strftime("%Y%m%d_%H%M%S")
-    sampler=create_sampler("auto",interval_ms=1000);sampler.start()
+    sampler=create_sampler(args.telemetry,interval_ms=1000);sampler.start()
     try:
       for model in args.models:
        for task in tasks:
