@@ -443,7 +443,14 @@ func codingEstimatorFactory(path string) (sdk.ContextEstimatorFactory, error) {
 		Identity                  musecounter.Identity
 		TokenizerPath, ConfigPath string
 	}
-	decoder := json.NewDecoder(io.LimitReader(f, 16385))
+	body, err := io.ReadAll(io.LimitReader(f, 16385))
+	if err != nil {
+		return nil, err
+	}
+	if len(body) > 16384 {
+		return nil, errors.New("accounting configuration too large")
+	}
+	decoder := json.NewDecoder(strings.NewReader(string(body)))
 	decoder.DisallowUnknownFields()
 	if err = decoder.Decode(&cfg); err != nil {
 		return nil, err

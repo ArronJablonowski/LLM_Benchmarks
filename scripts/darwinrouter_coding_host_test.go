@@ -209,3 +209,20 @@ func TestCodingCommandHeredocInIsolatedScratchHome(t *testing.T) {
 		t.Fatalf("heredoc failed: %v: %s", err, out)
 	}
 }
+
+func TestCodingEstimatorOptInValidation(t *testing.T) {
+	if factory, err := codingEstimatorFactory(""); factory != nil || err != nil {
+		t.Fatalf("default changed: %v", err)
+	}
+	for name, body := range map[string]string{"malformed": "{", "unknown": `{"unexpected":true}`, "trailing": `{} {}`, "oversized": strings.Repeat(" ", 16385)} {
+		t.Run(name, func(t *testing.T) {
+			p := filepath.Join(t.TempDir(), "identity.json")
+			if err := os.WriteFile(p, []byte(body), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if factory, err := codingEstimatorFactory(p); err == nil || factory != nil {
+				t.Fatal("invalid opt-in accepted")
+			}
+		})
+	}
+}
