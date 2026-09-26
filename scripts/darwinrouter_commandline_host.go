@@ -234,7 +234,7 @@ func main() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
-	result, err := client.Run(ctx, sdk.Request{Version: 1, ModelID: *model, Prompt: *prompt, Domain: "commandline", Profile: "benchmark", LocalRequired: true})
+	result, err := client.Run(ctx, sdk.Request{Version: 1, ModelID: *model, Prompt: *prompt, Domain: "commandline", Profile: "benchmark", Capabilities: []string{"tools"}, LocalRequired: true})
 	if err != nil {
 		encoded, _ := json.Marshal(result)
 		fmt.Println(string(encoded))

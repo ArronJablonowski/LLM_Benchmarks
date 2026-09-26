@@ -118,7 +118,11 @@ def main():
             task_id = result.get("TaskID") or result.get("task_id") or ""
             host_error = result.get("error", "") or ("missing durable task identity" if not task_id else "")
             verdict = quality_verdict(proc.returncode, host_error, grader_error, grading)
-            metadata = task_metadata(args.database, task_id) if task_id else {}
+            try:
+                metadata = task_metadata(args.database, task_id) if task_id else {}
+            except Exception as exc:
+                metadata = {}
+                error = (error + "; metadata: " + str(exc))[:2000]
             row = {"run_id":run_id,"benchmark_profile":"commandline-agent-v2-standard-20","harness":"darwinrouter",
                    "model":args.model,"task_id":task["id"],"task_name":task["name"],
                    "status":"ok" if verdict in ("pass", "fail") else "error","verdict":verdict,
