@@ -111,3 +111,22 @@ func TestFailedToolMapping(t *testing.T) {
 		t.Fatal("failed tool mapping differs from provider")
 	}
 }
+
+func TestAbsentSchemaSurvivesEstimatorSnapshot(t *testing.T) {
+	r := providers.Request{Model: "muse-glimmer:30b-mlx", Messages: []providers.Message{{Role: "user", Content: "hello"}}}
+	b, err := json.Marshal(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var snapshot providers.Request
+	if err = json.Unmarshal(b, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, ok := museWire(snapshot); !ok {
+		t.Fatal("JSON snapshot turned absent schema into unsupported request")
+	}
+	snapshot.JSONSchema = json.RawMessage(`{"type":"object"}`)
+	if _, _, ok := museWire(snapshot); ok {
+		t.Fatal("structured output must still fall back")
+	}
+}

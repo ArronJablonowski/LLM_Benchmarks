@@ -1,6 +1,7 @@
 package musecounter
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -64,7 +65,7 @@ func museCounter(blob, config []byte) (providers.TokenCounter, error) {
 // Match Darwin HTTP's Ollama mapping, including failed tool results and call
 // names. Structured-output requests remain unsupported until separately proven.
 func museWire(r providers.Request) ([]api.Message, []api.Tool, bool) {
-	if r.Model != "muse-glimmer:30b-mlx" || len(r.JSONSchema) != 0 || providers.ValidateMessages(r.Messages) != nil {
+	if r.Model != "muse-glimmer:30b-mlx" || (len(r.JSONSchema) != 0 && !bytes.Equal(bytes.TrimSpace(r.JSONSchema), []byte("null"))) || providers.ValidateMessages(r.Messages) != nil {
 		return nil, nil, false
 	}
 	messages := []map[string]any{}
