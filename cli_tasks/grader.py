@@ -45,7 +45,7 @@ ACTION_OPTIONAL = frozenset({
 })
 # Explicit, task-scoped equivalents for observed facts, not answer inference.
 FINDING_ALIASES = {
-    ("cli_ssh_triage", "address already in use"): ("port 8443 is already in use", "port 8443 already in use"),
+    ("cli_ssh_triage", "address already in use"): ("port 8443 is already in use", "port 8443 already in use", "port 8443, which was already in use"),
     ("cli_ubuntu_admin", "postgresql.service"): ("postgresql",),
     ("cli_rhel_admin", "running"): ("firewalld is active", "firewalld active", "active firewalld"),
     ("cli_pfsense_firewall_nat", "block"): ("no matching wan pass rule",),

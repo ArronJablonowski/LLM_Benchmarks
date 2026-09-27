@@ -101,5 +101,18 @@ class DiagnosticSemanticsTests(unittest.TestCase):
         task = "cli_macos_incident_response"
         self.assertFalse(grader.findings_cover(task, grader.EXPECTED[task][1], "evil.example payload and SHA256 6e91b327"))
 
+    def test_ssh_port_conflict_relative_clause_keeps_port_and_polarity(self):
+        task = "cli_ssh_triage"
+        required = grader.EXPECTED[task][1]
+        self.assertTrue(grader.findings_cover(task, required,
+            "web01: nginx failed because it tried to bind to port 8443, which was already in use."))
+        for text in [
+            "web01: port 8443 is available. nginx failed on port 9443, which was already in use.",
+            "web01: nginx tried to bind to port 8443, which was not already in use.",
+            "web01: nginx tried to bind to port 8443, which was available.",
+        ]:
+            with self.subTest(text=text):
+                self.assertFalse(grader.findings_cover(task, required, text))
+
 
 if __name__=='__main__':unittest.main()
