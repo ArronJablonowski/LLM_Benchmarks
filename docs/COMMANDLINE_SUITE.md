@@ -118,3 +118,16 @@ destructive actions still fail. Reviewed regrades are appended separately to
 this never promotes a host/infrastructure failure into a quality grade. Durable
 feedback corrections use DarwinRouter's expected-ID revision command so the
 previous judgment remains in history.
+
+Diagnostic grading also accepts explicit task-scoped equivalents such as a
+firewalld service being active, a PostgreSQL service name without `.service`,
+zero states described as "no states", and "LAN zone" versus "zone LAN". Finding
+matches start at a token boundary so "20 states" does not satisfy "0 states".
+Read-only diagnostic commands may be reordered; service recovery and the four
+incident-response workflows retain their sequencing requirements. Diagnostic-
+only tasks (Windows inventory, SSH triage, console navigation, NAT inspection)
+may report no remediation, while tasks requesting a recovery plan still require
+one. Menu navigation is audited independently; its labels need not be repeated
+as findings. Missing or wrong observations remain failures. These are common
+grader corrections, not model improvements; regrade preserved work and revise
+feedback through the audited expected-ID mechanism.

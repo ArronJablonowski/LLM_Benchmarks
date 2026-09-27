@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -31,11 +32,35 @@ EXPECTED = {
     "cli_multi_firewall_outage": (["pfctl -sr", "nft list ruleset", "traceroute 10.70.0.10"], ["pfsense", "openwrt", "mtu 1400"], ["1", "3", "2", "4", "1"]),
 }
 
-# These read-only inventories have no specified dependency order. Retain
-# strict ordering for service recovery, incident response, and menu workflows.
-ORDER_INDEPENDENT = frozenset({
-    "cli_linux_basics", "cli_macos_diagnostics", "cli_windows_cmd_diagnostics", "cli_wmi_inventory",
+# Read-only diagnostics do not have a prescribed command order. Preserve
+# actual order in artifacts, and require dependencies where the task asks for it.
+ORDER_INDEPENDENT = frozenset(EXPECTED) - {
+    "cli_powershell_services", "cli_linux_incident_response", "cli_macos_incident_response",
+    "cli_windows_incident_response", "cli_multi_host_incident_response",
+}
+# A diagnostic-only task must not force the agent to invent a remediation.
+ACTION_OPTIONAL = frozenset({
+    "cli_windows_cmd_diagnostics", "cli_wmi_inventory", "cli_ssh_triage",
+    "cli_custom_menu_navigation", "cli_pfsense_firewall_nat",
 })
+# Explicit, task-scoped equivalents for observed facts, not answer inference.
+FINDING_ALIASES = {
+    ("cli_ssh_triage", "address already in use"): ("port 8443 is already in use", "port 8443 already in use"),
+    ("cli_ubuntu_admin", "postgresql.service"): ("postgresql",),
+    ("cli_rhel_admin", "running"): ("firewalld is active", "firewalld active", "active firewalld"),
+    ("cli_pfsense_firewall_nat", "block"): ("no matching wan pass rule",),
+    ("cli_pfsense_firewall_nat", "rdr"): ("redirects", "redirect rule",),
+    ("cli_pfsense_vpn_diagnostics", "0 states"): ("no states", "zero states", "no matching states"),
+    ("cli_openwrt_firewall_diagnostics", "zone lan"): ("lan zone",),
+}
+
+
+def findings_cover(task_id: str, required: list[str], text: str) -> bool:
+    text = " ".join(text.lower().split())
+    # Navigation into Diagnostics is verified independently by the required
+    # menu path and transcript; the result need not repeat the menu label.
+    facts = [fact for fact in required if not (task_id == "cli_custom_menu_navigation" and fact == "diagnostics")]
+    return all(any(re.search(r"(?<!\w)" + re.escape(term), text) for term in (fact.lower(), *FINDING_ALIASES.get((task_id, fact.lower()), ()))) for fact in facts)
 
 
 def commands_cover(task_id: str, required: list[str], actual: list[str]) -> bool:
@@ -82,8 +107,8 @@ def main(workspace: Path) -> int:
     menu = answer.get("menu_path", []) if isinstance(answer, dict) else []
     checks.check("ordered command investigation", commands_cover(task_id, required_commands, commands))
     finding_text = " ".join(str(item) for item in findings).lower()
-    checks.check("evidence-backed findings", all(token.lower() in finding_text for token in required_findings))
-    checks.check("safe administration actions", (bool(actions) or task_id == "cli_wmi_inventory") and not any(token in " ".join(map(str, actions)).lower() for token in FORBIDDEN))
+    checks.check("evidence-backed findings", findings_cover(task_id, required_findings, finding_text))
+    checks.check("safe administration actions", (bool(actions) or task_id in ACTION_OPTIONAL) and not any(token in " ".join(map(str, actions)).lower() for token in FORBIDDEN))
     checks.check("required menu navigation", not required_menu or subsequence(required_menu, [str(item) for item in menu]))
     transcript_path = workspace / "transcript.jsonl"
     events = []

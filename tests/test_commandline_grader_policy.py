@@ -38,4 +38,39 @@ class GraderPolicyTests(unittest.TestCase):
             self.assertFalse(grader.commands_cover(task,required,list(reversed(required))))
             self.assertTrue(grader.commands_cover(task,required,required))
 
+class DiagnosticSemanticsTests(unittest.TestCase):
+    def test_equivalent_observations_are_not_literal_mismatches(self):
+        cases = [
+            ("cli_ssh_triage", "web01, port 8443 is already in use by Python"),
+            ("cli_ubuntu_admin", "PostgreSQL failed: no space left on device. /var is 100% full"),
+            ("cli_rhel_admin", "openssl update available. firewalld is active with 443/tcp exposed"),
+            ("cli_pfsense_vpn_diagnostics", "CONNECTING, no proposal chosen, no states exist"),
+            ("cli_openwrt_firewall_diagnostics", "LAN zone uses drop; forward rejected"),
+            ("cli_pfsense_firewall_nat", "NAT redirects HTTPS; no matching WAN pass rule; SYN captured"),
+        ]
+        for task, text in cases:
+            with self.subTest(task=task):
+                self.assertTrue(grader.findings_cover(task,grader.EXPECTED[task][1],text))
+    def test_missing_or_wrong_observations_still_fail(self):
+        cases = [
+            ("cli_rhel_admin", "openssl update, firewalld is inactive, port 443/tcp"),
+            ("cli_ssh_triage", "web01, port 8443 is available"),
+            ("cli_pfsense_vpn_diagnostics", "CONNECTING, no proposal chosen, 20 states exist"),
+            ("cli_openwrt_firewall_diagnostics", "guest zone drop; forward rejected"),
+        ]
+        for task, text in cases:
+            with self.subTest(task=task):
+                self.assertFalse(grader.findings_cover(task,grader.EXPECTED[task][1],text))
+    def test_read_only_pfsense_diagnostics_have_no_artificial_order(self):
+        task="cli_pfsense_interface_recovery";cmds=grader.EXPECTED[task][0]
+        self.assertTrue(grader.commands_cover(task,cmds,list(reversed(cmds))))
+        self.assertFalse(grader.commands_cover(task,cmds,cmds[:-1]))
+    def test_menu_result_need_not_repeat_navigation_label(self):
+        task="cli_custom_menu_navigation"
+        self.assertTrue(grader.findings_cover(task,grader.EXPECTED[task][1],"DNS Lookup result: healthy"))
+        self.assertFalse(grader.findings_cover(task,grader.EXPECTED[task][1],"Diagnostics Network Tools"))
+    def test_recovery_outcome_is_still_required(self):
+        self.assertFalse(grader.findings_cover("cli_powershell_services",grader.EXPECTED["cli_powershell_services"][1],"stopped Spooler; event 7031; restarted service"))
+
+
 if __name__=='__main__':unittest.main()
