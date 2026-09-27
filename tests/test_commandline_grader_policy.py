@@ -153,5 +153,21 @@ class DiagnosticSemanticsTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertFalse(grader.findings_cover(task, required, text))
 
+    def test_openwrt_quoted_zone_and_rejected_destination_equivalence(self):
+        task = 'cli_openwrt_firewall_diagnostics'; required = grader.EXPECTED[task][1]
+        text = "The 'lan' zone has forward drop. Firewall logs show a rejected connection attempt from a LAN client to 192.168.50.20 on port 8443."
+        self.assertTrue(grader.findings_cover(task, required, text))
+        for wrong in [text.replace("'lan' zone", "'guest' zone"), text.replace('port 8443', 'port 443'),
+                      text.replace('192.168.50.20', '192.168.50.21'), text.replace('a rejected', 'an allowed')]:
+            self.assertFalse(grader.findings_cover(task, required, wrong))
+
+    def test_windows_encoded_parent_equivalence_keeps_required_facts(self):
+        task = 'cli_windows_incident_response'; required = grader.EXPECTED[task][1]
+        text = 'Connection to 198.51.100.42; parent process powershell with encoded command; SHA256 44AA9011'
+        self.assertTrue(grader.findings_cover(task, required, text))
+        for wrong in [text.replace('with encoded', 'without encoded'), text.replace('with encoded', 'with unencoded'),
+                      text.replace('198.51.100.42', '198.51.100.43'), text.replace('44AA9011', '99BB9011')]:
+            self.assertFalse(grader.findings_cover(task, required, wrong))
+
 
 if __name__=='__main__':unittest.main()
