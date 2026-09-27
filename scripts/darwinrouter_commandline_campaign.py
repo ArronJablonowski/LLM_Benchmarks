@@ -52,7 +52,17 @@ class Campaign:
             if len(rows) > 1:
                 raise RuntimeError('duplicate task evidence: ' + str(path))
             if rows:
-                found.append((path, rows[0]['row']))
+                record = rows[0]
+                row = dict(record['row'])
+                digest = hashlib.sha256(json.dumps(record, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+                revisions = [r for r in records(self.here / 'grader-revisions.jsonl') if r['darwin_task_id'] == row['darwin_task_id']]
+                if revisions:
+                    revision = revisions[-1]
+                    if revision['canonical_sha256'] != digest or row['verdict'] not in ('pass', 'fail') or revision['grading']['verdict'] not in ('pass', 'fail'):
+                        raise RuntimeError('invalid grading revision; preserve original evidence')
+                    row.update(verdict=revision['grading']['verdict'], checks_passed=revision['grading']['passed'],
+                               checks_total=revision['grading']['total'], grader_revision=revision['grader_commit'])
+                found.append((path, row))
         return found
 
     def guard_provenance(self):

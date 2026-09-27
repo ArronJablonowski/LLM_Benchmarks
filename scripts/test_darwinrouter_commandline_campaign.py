@@ -50,6 +50,19 @@ class CampaignTests(unittest.TestCase):
         again=Simulated(self.root);again.run()
         self.assertEqual(again.launches,[])
         self.assertEqual(again.counts,c.counts)
+    def test_grader_revision_is_bound_to_original_valid_record(self):
+        path=self.prior('fail')
+        record=json.loads(path.read_text())
+        digest=hashlib.sha256(json.dumps(record,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        revision=dict(darwin_task_id='first-original',canonical_sha256=digest,grader_commit='reviewed',grading=dict(verdict='pass',passed=8,total=8))
+        append(self.root/'grader-revisions.jsonl',revision)
+        c=Simulated(self.root)
+        self.assertEqual(c.evidence('model','first')[0][1]['verdict'],'pass')
+        self.assertEqual(json.loads(path.read_text())['row']['verdict'],'fail')
+        record['row']['verdict']='infrastructure_error'
+        path.write_text(json.dumps(record)+'\n')
+        with self.assertRaisesRegex(RuntimeError,'invalid grading revision'):c.evidence('model','first')
+
     def test_exhausted_case_does_not_block_next_task_or_create_feedback(self):
         self.prior()
         c=Simulated(self.root,['infrastructure_error','pass']);c.run()

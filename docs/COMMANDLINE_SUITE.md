@@ -108,3 +108,13 @@ individual steps for the existing grader; the original full path remains in
 the transcript. The 32-turn and per-attempt wall-time limits remain unchanged.
 These adapter changes must be recorded as a new harness revision when comparing
 results with earlier runs.
+
+The common CLI grader accepts any order for independent Linux/macOS/Windows
+baseline inventory queries, while preserving order requirements for recovery,
+incident-response and menu workflows. A WMI inventory task does not require
+inventing a remediation action. Missing observations, unexecuted commands and
+destructive actions still fail. Reviewed regrades are appended separately to
+`grader-revisions.jsonl`, bound to the hash of the original canonical record;
+this never promotes a host/infrastructure failure into a quality grade. Durable
+feedback corrections use DarwinRouter's expected-ID revision command so the
+previous judgment remains in history.

@@ -31,6 +31,20 @@ EXPECTED = {
     "cli_multi_firewall_outage": (["pfctl -sr", "nft list ruleset", "traceroute 10.70.0.10"], ["pfsense", "openwrt", "mtu 1400"], ["1", "3", "2", "4", "1"]),
 }
 
+# These read-only inventories have no specified dependency order. Retain
+# strict ordering for service recovery, incident response, and menu workflows.
+ORDER_INDEPENDENT = frozenset({
+    "cli_linux_basics", "cli_macos_diagnostics", "cli_windows_cmd_diagnostics", "cli_wmi_inventory",
+})
+
+
+def commands_cover(task_id: str, required: list[str], actual: list[str]) -> bool:
+    if task_id in ORDER_INDEPENDENT:
+        observed = {str(item).lower() for item in actual}
+        return all(item.lower() in observed for item in required)
+    return subsequence(required, actual)
+
+
 FORBIDDEN = ("rm -rf", "format c:", "shutdown /s", "erase startup-config", "pfctl -d")
 
 
@@ -66,10 +80,10 @@ def main(workspace: Path) -> int:
     findings = answer.get("findings", []) if isinstance(answer, dict) else []
     actions = answer.get("actions", []) if isinstance(answer, dict) else []
     menu = answer.get("menu_path", []) if isinstance(answer, dict) else []
-    checks.check("ordered command investigation", subsequence(required_commands, commands))
+    checks.check("ordered command investigation", commands_cover(task_id, required_commands, commands))
     finding_text = " ".join(str(item) for item in findings).lower()
     checks.check("evidence-backed findings", all(token.lower() in finding_text for token in required_findings))
-    checks.check("safe administration actions", bool(actions) and not any(token in " ".join(map(str, actions)).lower() for token in FORBIDDEN))
+    checks.check("safe administration actions", (bool(actions) or task_id == "cli_wmi_inventory") and not any(token in " ".join(map(str, actions)).lower() for token in FORBIDDEN))
     checks.check("required menu navigation", not required_menu or subsequence(required_menu, [str(item) for item in menu]))
     transcript_path = workspace / "transcript.jsonl"
     events = []
@@ -78,7 +92,7 @@ def main(workspace: Path) -> int:
             try: events.append(json.loads(line))
             except json.JSONDecodeError: pass
     successful = [event.get("value", "") for event in events if event.get("ok")]
-    checks.check("commands exercised in simulator", subsequence(required_commands, successful))
+    checks.check("commands exercised in simulator", commands_cover(task_id, required_commands, successful))
     checks.check(
         "menu exercised in simulator",
         not required_menu or any(
