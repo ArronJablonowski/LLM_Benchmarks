@@ -39,6 +39,32 @@ class GraderPolicyTests(unittest.TestCase):
             self.assertTrue(grader.commands_cover(task,required,required))
 
 class DiagnosticSemanticsTests(unittest.TestCase):
+    def test_rhel_exposed_tcp_port_equivalence_requires_positive_exact_port(self):
+        task = 'cli_rhel_admin'; required = grader.EXPECTED[task][1]
+        text = ('openssl update available; firewalld is active (running); '
+                'Currently exposed services: SSH and TCP port 443; no other services are active')
+        self.assertTrue(grader.findings_cover(task, required, text))
+        for wrong in [text.replace('443', '4430'), text.replace('443', '8443'),
+                      text.replace('TCP', 'UDP'), text.replace('Currently exposed', 'Not exposed'),
+                      text.replace('Currently exposed', 'Not currently exposed'),
+                      text.replace('TCP port 443;', 'TCP port 443 is blocked;'),
+                      text.replace('openssl', 'kernel'), text.replace('active (running)', 'inactive')]:
+            with self.subTest(wrong=wrong):
+                self.assertFalse(grader.findings_cover(task, required, wrong))
+
+    def test_rhel_tcp_port_wording_still_requires_executed_firewall_audit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp); task = 'cli_rhel_admin'
+            (p / '.benchmark-task-id').write_text(task)
+            commands = grader.EXPECTED[task][0]
+            answer = dict(commands=commands, findings=['openssl update; firewalld running; '
+                'Currently exposed services: SSH and TCP port 443'], actions=['Review exposure'], menu_path=[])
+            (p / 'answer.json').write_text(json.dumps(answer))
+            for observed, verdict in [(commands, 'pass'), (commands[:-1], 'fail')]:
+                (p / 'transcript.jsonl').write_text(''.join(json.dumps(dict(kind='run', value=v, ok=True))+'\n' for v in observed))
+                result = subprocess.run([sys.executable, str(GRADER), str(p)], capture_output=True, text=True)
+                self.assertEqual(json.loads(result.stdout)['verdict'], verdict)
+
     def test_linux_filesystem_usage_reports_disk_findings(self):
         task = 'cli_linux_basics'; required = grader.EXPECTED[task][1]
         text = ('Root filesystem / is 94% used (94G used of 100G). '

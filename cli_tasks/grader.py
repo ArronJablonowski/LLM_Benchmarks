@@ -81,11 +81,20 @@ def findings_cover(task_id: str, required: list[str], text: str) -> bool:
         r"(?:dns lookup(?: for)?[: ]+)?example\.org (?:resolves|resolved) to 93\.184\.216\.34"
         r"(?:[,;.]? resolver health(?: is)? healthy)?\.?", text
     ) is not None
+    # A positive exposed-services declaration can spell the same port/protocol
+    # as "TCP port 443". Require the exact port and affirmative clause.
+    tcp443_exposed = task_id == "cli_rhel_admin" and any(
+        re.search(r"\bexposed services: (?:ssh and )?tcp port 443$", clause.strip())
+        and not re.search(r"\b(?:not|no|never)\b", clause)
+        for clause in re.split(r"[;.]", text)
+    )
     # Navigation into Diagnostics is verified independently by the required
     # menu path and transcript; the result need not repeat the menu label.
     facts = [fact for fact in required if not (task_id == "cli_custom_menu_navigation" and fact == "diagnostics")]
     def covered(fact):
         if dns_result and fact in ("dns lookup", "healthy"):
+            return True
+        if tcp443_exposed and fact == "443/tcp":
             return True
         key = (task_id, fact.lower())
         literal = any(mentions(text, term) for term in (fact.lower(), *FINDING_ALIASES.get(key, ())))
