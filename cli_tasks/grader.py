@@ -77,7 +77,8 @@ def findings_cover(task_id: str, required: list[str], text: str) -> bool:
     # Match the whole declaration so negated results, other hosts/addresses,
     # and contradictory health qualifiers cannot satisfy this equivalent.
     dns_result = task_id == "cli_custom_menu_navigation" and re.fullmatch(
-        r"(?:dns lookup(?: for)?[: ]+)?example\.org (?:resolves|resolved) to 93\.184\.216\.34\.?", text
+        r"(?:dns lookup(?: for)?[: ]+)?example\.org (?:resolves|resolved) to 93\.184\.216\.34"
+        r"(?:[,;.]? resolver health(?: is)? healthy)?\.?", text
     ) is not None
     # Navigation into Diagnostics is verified independently by the required
     # menu path and transcript; the result need not repeat the menu label.

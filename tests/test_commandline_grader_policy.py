@@ -98,6 +98,32 @@ class DiagnosticSemanticsTests(unittest.TestCase):
                 result = subprocess.run([sys.executable, str(GRADER), str(p)], capture_output=True, text=True)
                 self.assertEqual(json.loads(result.stdout)['verdict'], verdict)
 
+    def test_dns_resolution_with_positive_health_clause(self):
+        task = 'cli_custom_menu_navigation'; required = grader.EXPECTED[task][1]
+        text = 'example.org resolves to 93.184.216.34, resolver health healthy'
+        for positive in [text, text.replace('health healthy', 'health is healthy') + '.']:
+            self.assertTrue(grader.findings_cover(task, required, positive))
+        for wrong in [text.replace('example.org', 'example.net'),
+                      text.replace('93.184.216.34', '192.0.2.10'),
+                      text.replace('resolves to', 'does not resolve to'),
+                      text.replace('health healthy', 'health not healthy'),
+                      text.replace('health healthy', 'health unhealthy'),
+                      'not true: ' + text, text + ' but the lookup failed']:
+            with self.subTest(wrong=wrong):
+                self.assertFalse(grader.findings_cover(task, required, wrong))
+
+    def test_dns_health_clause_does_not_replace_menu_execution(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp); (p / '.benchmark-task-id').write_text('cli_custom_menu_navigation')
+            answer = dict(commands=[], findings=['example.org resolves to 93.184.216.34, resolver health healthy'],
+                          actions=[], menu_path=['2', '4', '3', 'example.org'])
+            (p / 'answer.json').write_text(json.dumps(answer))
+            for value, ok, verdict in [('2>4>3>example.org', True, 'pass'),
+                                       ('2>4>3', True, 'fail'), ('2>4>3>example.org', False, 'fail')]:
+                (p / 'transcript.jsonl').write_text(json.dumps(dict(kind='menu', value=value, ok=ok)) + '\n')
+                result = subprocess.run([sys.executable, str(GRADER), str(p)], capture_output=True, text=True)
+                self.assertEqual(json.loads(result.stdout)['verdict'], verdict)
+
     def test_equivalent_reported_observations(self):
         cases = [
             ("cli_macos_diagnostics", "macOS 14.6; APFS; battery at 63% with a service recommendation"),
