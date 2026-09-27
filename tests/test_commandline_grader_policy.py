@@ -365,6 +365,40 @@ class RecoveryOutcomePlacementTests(unittest.TestCase):
             self.assertFalse(grader.documented_running_recovery(self.actions,events))
 
 
+class EncodedPowerShellObservationTests(unittest.TestCase):
+    observation = ('Process 6220 was spawned by Process 6104, which ran a PowerShell '
+                   'command with base64 encoding (IEX (New-Object Net.WebClient)).')
+    facts = 'Connection to 198.51.100.42. SHA256 44AA9011. '
+
+    def test_explicit_base64_parent_observation_is_encoded_powershell_evidence(self):
+        task = 'cli_windows_incident_response'; required = grader.EXPECTED[task][1]
+        self.assertTrue(grader.findings_cover(task, required, self.facts + self.observation))
+        for wrong in [self.observation.replace('which ran', 'which did not run'),
+                      self.observation.replace('PowerShell', 'Python'),
+                      self.observation.replace('with base64 encoding', 'without base64 encoding'),
+                      self.observation.replace('6104', '6105'),
+                      self.observation.replace('6220', '6221'),
+                      self.observation.replace(')).', ')) but that attribution was incorrect.'),
+                      'Not true: ' + self.observation]:
+            with self.subTest(wrong=wrong):
+                self.assertFalse(grader.findings_cover(task, required, self.facts + wrong))
+        for missing in ['Connection to 198.51.100.43. SHA256 44AA9011. ',
+                        'Connection to 198.51.100.42. SHA256 99BB9011. ']:
+            self.assertFalse(grader.findings_cover(task, required, missing + self.observation))
+
+    def test_base64_parent_wording_does_not_replace_ordered_execution(self):
+        task = 'cli_windows_incident_response'; commands = grader.EXPECTED[task][0]
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp); (p / '.benchmark-task-id').write_text(task)
+            (p / 'answer.json').write_text(json.dumps(dict(commands=commands,
+                findings=[self.facts, self.observation], actions=['Isolate the host'], menu_path=[])))
+            for observed, ok, verdict in [(commands, True, 'pass'), (commands[:-1], True, 'fail'),
+                                         (list(reversed(commands)), True, 'fail'), (commands, False, 'fail')]:
+                (p / 'transcript.jsonl').write_text(''.join(json.dumps(dict(kind='run', value=v, ok=ok))+'\n' for v in observed))
+                result = subprocess.run([sys.executable, str(GRADER), str(p)], capture_output=True, text=True)
+                self.assertEqual(json.loads(result.stdout)['verdict'], verdict)
+
+
 class FirewallObservationWordingTests(unittest.TestCase):
     nat = ('NAT rule is correctly configured to redirect port 443 to 10.0.20.15:443. '
            'Packet capture shows incoming SYN packets. Firewall rules block port 443.')

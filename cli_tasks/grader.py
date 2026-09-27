@@ -71,7 +71,7 @@ FINDING_EQUIVALENTS = {
     ("cli_openwrt_firewall_diagnostics", "forward rejected"): (("firewall logs show reject", "dpt=8443", "192.168.50.20"), ("firewall logs show a rejected connection attempt", "192.168.50.20 on port 8443")),
     ("cli_windows_incident_response", "powershell -enc"): (("powershell", "command line is suspiciously encoded"), ("encoded powershell command",), ("powershell with encoded command",)),
 }
-# Complete affirmative observations keep the exact flow and destination.
+# Complete affirmative observations keep the exact flow or process relationship.
 # Sentence boundaries exclude prefixed negation and contradictory suffixes.
 FINDING_DECLARATIONS = {
     ("cli_pfsense_firewall_nat", "rdr"): (
@@ -79,6 +79,9 @@ FINDING_DECLARATIONS = {
     ),
     ("cli_openwrt_firewall_diagnostics", "forward rejected"): (
         "firewall logs show packets from 192.168.1.44 to 192.168.50.20 on port 8443 are being rejected",
+    ),
+    ("cli_windows_incident_response", "powershell -enc"): (
+        "process 6220 was spawned by process 6104, which ran a powershell command with base64 encoding (iex (new-object net.webclient))",
     ),
 }
 
