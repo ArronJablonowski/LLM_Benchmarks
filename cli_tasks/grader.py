@@ -57,6 +57,7 @@ FINDING_ALIASES = {
 # to one task and require every component, rather than accepting vague words
 # such as "service", "forward" or "encoded" on their own.
 FINDING_EQUIVALENTS = {
+    ("cli_linux_basics", "disk"): (("root filesystem / is 94% used", "/var filesystem is 100% used"),),
     ("cli_macos_diagnostics", "service recommended"): (("with a service recommendation",), ("battery requires service",)),
     ("cli_custom_menu_navigation", "healthy"): (("example.org resolved to 93.184.216.34",),),
     ("cli_pfsense_firewall_nat", "block"): (("lack a pass rule", "incoming https traffic", "wan interface"),),

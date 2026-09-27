@@ -39,6 +39,18 @@ class GraderPolicyTests(unittest.TestCase):
             self.assertTrue(grader.commands_cover(task,required,required))
 
 class DiagnosticSemanticsTests(unittest.TestCase):
+    def test_linux_filesystem_usage_reports_disk_findings(self):
+        task = 'cli_linux_basics'; required = grader.EXPECTED[task][1]
+        text = ('Root filesystem / is 94% used (94G used of 100G). '
+                '/var filesystem is 100% used (20G used of 20G). '
+                'Highest CPU process: PID 4421, 97.2% CPU, python3 worker.py')
+        self.assertTrue(grader.findings_cover(task, required, text))
+        for wrong in [text.replace('94%', '40%'), text.replace('100%', '10%'),
+                      text.replace('is 94%', 'is not 94%'), text.replace('is 100%', 'is not 100%'),
+                      text.replace('python3', 'other-worker'), text.replace('CPU', 'memory')]:
+            with self.subTest(wrong=wrong):
+                self.assertFalse(grader.findings_cover(task, required, wrong))
+
     def test_equivalent_observations_are_not_literal_mismatches(self):
         cases = [
             ("cli_ssh_triage", "web01, port 8443 is already in use by Python"),
