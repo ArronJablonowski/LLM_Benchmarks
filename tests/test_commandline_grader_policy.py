@@ -170,6 +170,45 @@ class DiagnosticSemanticsTests(unittest.TestCase):
             self.assertFalse(grader.findings_cover(task, required, wrong))
 
 
+class OpenWrtObservedWordingTests(unittest.TestCase):
+    wan = "OpenWrt 23.05.4; WAN pending; netifd wan udhcpc failed: 'no lease, failing' — DHCP client could not obtain a lease"
+    firewall = "LAN forward policy is drop; guest forward policy is reject. forward rejected lan->guest dst=192.168.50.20 dpt=8443"
+
+    def test_dhcp_client_failure_paraphrase_preserves_all_observations(self):
+        task = 'cli_openwrt_network_recovery'
+        self.assertTrue(grader.findings_cover(task, grader.EXPECTED[task][1], self.wan))
+        for wrong in [self.wan.replace('udhcpc failed', 'udhcpc has not failed'),
+                      self.wan.replace('could not obtain', 'did obtain'),
+                      self.wan.replace('no lease, failing', 'lease obtained'),
+                      self.wan.replace('pending', 'up'), self.wan.replace('23.05.4', '22.03.4')]:
+            with self.subTest(wrong=wrong):
+                self.assertFalse(grader.findings_cover(task, grader.EXPECTED[task][1], wrong))
+
+    def test_explicit_lan_forward_policy_identifies_the_zone(self):
+        task = 'cli_openwrt_firewall_diagnostics'
+        self.assertTrue(grader.findings_cover(task, grader.EXPECTED[task][1], self.firewall))
+        for wrong in [self.firewall.replace('LAN forward policy', 'guest forward policy'),
+                      self.firewall.replace('is drop', 'is not drop'),
+                      self.firewall.replace('forward rejected', 'forward accepted')]:
+            with self.subTest(wrong=wrong):
+                self.assertFalse(grader.findings_cover(task, grader.EXPECTED[task][1], wrong))
+
+    def test_paraphrases_still_require_executed_commands_and_menu(self):
+        for task, findings in [('cli_openwrt_network_recovery', self.wan),
+                               ('cli_openwrt_firewall_diagnostics', self.firewall)]:
+            commands, _, menu = grader.EXPECTED[task]
+            with tempfile.TemporaryDirectory() as tmp:
+                p = Path(tmp); (p / '.benchmark-task-id').write_text(task)
+                (p / 'answer.json').write_text(json.dumps(dict(commands=commands, findings=[findings],
+                    actions=['Inspect the reported failure and apply a narrowly scoped repair'], menu_path=menu)))
+                events = [dict(kind='run', value=cmd, ok=True) for cmd in commands]
+                events.append(dict(kind='menu', value='>'.join(menu), ok=True))
+                for transcript, verdict in [(events, 'pass'), (events[1:], 'fail'), (events[:-1], 'fail')]:
+                    (p / 'transcript.jsonl').write_text(''.join(json.dumps(e)+'\n' for e in transcript))
+                    result = subprocess.run([sys.executable, str(GRADER), str(p)], capture_output=True, text=True)
+                    self.assertEqual(json.loads(result.stdout)['verdict'], verdict, (task, transcript))
+
+
 class RecoveryOutcomePlacementTests(unittest.TestCase):
     def setUp(self):
         self.actions = ['Verified Spooler is now Running after recovery']

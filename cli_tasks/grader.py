@@ -51,7 +51,7 @@ FINDING_ALIASES = {
     ("cli_pfsense_firewall_nat", "block"): ("no matching wan pass rule",),
     ("cli_pfsense_firewall_nat", "rdr"): ("redirects", "redirect rule",),
     ("cli_pfsense_vpn_diagnostics", "0 states"): ("no states", "zero states", "no matching states", "no active states"),
-    ("cli_openwrt_firewall_diagnostics", "zone lan"): ("lan zone", "'lan' zone"),
+    ("cli_openwrt_firewall_diagnostics", "zone lan"): ("lan zone", "'lan' zone", "lan forward policy is drop"),
 }
 # Equivalent observations may need several facts together. Keep these scoped
 # to one task and require every component, rather than accepting vague words
@@ -61,6 +61,7 @@ FINDING_EQUIVALENTS = {
     ("cli_custom_menu_navigation", "healthy"): (("example.org resolved to 93.184.216.34",),),
     ("cli_pfsense_firewall_nat", "block"): (("lack a pass rule", "incoming https traffic", "wan interface"),),
     ("cli_pfsense_firewall_nat", "rdr"): (("nat rule", "forwards wan port 443 traffic to 10.0.20.15"),),
+    ("cli_openwrt_network_recovery", "udhcpc: no lease"): (("udhcpc failed", "no lease, failing", "dhcp client could not obtain a lease"),),
     ("cli_openwrt_firewall_diagnostics", "forward rejected"): (("firewall logs show reject", "dpt=8443", "192.168.50.20"), ("firewall logs show a rejected connection attempt", "192.168.50.20 on port 8443")),
     ("cli_windows_incident_response", "powershell -enc"): (("powershell", "command line is suspiciously encoded"), ("encoded powershell command",), ("powershell with encoded command",)),
 }
