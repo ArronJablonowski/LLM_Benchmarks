@@ -365,6 +365,63 @@ class RecoveryOutcomePlacementTests(unittest.TestCase):
             self.assertFalse(grader.documented_running_recovery(self.actions,events))
 
 
+class CompleteDiagnosticObservationTests(unittest.TestCase):
+    cases = [
+        ('cli_ubuntu_admin', 'postgresql.service failed. /var 100% full. ',
+         'PostgreSQL failed because it could not write lock files due to lack of disk space.',
+         [('lack of disk space', 'lack of permissions'), ('PostgreSQL', 'MySQL'),
+          ('could not write', 'could write')]),
+        ('cli_rhel_admin', 'openssl update available. Port 443/tcp exposed. ',
+         'The firewalld service is active.',
+         [('is active', 'is not active'), ('is active', 'is inactive'), ('firewalld', 'sshd')]),
+        ('cli_pfsense_firewall_nat', 'Firewall block rule. SYN packets observed. ',
+         'NAT rule exists for port 443 (198.51.100.10:443 -> 10.0.20.15:443).',
+         [('port 443', 'port 8443'), ('198.51.100.10', '198.51.100.11'),
+          ('10.0.20.15', '10.0.20.16'), ('->', '<-'), (':443)', ':4430)'),
+          ('exists', 'does not exist')]),
+        ('cli_pfsense_vpn_diagnostics', 'CONNECTING. No proposal chosen. ',
+         'The state table shows no active traffic states for the remote network 10.44.0.0/24.',
+         [('no active', '20 active'), ('10.44.0.0/24', '10.45.0.0/24'),
+          ('no active', 'no inactive')]),
+        ('cli_openwrt_firewall_diagnostics', 'LAN zone forward policy: drop. ',
+         'Firewall logs show LAN clients are being rejected when attempting to access the guest service at 192.168.50.20 on TCP port 8443.',
+         [('being rejected', 'not being rejected'), ('being rejected', 'being accepted'),
+          ('192.168.50.20', '192.168.50.21'), ('8443', '443'), ('8443', '84430'),
+          ('TCP', 'UDP'), ('LAN clients', 'WAN clients')]),
+    ]
+
+    def test_complete_equivalent_observations_preserve_facts_and_polarity(self):
+        for task, other, statement, changes in self.cases:
+            required = grader.EXPECTED[task][1]
+            with self.subTest(task=task):
+                self.assertTrue(grader.findings_cover(task, required, other + statement))
+            wrongs = [statement.replace(a, b) for a, b in changes]
+            wrongs += ['Not true: ' + statement, statement[:-1] + ' but this observation was incorrect.']
+            for wrong in wrongs:
+                with self.subTest(task=task, wrong=wrong):
+                    self.assertFalse(grader.findings_cover(task, required, other + wrong))
+
+    def test_equivalents_still_require_successful_commands_and_menus(self):
+        for task, other, statement, _ in self.cases:
+            commands, _, menu = grader.EXPECTED[task]
+            with tempfile.TemporaryDirectory() as tmp:
+                p = Path(tmp); (p / '.benchmark-task-id').write_text(task)
+                (p / 'answer.json').write_text(json.dumps(dict(commands=commands,
+                    findings=[other, statement], actions=['Review configuration'], menu_path=menu)))
+                complete = [dict(kind='run', value=v, ok=True) for v in commands]
+                if menu:
+                    complete.append(dict(kind='menu', value='>'.join(menu), ok=True))
+                samples = [(complete, 'pass'), (complete[1:], 'fail'),
+                           ([dict(v, ok=False) for v in complete], 'fail')]
+                if menu:
+                    samples.append((complete[:-1], 'fail'))
+                for events, verdict in samples:
+                    (p / 'transcript.jsonl').write_text(''.join(json.dumps(v)+'\n' for v in events))
+                    result = subprocess.run([sys.executable, str(GRADER), str(p)], capture_output=True, text=True)
+                    with self.subTest(task=task, events=events):
+                        self.assertEqual(json.loads(result.stdout)['verdict'], verdict)
+
+
 class EncodedPowerShellObservationTests(unittest.TestCase):
     observation = ('Process 6220 was spawned by Process 6104, which ran a PowerShell '
                    'command with base64 encoding (IEX (New-Object Net.WebClient)).')

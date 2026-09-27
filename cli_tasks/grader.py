@@ -74,11 +74,22 @@ FINDING_EQUIVALENTS = {
 # Complete affirmative observations keep the exact flow or process relationship.
 # Sentence boundaries exclude prefixed negation and contradictory suffixes.
 FINDING_DECLARATIONS = {
+    ("cli_ubuntu_admin", "no space left"): (
+        "postgresql failed because it could not write lock files due to lack of disk space",
+    ),
+    ("cli_rhel_admin", "running"): (
+        "the firewalld service is active",
+    ),
     ("cli_pfsense_firewall_nat", "rdr"): (
         "nat rule is correctly configured to redirect port 443 to 10.0.20.15:443",
+        "nat rule exists for port 443 (198.51.100.10:443 -> 10.0.20.15:443)",
+    ),
+    ("cli_pfsense_vpn_diagnostics", "0 states"): (
+        "the state table shows no active traffic states for the remote network 10.44.0.0/24",
     ),
     ("cli_openwrt_firewall_diagnostics", "forward rejected"): (
         "firewall logs show packets from 192.168.1.44 to 192.168.50.20 on port 8443 are being rejected",
+        "firewall logs show lan clients are being rejected when attempting to access the guest service at 192.168.50.20 on tcp port 8443",
     ),
     ("cli_windows_incident_response", "powershell -enc"): (
         "process 6220 was spawned by process 6104, which ran a powershell command with base64 encoding (iex (new-object net.webclient))",
