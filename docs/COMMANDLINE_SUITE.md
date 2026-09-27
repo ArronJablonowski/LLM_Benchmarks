@@ -138,3 +138,11 @@ missing WAN pass rule, the rejected guest-service flow, and an encoded PowerShel
 command described in prose. Compound equivalents require all relevant facts;
 wrong destinations, ports, addresses and missing execution evidence still fail.
 These additions do not waive missing recovery outcomes or persistence settings.
+
+The PowerShell service fixture now declares a simulated command effect: a
+successful Spooler restart changes subsequent status queries to Running. The
+standalone CLI replays successful effects from its workspace transcript; the
+DarwinRouter adapter keeps isolated state after appending the operation audit.
+Failed operations do not apply effects, repeated restarts are idempotent, and a
+new workspace retains the original Stopped state. Record this fixture/host
+revision separately from older runs; preserve any contradictory old transcripts.

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	stdruntime "runtime"
 	"strings"
 	"testing"
 
@@ -66,5 +67,77 @@ func TestMenuAnswerKeepsAuditedNavigationSteps(t *testing.T) {
 	json.Unmarshal(transcript, &event)
 	if !event.OK || event.Value != "1>3>2" {
 		t.Fatal("original simulator operation changed", event)
+	}
+}
+
+func spoolerScenario(t *testing.T) scenario {
+	t.Helper()
+	_, source, _, _ := stdruntime.Caller(0)
+	data, err := os.ReadFile(filepath.Join(filepath.Dir(source), "benchmark_tests", "commandline", "cli_powershell_services.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var descriptor struct {
+		Lab scenario `json:"lab"`
+	}
+	if err := json.Unmarshal(data, &descriptor); err != nil {
+		t.Fatal(err)
+	}
+	return descriptor.Lab
+}
+
+func TestRecoveryStatePersistsAndStaysWorkspaceScoped(t *testing.T) {
+	lab := spoolerScenario(t)
+	root := t.TempDir()
+	ts := benchmarkTools(root, lab)
+	query := `{"kind":"run","value":"Get-Service -Name Spooler"}`
+	restart := `{"kind":"run","value":"Restart-Service -Name Spooler"}`
+	if r := invoke(t, ts[1], query); !strings.Contains(r.Content, "Stopped") {
+		t.Fatal(r)
+	}
+	if r := invoke(t, ts[1], `{"kind":"run","value":"unknown-restart"}`); !r.Failed {
+		t.Fatal(r)
+	}
+	if r := invoke(t, ts[1], query); !strings.Contains(r.Content, "Stopped") {
+		t.Fatal(r)
+	}
+	for i := 0; i < 2; i++ {
+		if r := invoke(t, ts[1], restart); !strings.Contains(r.Content, "Running") {
+			t.Fatal(r)
+		}
+		if r := invoke(t, ts[1], query); !strings.Contains(r.Content, "Running") || strings.Contains(r.Content, "Stopped") {
+			t.Fatal(r)
+		}
+	}
+	other := benchmarkTools(t.TempDir(), lab)
+	if r := invoke(t, other[1], query); !strings.Contains(r.Content, "Stopped") {
+		t.Fatal("state leaked across workspaces", r)
+	}
+	data, _ := os.ReadFile(filepath.Join(root, "transcript.jsonl"))
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	var before, after transcriptEvent
+	json.Unmarshal([]byte(lines[0]), &before)
+	json.Unmarshal([]byte(lines[len(lines)-1]), &after)
+	if !strings.Contains(before.Output, "Stopped") || !strings.Contains(after.Output, "Running") {
+		t.Fatal("observed state changes missing from durable transcript")
+	}
+}
+
+func TestFailedAuditWriteDoesNotApplyRecovery(t *testing.T) {
+	root := t.TempDir()
+	ts := benchmarkTools(root, spoolerScenario(t))
+	path := filepath.Join(root, "transcript.jsonl")
+	if err := os.Mkdir(path, 0700); err != nil {
+		t.Fatal(err)
+	}
+	_, err := ts[1].Handler(context.Background(), json.RawMessage(`{"kind":"run","value":"Restart-Service -Name Spooler"}`))
+	if err == nil {
+		t.Fatal("audit failure ignored")
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if r := invoke(t, ts[1], `{"kind":"run","value":"Get-Service -Name Spooler"}`); !strings.Contains(r.Content, "Stopped") {
+		t.Fatal("uncommitted recovery changed state", r)
 	}
 }

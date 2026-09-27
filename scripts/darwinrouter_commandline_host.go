@@ -22,9 +22,10 @@ import (
 )
 
 type scenario struct {
-	Context  string            `json:"context"`
-	Commands map[string]string `json:"commands"`
-	Menus    map[string]string `json:"menus"`
+	Context        string                       `json:"context"`
+	Commands       map[string]string            `json:"commands"`
+	Menus          map[string]string            `json:"menus"`
+	CommandEffects map[string]map[string]string `json:"command_effects"`
 }
 
 type transcriptEvent struct {
@@ -100,6 +101,12 @@ func main() {
 }
 
 func benchmarkTools(root string, lab scenario) []sdk.Tool {
+	// Each isolated workspace owns its simulated state. Never mutate a shared
+	// fixture map or report the pre-recovery state after a successful action.
+	commandOutputs := make(map[string]string, len(lab.Commands))
+	for command, output := range lab.Commands {
+		commandOutputs[command] = output
+	}
 	executedCommands := make([]string, 0, 16)
 	executedMenus := make([]string, 0, 16)
 	readTool := sdk.Tool{
@@ -186,7 +193,7 @@ func benchmarkTools(root string, lab scenario) []sdk.Tool {
 			case "context":
 				output = lab.Context
 			case "run":
-				output, ok = lab.Commands[input.Value]
+				output, ok = commandOutputs[input.Value]
 			case "menu":
 				output, ok = lab.Menus[input.Value]
 			default:
@@ -210,6 +217,12 @@ func benchmarkTools(root string, lab scenario) []sdk.Tool {
 			}
 			if input.Kind == "run" {
 				executedCommands = append(executedCommands, input.Value)
+				// Apply only after the successful operation has durable evidence.
+				for command, output := range lab.CommandEffects[input.Value] {
+					if _, exists := commandOutputs[command]; exists {
+						commandOutputs[command] = output
+					}
+				}
 			} else if input.Kind == "menu" {
 				executedMenus = append(executedMenus, strings.Split(input.Value, ">")...)
 			}
