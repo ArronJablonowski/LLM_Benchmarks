@@ -71,6 +71,16 @@ FINDING_EQUIVALENTS = {
     ("cli_openwrt_firewall_diagnostics", "forward rejected"): (("firewall logs show reject", "dpt=8443", "192.168.50.20"), ("firewall logs show a rejected connection attempt", "192.168.50.20 on port 8443")),
     ("cli_windows_incident_response", "powershell -enc"): (("powershell", "command line is suspiciously encoded"), ("encoded powershell command",), ("powershell with encoded command",)),
 }
+# Complete affirmative observations keep the exact flow and destination.
+# Sentence boundaries exclude prefixed negation and contradictory suffixes.
+FINDING_DECLARATIONS = {
+    ("cli_pfsense_firewall_nat", "rdr"): (
+        "nat rule is correctly configured to redirect port 443 to 10.0.20.15:443",
+    ),
+    ("cli_openwrt_firewall_diagnostics", "forward rejected"): (
+        "firewall logs show packets from 192.168.1.44 to 192.168.50.20 on port 8443 are being rejected",
+    ),
+}
 
 
 def mentions(text: str, term: str) -> bool:
@@ -104,7 +114,10 @@ def findings_cover(task_id: str, required: list[str], text: str) -> bool:
         key = (task_id, fact.lower())
         literal = any(mentions(text, term) for term in (fact.lower(), *FINDING_ALIASES.get(key, ())))
         equivalent = any(all(mentions(text, term) for term in group) for group in FINDING_EQUIVALENTS.get(key, ()))
-        return literal or equivalent
+        declaration = any(re.search(
+            r"(?:^|[.!?]\s+)" + re.escape(statement) + r"(?:[.!?](?=\s|$)|$)", text
+        ) is not None for statement in FINDING_DECLARATIONS.get(key, ()))
+        return literal or equivalent or declaration
     return all(covered(fact) for fact in facts)
 
 

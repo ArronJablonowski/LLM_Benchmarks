@@ -365,4 +365,55 @@ class RecoveryOutcomePlacementTests(unittest.TestCase):
             self.assertFalse(grader.documented_running_recovery(self.actions,events))
 
 
+class FirewallObservationWordingTests(unittest.TestCase):
+    nat = ('NAT rule is correctly configured to redirect port 443 to 10.0.20.15:443. '
+           'Packet capture shows incoming SYN packets. Firewall rules block port 443.')
+    rejected = ('Firewall logs show packets from 192.168.1.44 to 192.168.50.20 on port 8443 '
+                'are being rejected. The LAN zone forward policy is drop.')
+
+    def test_nat_redirect_declaration_preserves_destination_port_and_polarity(self):
+        task = 'cli_pfsense_firewall_nat'; required = grader.EXPECTED[task][1]
+        self.assertTrue(grader.findings_cover(task, required, self.nat))
+        for wrong in [self.nat.replace('correctly configured', 'not correctly configured'),
+                      self.nat.replace('10.0.20.15', '10.0.20.16'),
+                      self.nat.replace('port 443 to', 'port 8443 to'),
+                      self.nat.replace(':443.', ':4430.'),
+                      self.nat.replace(':443.', ':8443.'),
+                      self.nat.replace(':443.', ':443 but the redirect is disabled.'),
+                      'Not true: ' + self.nat]:
+            with self.subTest(wrong=wrong):
+                self.assertFalse(grader.findings_cover(task, required, wrong))
+
+    def test_passive_firewall_rejection_preserves_flow_and_polarity(self):
+        task = 'cli_openwrt_firewall_diagnostics'; required = grader.EXPECTED[task][1]
+        self.assertTrue(grader.findings_cover(task, required, self.rejected))
+        for wrong in [self.rejected.replace('are being rejected', 'are not being rejected'),
+                      self.rejected.replace('are being rejected', 'are being accepted'),
+                      self.rejected.replace('192.168.50.20', '192.168.50.21'),
+                      self.rejected.replace('192.168.1.44', '192.168.1.45'),
+                      self.rejected.replace('8443', '443'),
+                      self.rejected.replace('8443', '84430'),
+                      self.rejected.replace('rejected.', 'rejected but this log is incorrect.'),
+                      'Not true: ' + self.rejected]:
+            with self.subTest(wrong=wrong):
+                self.assertFalse(grader.findings_cover(task, required, wrong))
+
+    def test_equivalent_firewall_findings_still_need_commands_and_menu(self):
+        for task, text in [('cli_pfsense_firewall_nat', self.nat),
+                           ('cli_openwrt_firewall_diagnostics', self.rejected)]:
+            commands, _, menu = grader.EXPECTED[task]
+            with tempfile.TemporaryDirectory() as tmp:
+                p = Path(tmp); (p / '.benchmark-task-id').write_text(task)
+                (p / 'answer.json').write_text(json.dumps(dict(commands=commands,
+                    findings=[text], actions=['Review the firewall rule'], menu_path=menu)))
+                complete = [dict(kind='run', value=v, ok=True) for v in commands]
+                complete.append(dict(kind='menu', value='>'.join(menu), ok=True))
+                for events, verdict in [(complete, 'pass'), (complete[1:], 'fail'),
+                                        (complete[:-1], 'fail'),
+                                        ([dict(e, ok=False) for e in complete], 'fail')]:
+                    (p / 'transcript.jsonl').write_text(''.join(json.dumps(e)+'\n' for e in events))
+                    result = subprocess.run([sys.executable, str(GRADER), str(p)], text=True, capture_output=True)
+                    self.assertEqual(json.loads(result.stdout)['verdict'], verdict)
+
+
 if __name__=='__main__':unittest.main()
