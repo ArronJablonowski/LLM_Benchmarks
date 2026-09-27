@@ -140,5 +140,18 @@ class DiagnosticSemanticsTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertFalse(grader.findings_cover(task, required, text))
 
+    def test_vpn_zero_active_states_equivalent_preserves_count_and_other_evidence(self):
+        task = "cli_pfsense_vpn_diagnostics"
+        required = grader.EXPECTED[task][1]
+        self.assertTrue(grader.findings_cover(task, required,
+            "CONNECTING; no proposal chosen; no active states for 10.44.0.0/24"))
+        for text in [
+            "CONNECTING; no proposal chosen; 20 active states for 10.44.0.0/24",
+            "CONNECTING; no proposal chosen; no inactive states for 10.44.0.0/24",
+            "CONNECTING; no active states for 10.44.0.0/24",
+        ]:
+            with self.subTest(text=text):
+                self.assertFalse(grader.findings_cover(task, required, text))
+
 
 if __name__=='__main__':unittest.main()

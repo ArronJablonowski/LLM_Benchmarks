@@ -50,7 +50,7 @@ FINDING_ALIASES = {
     ("cli_rhel_admin", "running"): ("firewalld is active", "firewalld active", "active firewalld"),
     ("cli_pfsense_firewall_nat", "block"): ("no matching wan pass rule",),
     ("cli_pfsense_firewall_nat", "rdr"): ("redirects", "redirect rule",),
-    ("cli_pfsense_vpn_diagnostics", "0 states"): ("no states", "zero states", "no matching states"),
+    ("cli_pfsense_vpn_diagnostics", "0 states"): ("no states", "zero states", "no matching states", "no active states"),
     ("cli_openwrt_firewall_diagnostics", "zone lan"): ("lan zone",),
 }
 # Equivalent observations may need several facts together. Keep these scoped
