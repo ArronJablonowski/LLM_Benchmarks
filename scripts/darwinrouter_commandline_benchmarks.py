@@ -25,7 +25,7 @@ FIELDS = ["run_id", "benchmark_profile", "harness", "model", "task_id", "task_na
           "max_gpu_usage_pct", "sample_count", "error"]
 
 
-FIELDS += ["darwin_task_id", "resolved_model", "resolved_provider", "context_window_tokens", "feedback_recorded"]
+FIELDS += ["darwin_task_id", "previous_task_ids", "resolved_model", "resolved_provider", "context_window_tokens", "feedback_recorded"]
 
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__)
@@ -38,7 +38,7 @@ def parse_args():
     p.add_argument("--output-dir", type=Path, required=True)
     p.add_argument("--workspace", type=Path, required=True)
     p.add_argument("--timeout", type=int, default=900)
-    p.add_argument("--unload-model", action="append", default=[], help="Ollama model identity to unload after each isolated task")
+    p.add_argument("--unload-model", action="append", default=[], help="Allow cleanup of this Ollama model only if the isolated task lineage actually used it")
     p.add_argument("--tasks", nargs="*")
     p.add_argument("--run", action="store_true")
     return p.parse_args()
@@ -76,12 +76,15 @@ def main():
     args.output_dir = args.output_dir.expanduser().resolve()
     args.workspace = args.workspace.expanduser().resolve()
     args.database = args.database.expanduser().resolve()
-    tasks = suite_task_catalog("commandline")
+    # The default remains the original suite. Explicit IDs may opt into fresh
+    # expanded labs without silently expanding an existing campaign.
+    tasks = suite_task_catalog("commandline", full=bool(args.tasks))
     if args.tasks:
         wanted = set(args.tasks); tasks = [t for t in tasks if t["id"] in wanted]
         missing = wanted - {t["id"] for t in tasks}
         if missing: raise SystemExit("Unknown task(s): " + ", ".join(sorted(missing)))
-    print(f"Suite: commandline (commandline-agent-v2-standard-20); harness: DarwinRouter; tasks: {len(tasks)}")
+    profile = "commandline-agent-v2-expanded" if any(t['id'].startswith('cli_exp_') for t in tasks) else "commandline-agent-v2-standard-20"
+    print(f"Suite: commandline ({profile}); harness: DarwinRouter; tasks: {len(tasks)}")
     if not args.run: return 0
     if not args.host.is_file() or not args.config.is_file():
         raise SystemExit("--host and --config must exist")
@@ -116,6 +119,9 @@ def main():
             except (ValueError, IndexError):
                 result = {}
             task_id = result.get("TaskID") or result.get("task_id") or ""
+            previous_ids = result.get("PreviousTaskIDs") or result.get("previous_task_ids") or []
+            if not isinstance(previous_ids, list) or any(not isinstance(t, str) for t in previous_ids):
+                raise RuntimeError("invalid durable recovery lineage; inspect before cleanup")
             host_error = result.get("error", "") or ("missing durable task identity" if not task_id else "")
             verdict = quality_verdict(proc.returncode, host_error, grader_error, grading)
             try:
@@ -123,7 +129,7 @@ def main():
             except Exception as exc:
                 metadata = {}
                 error = (error + "; metadata: " + str(exc))[:2000]
-            row = {"run_id":run_id,"benchmark_profile":"commandline-agent-v2-standard-20","harness":"darwinrouter",
+            row = {"run_id":run_id,"benchmark_profile":profile,"harness":"darwinrouter",
                    "model":args.model,"task_id":task["id"],"task_name":task["name"],
                    "status":"ok" if verdict in ("pass", "fail") else "error","verdict":verdict,
                    "checks_passed":grading.get("passed",0),"checks_total":grading.get("total",0),"wall_seconds":wall,
@@ -131,7 +137,7 @@ def main():
                    "max_gpu_temp_c":maximum(samples,"gpu_temp_c"),"max_host_temp_c":maximum(samples,"host_temp_c"),
                    "max_host_memory_used_bytes":maximum(samples,"host_memory_used_bytes"),"max_host_memory_pct":maximum(samples,"host_memory_pct"),
                    "max_gpu_usage_pct":maximum(samples,"gpu_usage_pct"),"sample_count":len(samples),"error":error}
-            row.update(darwin_task_id=task_id, resolved_model=metadata.get("model_id", ""), resolved_provider=metadata.get("provider_id", ""),
+            row.update(darwin_task_id=task_id, previous_task_ids=previous_ids, resolved_model=metadata.get("model_id", ""), resolved_provider=metadata.get("provider_id", ""),
                        context_window_tokens=metadata.get("context_tokens", ""), feedback_recorded=False)
             record={"row":row,"stdout":stdout,"stderr":proc.stderr,"grading":grading,"telemetry_samples":samples,
                     "workspace":str(workspace), "learning_database":str(args.database)}
@@ -150,7 +156,13 @@ def main():
                 row["feedback_recorded"]=receipt["recorded"]
             records.append(record); completed.add(task["id"]); write_csv(csv_path,records)
             print(f"  -> {row['status']} {row['verdict']} wall={wall}s",flush=True)
-            for owned_model in args.unload_model or []:
+            # A candidate allowlist is not proof of ownership. Only stop models
+            # recorded in this attempt's durable lineage; unrelated residents
+            # must be left for the campaign's ownership guard to investigate.
+            used_models = {metadata.get("model_id")}
+            for previous_id in previous_ids:
+                used_models.add(task_metadata(args.database, previous_id).get("model_id"))
+            for owned_model in sorted(set(args.unload_model or []) & used_models):
                 unload_error = unload_model(owned_model)
                 if unload_error:
                     raise RuntimeError(f"owned model unload failed: {unload_error}")
