@@ -507,4 +507,41 @@ class FirewallObservationWordingTests(unittest.TestCase):
                     self.assertEqual(json.loads(result.stdout)['verdict'], verdict)
 
 
+class ForwardFlowObservationTests(unittest.TestCase):
+    observation = 'Firewall log shows lan->guest to 192.168.50.20 dpt=8443 being rejected/dropped'
+
+    def test_forward_flow_declaration_preserves_direction_port_and_polarity(self):
+        task = 'cli_openwrt_firewall_diagnostics'; required = grader.EXPECTED[task][1]
+        prefix = 'Zone lan has forward drop. '
+        self.assertTrue(grader.findings_cover(task, required, prefix + self.observation))
+        for wrong in [self.observation.replace('lan->guest', 'guest->lan'),
+                      self.observation.replace('192.168.50.20', '192.168.50.21'),
+                      self.observation.replace('8443', '443'),
+                      self.observation.replace('8443', '84430'),
+                      self.observation.replace('being rejected/dropped', 'not being rejected/dropped'),
+                      self.observation.replace('being rejected/dropped', 'being accepted'),
+                      'Not true: ' + self.observation,
+                      self.observation + ' but the log was incorrect']:
+            with self.subTest(wrong=wrong):
+                self.assertFalse(grader.findings_cover(task, required, prefix + wrong))
+
+    def test_unpunctuated_finding_items_retain_boundaries_and_require_execution(self):
+        task = 'cli_openwrt_firewall_diagnostics'; commands, _, menu = grader.EXPECTED[task]
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp); (p / '.benchmark-task-id').write_text(task)
+            (p / 'answer.json').write_text(json.dumps(dict(commands=commands,
+                findings=['Zone lan has forward drop', self.observation,
+                          'Menu shows LAN zone forward policy drop'],
+                actions=['Correct only the guest exception'], menu_path=menu)))
+            complete = [dict(kind='run', value=v, ok=True) for v in commands]
+            complete.append(dict(kind='menu', value='>'.join(menu), ok=True))
+            for events, verdict in [(complete, 'pass'), (complete[1:], 'fail'),
+                                    (complete[:-1], 'fail'),
+                                    ([dict(e, ok=False) for e in complete], 'fail')]:
+                (p / 'transcript.jsonl').write_text(''.join(json.dumps(e)+'\n' for e in events))
+                result = subprocess.run([sys.executable, str(GRADER), str(p)], text=True, capture_output=True)
+                with self.subTest(events=events):
+                    self.assertEqual(json.loads(result.stdout)['verdict'], verdict)
+
+
 if __name__=='__main__':unittest.main()

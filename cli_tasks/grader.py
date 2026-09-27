@@ -90,6 +90,7 @@ FINDING_DECLARATIONS = {
     ("cli_openwrt_firewall_diagnostics", "forward rejected"): (
         "firewall logs show packets from 192.168.1.44 to 192.168.50.20 on port 8443 are being rejected",
         "firewall logs show lan clients are being rejected when attempting to access the guest service at 192.168.50.20 on tcp port 8443",
+        "firewall log shows lan->guest to 192.168.50.20 dpt=8443 being rejected/dropped",
     ),
     ("cli_windows_incident_response", "powershell -enc"): (
         "process 6220 was spawned by process 6104, which ran a powershell command with base64 encoding (iex (new-object net.webclient))",
@@ -206,7 +207,9 @@ def main(workspace: Path) -> int:
             try: events.append(json.loads(line))
             except json.JSONDecodeError: pass
     checks.check("ordered command investigation", commands_cover(task_id, required_commands, commands))
-    finding_text = " ".join(str(item) for item in findings).lower()
+    # Each finding is a separate observation, even without terminal punctuation.
+    # Preserve that boundary for full affirmative declarations.
+    finding_text = ". ".join(str(item).rstrip(". ") for item in findings).lower()
     if task_id == "cli_powershell_services" and documented_running_recovery(actions, events):
         finding_text += " running"
     checks.check("evidence-backed findings", findings_cover(task_id, required_findings, finding_text))
