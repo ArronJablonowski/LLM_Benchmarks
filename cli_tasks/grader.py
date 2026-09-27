@@ -72,10 +72,18 @@ def mentions(text: str, term: str) -> bool:
 
 def findings_cover(task_id: str, required: list[str], text: str) -> bool:
     text = " ".join(text.lower().split())
+    # A complete successful resolution states both the operation and result.
+    # Match the whole declaration so negated results, other hosts/addresses,
+    # and contradictory health qualifiers cannot satisfy this equivalent.
+    dns_result = task_id == "cli_custom_menu_navigation" and re.fullmatch(
+        r"(?:dns lookup(?: for)?[: ]+)?example\.org (?:resolves|resolved) to 93\.184\.216\.34\.?", text
+    ) is not None
     # Navigation into Diagnostics is verified independently by the required
     # menu path and transcript; the result need not repeat the menu label.
     facts = [fact for fact in required if not (task_id == "cli_custom_menu_navigation" and fact == "diagnostics")]
     def covered(fact):
+        if dns_result and fact in ("dns lookup", "healthy"):
+            return True
         key = (task_id, fact.lower())
         literal = any(mentions(text, term) for term in (fact.lower(), *FINDING_ALIASES.get(key, ())))
         equivalent = any(all(mentions(text, term) for term in group) for group in FINDING_EQUIVALENTS.get(key, ()))

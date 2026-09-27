@@ -72,6 +72,32 @@ class DiagnosticSemanticsTests(unittest.TestCase):
     def test_recovery_outcome_is_still_required(self):
         self.assertFalse(grader.findings_cover("cli_powershell_services",grader.EXPECTED["cli_powershell_services"][1],"stopped Spooler; event 7031; restarted service"))
 
+    def test_dns_resolution_is_a_complete_result_without_repeating_menu_labels(self):
+        task = "cli_custom_menu_navigation"
+        for text in ["example.org resolves to 93.184.216.34", "Example.org resolved to 93.184.216.34."]:
+            self.assertTrue(grader.findings_cover(task, grader.EXPECTED[task][1], text))
+        for text in [
+            "example.org resolves to 192.0.2.10", "example.net resolves to 93.184.216.34",
+            "example.org does not resolve to 93.184.216.34", "example.org 93.184.216.34",
+            "not true: example.org resolves to 93.184.216.34",
+            "example.org resolves to 93.184.216.34 but resolver is unhealthy",
+        ]:
+            with self.subTest(text=text):
+                self.assertFalse(grader.findings_cover(task, grader.EXPECTED[task][1], text))
+
+    def test_dns_resolution_still_requires_complete_executed_menu_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp)
+            (p / '.benchmark-task-id').write_text('cli_custom_menu_navigation')
+            answer = dict(commands=[], findings=['example.org resolves to 93.184.216.34'],
+                          actions=[], menu_path=['2', '4', '3', 'example.org'])
+            (p / 'answer.json').write_text(json.dumps(answer))
+            for value, ok, verdict in [('2>4>3>example.org', True, 'pass'),
+                                       ('2>4>3', True, 'fail'), ('2>4>3>example.org', False, 'fail')]:
+                (p / 'transcript.jsonl').write_text(json.dumps(dict(kind='menu', value=value, ok=ok)) + '\n')
+                result = subprocess.run([sys.executable, str(GRADER), str(p)], capture_output=True, text=True)
+                self.assertEqual(json.loads(result.stdout)['verdict'], verdict)
+
     def test_equivalent_reported_observations(self):
         cases = [
             ("cli_macos_diagnostics", "macOS 14.6; APFS; battery at 63% with a service recommendation"),
