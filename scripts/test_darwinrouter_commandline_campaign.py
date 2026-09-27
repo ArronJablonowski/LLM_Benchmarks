@@ -134,6 +134,68 @@ class CampaignTests(unittest.TestCase):
         self.assertFalse((self.root/'auto').exists())
         self.assertEqual(json.loads((self.root/'state.json').read_text())['status'],'waiting_capacity')
 
+    def hold_model(self):
+        audit = self.root/'provider-audit.json'
+        audit.write_text(json.dumps(dict(model='model', status='needs_provider_investigation')))
+        self.manifest['model_holds'] = {'model':dict(reason='Repeated invalid provider streams',
+            resume_condition='Reviewed provider recovery evidence', audit=audit.name,
+            audit_sha256=hashlib.sha256(audit.read_bytes()).hexdigest())}
+        (self.root/'manifest.json').write_text(json.dumps(self.manifest))
+        return audit
+
+    def test_reviewed_model_hold_keeps_cases_pending_and_other_models_progress(self):
+        self.manifest.update(phases=['model','healthy','auto'],total=6)
+        audit = self.hold_model()
+        c=Simulated(self.root,['pass','pass']);c.run()
+        self.assertEqual([p.name for _,_,p in c.launches],['healthy','healthy'])
+        self.assertEqual(c.counts['completed'],2)
+        self.assertEqual(c.counts['infrastructure_attempts'],0)
+        self.assertFalse((self.root/'model').exists())
+        self.assertFalse((self.root/'auto').exists())
+        self.assertFalse((self.root/'attempt-launches.jsonl').exists())
+        state=json.loads((self.root/'state.json').read_text())
+        self.assertEqual(state['status'],'waiting_model_recovery')
+        self.assertEqual([x['task'] for x in state['deferred']],['first','second'])
+        audit.write_text('{}')
+        with self.assertRaisesRegex(RuntimeError,'audit changed'):Simulated(self.root).run()
+        # Releasing the reviewed hold resumes only previously pending cases.
+        self.manifest.pop('model_holds')
+        (self.root/'manifest.json').write_text(json.dumps(self.manifest))
+        resumed=Simulated(self.root,['pass']*4);resumed.run()
+        self.assertEqual([p.name for _,_,p in resumed.launches],['model','model','auto','auto'])
+        self.assertEqual(resumed.counts['completed'],6)
+
+    def test_hold_does_not_hide_later_feedback_failure(self):
+        self.prior('pass')
+        path=self.root/'model/darwinrouter_commandline.jsonl'
+        record=json.loads(path.read_text());record['row']['task_id']='second';path.write_text(json.dumps(record)+'\n')
+        self.hold_model();c=Simulated(self.root)
+        with patch.object(c,'verify_feedback',side_effect=RuntimeError('feedback mismatch')):
+            with self.assertRaisesRegex(RuntimeError,'feedback mismatch'):c.run()
+        self.assertEqual(c.launches,[])
+
+    def test_model_hold_blocks_direct_launch_and_requires_matching_audit(self):
+        audit=self.hold_model();c=Campaign(self.root)
+        with patch('subprocess.Popen') as launch:
+            with self.assertRaisesRegex(RuntimeError,'model held'):c.launch('model','first',self.root/'model',1)
+        launch.assert_not_called()
+        self.assertFalse((self.root/'model').exists())
+        audit.write_text(json.dumps(dict(model='another',status='needs_provider_investigation')))
+        self.manifest['model_holds']['model']['audit_sha256']=hashlib.sha256(audit.read_bytes()).hexdigest()
+        (self.root/'manifest.json').write_text(json.dumps(self.manifest))
+        with self.assertRaisesRegex(RuntimeError,'identity or status mismatch'):Simulated(self.root).run()
+
+    def test_model_hold_preserves_retry_slot(self):
+        original=self.prior();before=original.read_bytes();self.hold_model()
+        c=Simulated(self.root);c.run()
+        self.assertEqual(c.launches,[])
+        self.assertEqual(original.read_bytes(),before)
+        self.assertFalse((self.root/'retries').exists())
+        self.manifest.pop('model_holds')
+        (self.root/'manifest.json').write_text(json.dumps(self.manifest))
+        resumed=Simulated(self.root,['pass','pass']);resumed.run()
+        self.assertEqual(resumed.launches[0][:2],('first',2))
+
     def test_read_only_capacity_preflight_precedes_launch_intent_and_workspace(self):
         self.manifest.update(capacity_preflight=True,darwin='darwin')
         (self.root/'manifest.json').write_text(json.dumps(self.manifest))

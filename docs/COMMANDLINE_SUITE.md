@@ -101,6 +101,19 @@ Missing feedback is repaired and independently read back without rerunning a
 valid task. Counts distinguish completed cases, valid grades, total attempts,
 and infrastructure attempts.
 
+A reviewed provider incident can hold one model through `manifest.model_holds`
+while independent direct models continue. Each hold names its reason, explicit
+resume condition, campaign-local audit file and that file's SHA256; the audit
+must identify the same model with status `needs_provider_investigation`.
+The supervisor validates all holds before dispatch, verifies existing completed
+results even in held phases, and records pending cases in `model-deferrals.jsonl`.
+A hold creates no workspace, attempt, grade or exclusion. Automatic routing
+waits until these direct cases are settled. The final status is
+`waiting_model_recovery` while a hold leaves pending work. Release the hold only
+after reviewing recovery evidence; resumption preserves completed cases and
+remaining retry slots. Exhausted cases still require separate hash-bound
+infrastructure dispositions and never receive a third attempt.
+
 The SDK simulator exposes native `kind=help` and explains that unsupported
 commands are unavailable in the fixed simulation. Recovery guidance contains
 no findings or command output. Multi-step menu paths are saved as audited

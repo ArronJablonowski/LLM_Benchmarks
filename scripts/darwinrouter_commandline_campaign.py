@@ -124,6 +124,27 @@ class Campaign:
             if actual != self.manifest[key + '_sha256']:
                 raise RuntimeError(key + ' provenance changed; inspect before launch')
 
+    def reviewed_model_holds(self):
+        """Keep unattempted work pending behind an immutable investigation audit."""
+        holds = self.manifest.get('model_holds', {})
+        if not isinstance(holds, dict):
+            raise RuntimeError('invalid model holds')
+        for model, hold in holds.items():
+            if model not in self.manifest['phases'] or model == 'auto' or not isinstance(hold, dict):
+                raise RuntimeError('invalid model hold identity')
+            if not hold.get('reason') or not hold.get('resume_condition'):
+                raise RuntimeError('model hold needs reason and resume condition')
+            audit = (self.here / hold.get('audit', '')).resolve()
+            if not audit.is_relative_to(self.here) or not audit.is_file():
+                raise RuntimeError('model hold audit must be a campaign file')
+            raw = audit.read_bytes()
+            if hashlib.sha256(raw).hexdigest() != hold.get('audit_sha256'):
+                raise RuntimeError('model hold audit changed')
+            evidence = json.loads(raw)
+            if evidence.get('model') != model or evidence.get('status') != 'needs_provider_investigation':
+                raise RuntimeError('model hold audit identity or status mismatch')
+        return holds
+
     def residents(self):
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         with opener.open('http://127.0.0.1:11434/api/ps', timeout=10) as response:
@@ -131,6 +152,8 @@ class Campaign:
 
     def launch(self, model, task, path, attempt):
         self.guard_provenance()
+        if model in self.reviewed_model_holds():
+            raise RuntimeError('model held for provider investigation')
         if self.residents():
             raise RuntimeError('resident model present; inspect ownership before launching')
         if any(r.get('model') == model and r.get('task') == task and r.get('attempt') == attempt for r in records(self.here / 'attempt-launches.jsonl')):
@@ -192,6 +215,7 @@ class Campaign:
             if data.get('exit_code') != 0:
                 raise RuntimeError('validation not passed: ' + receipt)
         self.guard_provenance()
+        model_holds = self.reviewed_model_holds()
         consecutive_errors = 0
         deferred = []
         resolved_exclusions = 0
@@ -203,6 +227,15 @@ class Campaign:
             for task in self.manifest['tasks']:
                 self.active = dict(model=model, task=task)
                 found = self.evidence(model, task)
+                needs_attempt = not found or (found[-1][1]['verdict'] == 'infrastructure_error' and len(found) < 2)
+                if needs_attempt and model in model_holds:
+                    decision = dict(model=model, task=task, kind='provider_investigation', **model_holds[model])
+                    deferred.append(decision)
+                    append(self.here / 'model-deferrals.jsonl', dict(**decision, at=now(), status='deferred'))
+                    self.state('model_deferred', deferred=deferred)
+                    # Continue reconciling any later completed cases in this
+                    # phase. A hold must not hide feedback/provenance errors.
+                    continue
                 while not found or (found[-1][1]['verdict'] == 'infrastructure_error' and len(found) < 2):
                     attempt = len(found) + 1
                     path = self.here / model if attempt == 1 else self.here / 'retries' / model / task / 'attempt-2'
@@ -216,7 +249,7 @@ class Campaign:
                     if len(next_found) != len(found) + 1:
                         raise RuntimeError('runner produced no new canonical evidence')
                     found = next_found
-                if deferred and deferred[-1]['model'] == model:
+                if deferred and deferred[-1]['model'] == model and deferred[-1].get('kind') != 'provider_investigation':
                     break
                 path, row = found[-1]
                 self.counts['attempts'] += len(found)
@@ -246,7 +279,8 @@ class Campaign:
                 if consecutive_errors >= 3:
                     raise RuntimeError('three consecutive cases exhausted retries; investigate infrastructure')
         self.active = {}
-        status = 'waiting_capacity' if deferred else ('complete' if self.counts['infrastructure_cases'] == resolved_exclusions else 'needs_final_infrastructure_review')
+        status = ('waiting_model_recovery' if any(d.get('kind') == 'provider_investigation' for d in deferred)
+                  else 'waiting_capacity') if deferred else ('complete' if self.counts['infrastructure_cases'] == resolved_exclusions else 'needs_final_infrastructure_review')
         self.state(status, deferred=deferred, resolved_excluded_cases=resolved_exclusions)
 
 
