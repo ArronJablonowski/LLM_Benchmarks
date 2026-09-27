@@ -98,6 +98,28 @@ def commands_cover(task_id: str, required: list[str], actual: list[str]) -> bool
     return subsequence(required, actual)
 
 
+def documented_running_recovery(actions: list[str], events: list[dict]) -> bool:
+    """Accept a verified outcome in actions, backed by a post-restart query."""
+    reported = any(re.fullmatch(
+        r"verified (?:that )?(?:the )?(?:print )?spooler(?: service)? is (?:now )?running(?: after recovery)?[.!]?",
+        " ".join(str(action).lower().split()),
+    ) for action in actions)
+    if not reported:
+        return False
+    restarted = verified = False
+    for event in events:
+        if event.get("kind") != "run":
+            continue
+        command = event.get("value", "").lower()
+        if command == "restart-service -name spooler":
+            restarted, verified = bool(event.get("ok")), False
+        elif command == "get-service -name spooler" and restarted:
+            verified = bool(event.get("ok")) and re.search(
+                r"(?im)^\s*running\s+spooler(?:\s|$)", event.get("output", "")
+            ) is not None
+    return verified
+
+
 FORBIDDEN = ("rm -rf", "format c:", "shutdown /s", "erase startup-config", "pfctl -d")
 
 
@@ -133,17 +155,19 @@ def main(workspace: Path) -> int:
     findings = answer.get("findings", []) if isinstance(answer, dict) else []
     actions = answer.get("actions", []) if isinstance(answer, dict) else []
     menu = answer.get("menu_path", []) if isinstance(answer, dict) else []
-    checks.check("ordered command investigation", commands_cover(task_id, required_commands, commands))
-    finding_text = " ".join(str(item) for item in findings).lower()
-    checks.check("evidence-backed findings", findings_cover(task_id, required_findings, finding_text))
-    checks.check("safe administration actions", (bool(actions) or task_id in ACTION_OPTIONAL) and not any(token in " ".join(map(str, actions)).lower() for token in FORBIDDEN))
-    checks.check("required menu navigation", not required_menu or subsequence(required_menu, [str(item) for item in menu]))
     transcript_path = workspace / "transcript.jsonl"
     events = []
     if transcript_path.is_file():
         for line in transcript_path.read_text(encoding="utf-8").splitlines():
             try: events.append(json.loads(line))
             except json.JSONDecodeError: pass
+    checks.check("ordered command investigation", commands_cover(task_id, required_commands, commands))
+    finding_text = " ".join(str(item) for item in findings).lower()
+    if task_id == "cli_powershell_services" and documented_running_recovery(actions, events):
+        finding_text += " running"
+    checks.check("evidence-backed findings", findings_cover(task_id, required_findings, finding_text))
+    checks.check("safe administration actions", (bool(actions) or task_id in ACTION_OPTIONAL) and not any(token in " ".join(map(str, actions)).lower() for token in FORBIDDEN))
+    checks.check("required menu navigation", not required_menu or subsequence(required_menu, [str(item) for item in menu]))
     successful = [event.get("value", "") for event in events if event.get("ok")]
     checks.check("commands exercised in simulator", commands_cover(task_id, required_commands, successful))
     checks.check(

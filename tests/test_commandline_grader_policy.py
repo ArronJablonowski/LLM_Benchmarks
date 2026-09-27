@@ -170,4 +170,41 @@ class DiagnosticSemanticsTests(unittest.TestCase):
             self.assertFalse(grader.findings_cover(task, required, wrong))
 
 
+class RecoveryOutcomePlacementTests(unittest.TestCase):
+    def setUp(self):
+        self.actions = ['Verified Spooler is now Running after recovery']
+        self.restart = dict(kind='run', value='Restart-Service -Name Spooler', ok=True,
+                            output='Service Spooler is now Running')
+        self.query = dict(kind='run', value='Get-Service -Name Spooler', ok=True,
+                          output='Status Name DisplayName\nRunning Spooler Print Spooler')
+
+    def test_documented_verified_action_counts_as_outcome(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp); task = 'cli_powershell_services'
+            (p / '.benchmark-task-id').write_text(task)
+            commands = grader.EXPECTED[task][0] + ['Get-Service -Name Spooler']
+            (p / 'answer.json').write_text(json.dumps(dict(commands=commands,
+                findings=['Spooler was stopped', 'System event 7031'], actions=self.actions, menu_path=[])))
+            events = [dict(kind='run', value=commands[0], ok=True, output='Stopped Spooler'),
+                      dict(kind='run', value=commands[1], ok=True, output='Id 7031'), self.restart, self.query]
+            (p / 'transcript.jsonl').write_text(''.join(json.dumps(e)+'\n' for e in events))
+            result = subprocess.run([sys.executable,str(GRADER),str(p)],capture_output=True,text=True)
+            self.assertEqual(json.loads(result.stdout)['verdict'], 'pass')
+
+    def test_plans_negation_and_missing_outcome_do_not_count(self):
+        for action in ['Verify Spooler is now Running after recovery',
+                       'Will verify Spooler is now Running after recovery',
+                       'Not verified Spooler is now Running after recovery',
+                       'Verified Spooler is not Running after recovery',
+                       'Restarted Print Spooler service']:
+            self.assertFalse(grader.documented_running_recovery([action], [self.restart,self.query]))
+
+    def test_outcome_needs_successful_post_restart_observation_without_contradiction(self):
+        stopped = dict(self.query, output='Status Name\nStopped Spooler')
+        for events in [[self.query,self.restart], [self.restart],
+                       [dict(self.restart,ok=False),self.query], [self.restart,dict(self.query,ok=False)],
+                       [self.restart,stopped], [self.restart,self.query,stopped]]:
+            self.assertFalse(grader.documented_running_recovery(self.actions,events))
+
+
 if __name__=='__main__':unittest.main()
