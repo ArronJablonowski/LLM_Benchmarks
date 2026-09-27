@@ -146,3 +146,11 @@ DarwinRouter adapter keeps isolated state after appending the operation audit.
 Failed operations do not apply effects, repeated restarts are idempotent, and a
 new workspace retains the original Stopped state. Record this fixture/host
 revision separately from older runs; preserve any contradictory old transcripts.
+
+If a completed grade is invalidated by a fixture defect, append a hash-bound
+`evidence-invalidations.jsonl` classification rather than modifying the original
+row. Such a result becomes infrastructure evidence, never a pass. Hold the
+campaign through `manifest.maintenance_hold` until any previously written quality
+feedback is withdrawn through an audited expected-head correction. An invalidated
+attempt still consumes its original retry slot; this does not authorize a third
+attempt or removal of the original execution history.

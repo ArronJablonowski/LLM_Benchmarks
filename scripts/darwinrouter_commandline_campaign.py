@@ -62,6 +62,12 @@ class Campaign:
                         raise RuntimeError('invalid grading revision; preserve original evidence')
                     row.update(verdict=revision['grading']['verdict'], checks_passed=revision['grading']['passed'],
                                checks_total=revision['grading']['total'], grader_revision=revision['grader_commit'])
+                invalidations = [r for r in records(self.here / 'evidence-invalidations.jsonl') if r['darwin_task_id'] == row['darwin_task_id']]
+                if invalidations:
+                    invalidation = invalidations[-1]
+                    if invalidation.get('canonical_sha256') != digest or invalidation.get('classification') != 'infrastructure_error' or not invalidation.get('reason'):
+                        raise RuntimeError('invalid evidence invalidation; preserve original evidence')
+                    row.update(verdict='infrastructure_error', status='error', error=invalidation['reason'], evidence_invalidated=True)
                 found.append((path, row))
         return found
 
@@ -131,6 +137,8 @@ class Campaign:
             append(verified, dict(task_id=task, accepted=accepted, verified_at=now()))
 
     def run(self):
+        if self.manifest.get('maintenance_hold'):
+            raise RuntimeError('maintenance hold: ' + self.manifest['maintenance_hold'])
         for receipt in self.manifest['validation_receipts']:
             data = json.loads(Path(receipt).read_text())
             if data.get('exit_code') != 0:

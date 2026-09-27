@@ -70,6 +70,22 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual(c.counts['completed'],2)
         self.assertEqual(c.counts['valid_grades'],1)
         self.assertEqual(json.loads((self.root/'state.json').read_text())['status'],'needs_final_infrastructure_review')
+    def test_invalid_fixture_is_excluded_without_changing_canonical_grade(self):
+        path=self.prior('fail');before=path.read_bytes();record=json.loads(before)
+        digest=hashlib.sha256(json.dumps(record,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        invalidation=dict(darwin_task_id='first-original',canonical_sha256=digest,classification='infrastructure_error',reason='contradictory simulator state')
+        append(self.root/'evidence-invalidations.jsonl',invalidation)
+        c=Simulated(self.root)
+        self.assertEqual(c.evidence('model','first')[0][1]['verdict'],'infrastructure_error')
+        self.assertEqual(path.read_bytes(),before)
+        invalidation['classification']='pass';append(self.root/'evidence-invalidations.jsonl',invalidation)
+        with self.assertRaisesRegex(RuntimeError,'invalid evidence invalidation'):c.evidence('model','first')
+    def test_maintenance_hold_prevents_any_launch_or_feedback(self):
+        self.manifest['maintenance_hold']='invalid feedback withdrawal pending'
+        (self.root/'manifest.json').write_text(json.dumps(self.manifest))
+        c=Simulated(self.root,['pass'])
+        with self.assertRaisesRegex(RuntimeError,'maintenance hold'):c.run()
+        self.assertEqual(c.launches,[]);self.assertEqual(c.feedback,[])
     def test_grader_error_stops_without_repeating_or_teaching(self):
         self.prior('grader_error');c=Simulated(self.root)
         with self.assertRaisesRegex(RuntimeError,'grader'):c.run()
