@@ -72,5 +72,34 @@ class DiagnosticSemanticsTests(unittest.TestCase):
     def test_recovery_outcome_is_still_required(self):
         self.assertFalse(grader.findings_cover("cli_powershell_services",grader.EXPECTED["cli_powershell_services"][1],"stopped Spooler; event 7031; restarted service"))
 
+    def test_equivalent_reported_observations(self):
+        cases = [
+            ("cli_macos_diagnostics", "macOS 14.6; APFS; battery at 63% with a service recommendation"),
+            ("cli_custom_menu_navigation", "DNS Lookup for example.org resolved to 93.184.216.34"),
+            ("cli_pfsense_firewall_nat", "The NAT rule forwards WAN port 443 traffic to 10.0.20.15. Rules lack a pass rule for incoming HTTPS traffic on the WAN interface. SYN packets arrive."),
+            ("cli_openwrt_firewall_diagnostics", "LAN zone forward policy is drop; firewall logs show reject for dpt=8443 to 192.168.50.20"),
+            ("cli_windows_incident_response", "Connection to 198.51.100.42; parent powershell and its command line is suspiciously encoded. SHA256 44AA9011"),
+        ]
+        for task, text in cases:
+            with self.subTest(task=task):
+                self.assertTrue(grader.findings_cover(task, grader.EXPECTED[task][1], text))
+
+    def test_equivalence_requires_complete_specific_evidence(self):
+        cases = [
+            ("cli_macos_diagnostics", "14.6 APFS; no service recommendation is present"),
+            ("cli_custom_menu_navigation", "DNS Lookup for example.org resolved to 192.0.2.10"),
+            ("cli_pfsense_firewall_nat", "NAT rule forwards WAN port 443 traffic to 10.0.20.15. WAN pass rule allows incoming HTTPS. SYN packets arrive."),
+            ("cli_openwrt_firewall_diagnostics", "LAN zone drop; firewall logs show reject for dpt=443 to 192.168.50.20"),
+            ("cli_windows_incident_response", "198.51.100.42; parent powershell; command line is unencoded; hash 44AA9011"),
+            ("cli_windows_incident_response", "powershell command line is suspiciously encoded; hash 44AA9011"),
+        ]
+        for task, text in cases:
+            with self.subTest(task=task):
+                self.assertFalse(grader.findings_cover(task, grader.EXPECTED[task][1], text))
+
+    def test_missing_persistence_setting_remains_a_mismatch(self):
+        task = "cli_macos_incident_response"
+        self.assertFalse(grader.findings_cover(task, grader.EXPECTED[task][1], "evil.example payload and SHA256 6e91b327"))
+
 
 if __name__=='__main__':unittest.main()

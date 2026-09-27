@@ -131,3 +131,10 @@ one. Menu navigation is audited independently; its labels need not be repeated
 as findings. Missing or wrong observations remain failures. These are common
 grader corrections, not model improvements; regrade preserved work and revise
 feedback through the audited expected-ID mechanism.
+
+Equivalent reported observations also cover a battery service recommendation,
+the simulator's successful DNS answer, the specific HTTPS NAT target with a
+missing WAN pass rule, the rejected guest-service flow, and an encoded PowerShell
+command described in prose. Compound equivalents require all relevant facts;
+wrong destinations, ports, addresses and missing execution evidence still fail.
+These additions do not waive missing recovery outcomes or persistence settings.

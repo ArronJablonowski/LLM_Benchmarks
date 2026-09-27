@@ -53,6 +53,21 @@ FINDING_ALIASES = {
     ("cli_pfsense_vpn_diagnostics", "0 states"): ("no states", "zero states", "no matching states"),
     ("cli_openwrt_firewall_diagnostics", "zone lan"): ("lan zone",),
 }
+# Equivalent observations may need several facts together. Keep these scoped
+# to one task and require every component, rather than accepting vague words
+# such as "service", "forward" or "encoded" on their own.
+FINDING_EQUIVALENTS = {
+    ("cli_macos_diagnostics", "service recommended"): (("with a service recommendation",), ("battery requires service",)),
+    ("cli_custom_menu_navigation", "healthy"): (("example.org resolved to 93.184.216.34",),),
+    ("cli_pfsense_firewall_nat", "block"): (("lack a pass rule", "incoming https traffic", "wan interface"),),
+    ("cli_pfsense_firewall_nat", "rdr"): (("nat rule", "forwards wan port 443 traffic to 10.0.20.15"),),
+    ("cli_openwrt_firewall_diagnostics", "forward rejected"): (("firewall logs show reject", "dpt=8443", "192.168.50.20"),),
+    ("cli_windows_incident_response", "powershell -enc"): (("powershell", "command line is suspiciously encoded"), ("encoded powershell command",)),
+}
+
+
+def mentions(text: str, term: str) -> bool:
+    return re.search(r"(?<!\w)" + re.escape(term), text) is not None
 
 
 def findings_cover(task_id: str, required: list[str], text: str) -> bool:
@@ -60,7 +75,12 @@ def findings_cover(task_id: str, required: list[str], text: str) -> bool:
     # Navigation into Diagnostics is verified independently by the required
     # menu path and transcript; the result need not repeat the menu label.
     facts = [fact for fact in required if not (task_id == "cli_custom_menu_navigation" and fact == "diagnostics")]
-    return all(any(re.search(r"(?<!\w)" + re.escape(term), text) for term in (fact.lower(), *FINDING_ALIASES.get((task_id, fact.lower()), ()))) for fact in facts)
+    def covered(fact):
+        key = (task_id, fact.lower())
+        literal = any(mentions(text, term) for term in (fact.lower(), *FINDING_ALIASES.get(key, ())))
+        equivalent = any(all(mentions(text, term) for term in group) for group in FINDING_EQUIVALENTS.get(key, ()))
+        return literal or equivalent
+    return all(covered(fact) for fact in facts)
 
 
 def commands_cover(task_id: str, required: list[str], actual: list[str]) -> bool:
