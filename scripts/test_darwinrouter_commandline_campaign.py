@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
-from darwinrouter_commandline_campaign import Campaign, append
+from darwinrouter_commandline_campaign import Campaign, CapacityDeferred, append, now
 
 
 class Simulated(Campaign):
@@ -117,6 +117,55 @@ class CampaignTests(unittest.TestCase):
         with patch.object(c,'residents',return_value=['external']),patch('subprocess.Popen') as launch:
             with self.assertRaisesRegex(RuntimeError,'resident model'):c.launch('model','first',self.root/'model',1)
         launch.assert_not_called()
+
+    def test_capacity_deferral_consumes_no_attempt_and_allows_other_models_before_auto(self):
+        self.manifest.update(phases=['large','small','auto'],tasks=['first'],total=3)
+        (self.root/'manifest.json').write_text(json.dumps(self.manifest))
+        class Deferred(Simulated):
+            def launch(self, model, task, path, attempt):
+                if model == 'large':raise CapacityDeferred('available RAM below reservation')
+                super().launch(model, task, path, attempt)
+        c=Deferred(self.root,['pass']);c.run()
+        self.assertEqual(len(c.launches),1)
+        self.assertEqual(c.launches[0][2],self.root/'small')
+        self.assertEqual(c.counts['attempts'],1)
+        self.assertEqual(c.counts['infrastructure_attempts'],0)
+        self.assertFalse((self.root/'large').exists())
+        self.assertFalse((self.root/'auto').exists())
+        self.assertEqual(json.loads((self.root/'state.json').read_text())['status'],'waiting_capacity')
+
+    def test_read_only_capacity_preflight_precedes_launch_intent_and_workspace(self):
+        self.manifest.update(capacity_preflight=True,darwin='darwin')
+        (self.root/'manifest.json').write_text(json.dumps(self.manifest))
+        c=Campaign(self.root)
+        catalog={'models':[dict(id='model',ram_bytes=100)]}
+        snapshot=dict(time=now(),TotalRAM=200,AvailableRAM=99,ThermalPressure=False)
+        from subprocess import CompletedProcess
+        outputs=[CompletedProcess([],0,json.dumps(v),'') for v in [catalog,snapshot]]
+        with patch.object(c,'residents',return_value=[]),patch('subprocess.run',side_effect=outputs),patch('subprocess.Popen') as launch:
+            with self.assertRaises(CapacityDeferred):c.launch('model','first',self.root/'model',1)
+        launch.assert_not_called()
+        self.assertFalse((self.root/'model').exists())
+        self.assertFalse((self.root/'attempt-launches.jsonl').exists())
+
+    def test_reviewed_exclusions_do_not_retrigger_breaker_but_cannot_be_retried(self):
+        self.manifest.update(tasks=['a','b','c','d'],total=4)
+        (self.root/'manifest.json').write_text(json.dumps(self.manifest))
+        for task in ['a','b','c']:
+            hashes=[]
+            for attempt,path in [(1,self.root/'model'),(2,self.root/'retries/model'/task/'attempt-2')]:
+                path.mkdir(parents=True,exist_ok=True)
+                record={'row':dict(task_id=task,darwin_task_id='',verdict='infrastructure_error')}
+                append(path/'darwinrouter_commandline.jsonl',record)
+                hashes.append(hashlib.sha256(json.dumps(record,sort_keys=True,separators=(',',':')).encode()).hexdigest())
+            append(self.root/'infrastructure-dispositions.jsonl',dict(model='model',task=task,status='resolved_excluded',reason='Reviewed admission failures without inference or feedback',canonical_sha256s=hashes))
+        c=Simulated(self.root,['pass']);c.run()
+        self.assertEqual([(t,a) for t,a,_ in c.launches],[('d',1)])
+        self.assertEqual(c.counts['attempts'],7)
+        self.assertEqual(json.loads((self.root/'state.json').read_text())['status'],'complete')
+        path=self.root/'retries/model/a/attempt-2/darwinrouter_commandline.jsonl'
+        row=json.loads(path.read_text());row['row']['error']='changed';path.write_text(json.dumps(row)+'\n')
+        with self.assertRaisesRegex(RuntimeError,'disposition does not match'):Simulated(self.root).run()
 
 
 if __name__=='__main__':unittest.main()

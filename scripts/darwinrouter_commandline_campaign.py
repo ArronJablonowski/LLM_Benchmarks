@@ -27,6 +27,10 @@ def append(path, value):
         stream.flush()
 
 
+class CapacityDeferred(RuntimeError):
+    """A read-only preflight deferred work before consuming an attempt."""
+
+
 class Campaign:
     def __init__(self, directory):
         self.here = Path(directory).resolve()
@@ -35,6 +39,49 @@ class Campaign:
         self.counts = dict(completed=0, valid_grades=0, pass_count=0, mismatch_count=0,
                            infrastructure_cases=0, infrastructure_attempts=0, attempts=0)
         self.active = {}
+
+    def capacity_preflight(self, model):
+        if not self.manifest.get('capacity_preflight') or model == 'auto':
+            return
+        darwin = self.manifest['darwin']
+        catalog = json.loads(subprocess.run([darwin, 'models', 'list', '--config', self.manifest['config']],
+                            capture_output=True, text=True, timeout=10, check=True).stdout)
+        configured = next(m for m in catalog['models'] if m['id'] == model)
+        snapshot = json.loads(subprocess.run([darwin, 'resources'], capture_output=True, text=True,
+                              timeout=10, check=True).stdout)
+        need, available = configured['ram_bytes'], snapshot['AvailableRAM']
+        observed = dt.datetime.fromisoformat(snapshot['time'])
+        age = (dt.datetime.now(dt.timezone.utc) - observed).total_seconds()
+        if not 0 <= age <= 10 or not 0 < need or not 0 <= available <= snapshot['TotalRAM']:
+            raise RuntimeError('invalid capacity preflight data')
+        # This is a conservative lower-bound check. The real host still applies
+        # its complete resource policy, leases and context accounting.
+        if need > available or snapshot.get('ThermalPressure') is True:
+            reason = dict(model=model, required_ram_bytes=need, available_ram_bytes=available,
+                          thermal_pressure=snapshot.get('ThermalPressure'), at=now(), status='deferred')
+            append(self.here / 'capacity-deferrals.jsonl', reason)
+            raise CapacityDeferred(json.dumps(reason))
+        prior = [r for r in records(self.here / 'capacity-deferrals.jsonl') if r['model'] == model]
+        if prior and prior[-1].get('status') == 'deferred':
+            append(self.here / 'capacity-deferrals.jsonl', dict(model=model, status='ready', at=now(),
+                   required_ram_bytes=need, available_ram_bytes=available))
+
+    def reviewed_exclusion(self, model, task, found):
+        dispositions = [r for r in records(self.here / 'infrastructure-dispositions.jsonl')
+                        if r['model'] == model and r['task'] == task]
+        if not dispositions:
+            return False
+        decision = dispositions[-1]
+        if decision.get('status') != 'resolved_excluded' or not decision.get('reason'):
+            raise RuntimeError('invalid infrastructure disposition')
+        hashes = []
+        for path, row in found:
+            original = next(r for r in records(path / 'darwinrouter_commandline.jsonl')
+                            if r['row']['task_id'] == task)
+            hashes.append(hashlib.sha256(json.dumps(original, sort_keys=True, separators=(',', ':')).encode()).hexdigest())
+        if len(found) != 2 or found[-1][1]['verdict'] != 'infrastructure_error' or decision.get('canonical_sha256s') != hashes:
+            raise RuntimeError('infrastructure disposition does not match canonical evidence')
+        return True
 
     def state(self, status, **extra):
         data = dict(status=status, updated_at=now(), total=self.manifest['total'],
@@ -88,6 +135,7 @@ class Campaign:
             raise RuntimeError('resident model present; inspect ownership before launching')
         if any(r.get('model') == model and r.get('task') == task and r.get('attempt') == attempt for r in records(self.here / 'attempt-launches.jsonl')):
             raise RuntimeError('previous launch lacks canonical result; inspect it before any retry')
+        self.capacity_preflight(model)
         path.mkdir(parents=True, exist_ok=True)
         workspace = self.here / 'workspaces' / model if attempt == 1 else path / 'workspaces'
         self.active = dict(model=model, task=task, attempt=attempt, attempt_started_at=now(),
@@ -145,18 +193,31 @@ class Campaign:
                 raise RuntimeError('validation not passed: ' + receipt)
         self.guard_provenance()
         consecutive_errors = 0
+        deferred = []
+        resolved_exclusions = 0
         for model in self.manifest['phases']:
+            # Automatic routing is the final validation phase, after every
+            # direct-model case has a result or a reviewed exclusion.
+            if model == 'auto' and deferred:
+                continue
             for task in self.manifest['tasks']:
                 self.active = dict(model=model, task=task)
                 found = self.evidence(model, task)
                 while not found or (found[-1][1]['verdict'] == 'infrastructure_error' and len(found) < 2):
                     attempt = len(found) + 1
                     path = self.here / model if attempt == 1 else self.here / 'retries' / model / task / 'attempt-2'
-                    self.launch(model, task, path, attempt)
+                    try:
+                        self.launch(model, task, path, attempt)
+                    except CapacityDeferred as error:
+                        deferred.append(dict(model=model, task=task, reason=str(error)))
+                        self.state('capacity_deferred', deferred=deferred)
+                        break
                     next_found = self.evidence(model, task)
                     if len(next_found) != len(found) + 1:
                         raise RuntimeError('runner produced no new canonical evidence')
                     found = next_found
+                if deferred and deferred[-1]['model'] == model:
+                    break
                 path, row = found[-1]
                 self.counts['attempts'] += len(found)
                 self.counts['infrastructure_attempts'] += sum(r['verdict'] == 'infrastructure_error' for _, r in found)
@@ -168,7 +229,11 @@ class Campaign:
                     consecutive_errors = 0
                 elif verdict == 'infrastructure_error':
                     self.counts['infrastructure_cases'] += 1
-                    consecutive_errors += 1
+                    if self.reviewed_exclusion(model, task, found):
+                        resolved_exclusions += 1
+                        consecutive_errors = 0
+                    else:
+                        consecutive_errors += 1
                     issues = self.here / 'unresolved-infrastructure.jsonl'
                     if not any(r['model'] == model and r['task'] == task for r in records(issues)):
                         append(issues, dict(model=model, task=task, attempts=len(found), recorded_at=now(),
@@ -181,7 +246,8 @@ class Campaign:
                 if consecutive_errors >= 3:
                     raise RuntimeError('three consecutive cases exhausted retries; investigate infrastructure')
         self.active = {}
-        self.state('complete' if not self.counts['infrastructure_cases'] else 'needs_final_infrastructure_review')
+        status = 'waiting_capacity' if deferred else ('complete' if self.counts['infrastructure_cases'] == resolved_exclusions else 'needs_final_infrastructure_review')
+        self.state(status, deferred=deferred, resolved_excluded_cases=resolved_exclusions)
 
 
 def main():
