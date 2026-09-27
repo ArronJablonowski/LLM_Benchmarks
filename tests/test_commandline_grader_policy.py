@@ -244,6 +244,34 @@ class DiagnosticSemanticsTests(unittest.TestCase):
                 result = subprocess.run([sys.executable, str(GRADER), str(p)], capture_output=True, text=True)
                 self.assertEqual(json.loads(result.stdout)['verdict'], verdict)
 
+    def test_ssh_past_tense_conflict_preserves_port_and_polarity(self):
+        task = 'cli_ssh_triage'; required = grader.EXPECTED[task][1]
+        text = ('The remote host is web01. Nginx failed because port 8443 '
+                'was already in use by the python3 process.')
+        self.assertTrue(grader.findings_cover(task, required, text))
+        for wrong in [text.replace('8443', '9443'), text.replace('8443', '84430'),
+                      text.replace('was already', 'was not already'),
+                      text.replace('was already in use', 'was available'),
+                      'web01: port 8443 is available. ' + text.replace('8443', '9443')]:
+            with self.subTest(wrong=wrong):
+                self.assertFalse(grader.findings_cover(task, required, wrong))
+
+    def test_ssh_past_tense_conflict_requires_executed_commands(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp); task = 'cli_ssh_triage'
+            (p / '.benchmark-task-id').write_text(task)
+            commands = grader.EXPECTED[task][0]
+            answer = dict(commands=commands, findings=['The remote host is web01.',
+                'Nginx failed because port 8443 was already in use by the python3 process.'],
+                actions=[], menu_path=[])
+            (p / 'answer.json').write_text(json.dumps(answer))
+            for observed, ok, verdict in [(commands, True, 'pass'),
+                                          (commands[:-1], True, 'fail'), (commands, False, 'fail')]:
+                (p / 'transcript.jsonl').write_text(''.join(json.dumps(
+                    dict(kind='run', value=v, ok=ok))+'\n' for v in observed))
+                result = subprocess.run([sys.executable, str(GRADER), str(p)], capture_output=True, text=True)
+                self.assertEqual(json.loads(result.stdout)['verdict'], verdict)
+
     def test_openwrt_quoted_zone_and_rejected_destination_equivalence(self):
         task = 'cli_openwrt_firewall_diagnostics'; required = grader.EXPECTED[task][1]
         text = "The 'lan' zone has forward drop. Firewall logs show a rejected connection attempt from a LAN client to 192.168.50.20 on port 8443."

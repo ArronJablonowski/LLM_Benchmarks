@@ -47,6 +47,7 @@ ACTION_OPTIONAL = frozenset({
 FINDING_ALIASES = {
     ("cli_ssh_triage", "address already in use"): (
         "port 8443 is already in use", "port 8443 already in use",
+        "port 8443 was already in use",
         "port 8443, which was already in use",
         "nginx failed because it tried to bind to port 8443, but that port was already in use",
     ),
