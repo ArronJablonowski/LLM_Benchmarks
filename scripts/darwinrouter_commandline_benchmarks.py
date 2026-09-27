@@ -25,7 +25,7 @@ FIELDS = ["run_id", "benchmark_profile", "harness", "model", "task_id", "task_na
           "max_gpu_usage_pct", "sample_count", "error"]
 
 
-FIELDS += ["darwin_task_id", "resolved_model", "context_window_tokens", "feedback_recorded"]
+FIELDS += ["darwin_task_id", "resolved_model", "resolved_provider", "context_window_tokens", "feedback_recorded"]
 
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__)
@@ -131,7 +131,7 @@ def main():
                    "max_gpu_temp_c":maximum(samples,"gpu_temp_c"),"max_host_temp_c":maximum(samples,"host_temp_c"),
                    "max_host_memory_used_bytes":maximum(samples,"host_memory_used_bytes"),"max_host_memory_pct":maximum(samples,"host_memory_pct"),
                    "max_gpu_usage_pct":maximum(samples,"gpu_usage_pct"),"sample_count":len(samples),"error":error}
-            row.update(darwin_task_id=task_id, resolved_model=metadata.get("model_id", ""),
+            row.update(darwin_task_id=task_id, resolved_model=metadata.get("model_id", ""), resolved_provider=metadata.get("provider_id", ""),
                        context_window_tokens=metadata.get("context_tokens", ""), feedback_recorded=False)
             record={"row":row,"stdout":stdout,"stderr":proc.stderr,"grading":grading,"telemetry_samples":samples,
                     "workspace":str(workspace), "learning_database":str(args.database)}

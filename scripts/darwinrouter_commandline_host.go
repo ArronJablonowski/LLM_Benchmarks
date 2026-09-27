@@ -65,6 +65,41 @@ func main() {
 	if json.Unmarshal(body, &lab) != nil || len(lab.Commands)+len(lab.Menus) == 0 {
 		fatal(errors.New("invalid scenario"))
 	}
+	dbPath := *database
+	if dbPath == "" {
+		dbPath = filepath.Join(root, "darwinrouter.db")
+	}
+	client, err := sdk.New(sdk.ConfigOptions{
+		ProjectFile: *configPath,
+		Overrides: map[string]string{
+			"telemetry.database": dbPath,
+			"runtime.max_turns":  "32",
+			"tools.max_turns":    "32",
+		},
+		LookupSecret: os.Getenv,
+		Tools:        benchmarkTools(root, lab),
+		ToolPolicy:   &sdk.ToolPolicy{Default: tools.Ask},
+		ApprovalReviewer: func(_ context.Context, review sdk.ApprovalPrompt) (string, bool, error) {
+			allowed := review.Request.ToolName == "read_benchmark_instructions" || review.Request.ToolName == "run_terminal_lab" || review.Request.ToolName == "save_benchmark_answer"
+			return "benchmark-suite-operator", allowed, nil
+		},
+	})
+	if err != nil {
+		fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+	result, err := client.Run(ctx, sdk.Request{Version: 1, ModelID: *model, Prompt: *prompt, Domain: "commandline", Profile: "benchmark", Capabilities: []string{"tools"}, LocalRequired: true})
+	if err != nil {
+		encoded, _ := json.Marshal(result)
+		fmt.Println(string(encoded))
+		fatal(err)
+	}
+	encoded, _ := json.Marshal(result)
+	fmt.Println(string(encoded))
+}
+
+func benchmarkTools(root string, lab scenario) []sdk.Tool {
 	executedCommands := make([]string, 0, 16)
 	executedMenus := make([]string, 0, 16)
 	readTool := sdk.Tool{
@@ -78,12 +113,12 @@ func main() {
 			if err != nil || len(instructions) > 16<<10 {
 				return runtime.ToolResult{Effect: runtime.NoEffect}, errors.New("benchmark instructions unavailable")
 			}
-			toolNote := "\nDarwinRouter tool mapping: call run_terminal_lab with kind=run and only the inner command (for example, uname -a), kind=menu and only the inner menu path, or kind=context. Do not include the python3 terminal_lab.py wrapper. Finish by calling save_benchmark_answer.\n"
+			toolNote := "\nDarwinRouter tool mapping: call run_terminal_lab with kind=run and only the inner command (for example, uname -a), kind=menu and only the inner menu path, or kind=context. For simulator help, call kind=help with value empty. This is a finite simulation: unsupported commands will not become available by retrying variants. Once the requested findings are supported by observations, save the answer instead of continuing unrelated probes. Do not include the python3 terminal_lab.py wrapper. Finish by calling save_benchmark_answer.\n"
 			return runtime.ToolResult{Content: string(instructions) + toolNote, Effect: runtime.NoEffect}, nil
 		},
 	}
 	runTool := sdk.Tool{
-		Tool:  providers.Tool{Name: "run_terminal_lab", Description: "Run one exact command or menu path in the deterministic offline terminal simulator. Use kind run or command for shell commands. Nothing is executed on the benchmark host.", Parameters: json.RawMessage(`{"type":"object","properties":{"kind":{"type":"string","enum":["run","command","shell","menu","context"]},"value":{"type":"string","maxLength":4096}},"required":["kind","value"],"additionalProperties":false}`)},
+		Tool:  providers.Tool{Name: "run_terminal_lab", Description: "Run one exact command or menu path in the deterministic offline terminal simulator. Use kind run or command for shell commands. Use kind=help with an empty value for available operations, or kind=context for the scenario. Unsupported commands are not transient failures. Nothing is executed on the benchmark host.", Parameters: json.RawMessage(`{"type":"object","properties":{"kind":{"type":"string","enum":["run","command","shell","menu","context","help"]},"value":{"type":"string","maxLength":4096}},"required":["kind","value"],"additionalProperties":false}`)},
 		Scope: "workspace", Behavior: tools.BehaviorIdempotentWrite,
 		Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
 			var input struct{ Kind, Value string }
@@ -106,7 +141,7 @@ func main() {
 					input.Value = strings.Trim(strings.TrimSpace(strings.TrimPrefix(input.Value, prefix)), "'\"")
 				}
 			}
-			if input.Value == "python3 terminal_lab.py help" || input.Value == "help" {
+			if input.Kind == "help" || input.Value == "python3 terminal_lab.py help" || input.Value == "help" {
 				commands := make([]string, 0, len(lab.Commands))
 				for command := range lab.Commands {
 					commands = append(commands, command)
@@ -158,7 +193,7 @@ func main() {
 				ok = false
 			}
 			if !ok {
-				output = "SIMULATED ERROR: command or menu path is not available on this target"
+				output = "SIMULATED ERROR: command or menu path is not available in this fixed simulation. Use kind=help with value empty to inspect available operations. Do not keep trying unsupported variants; save_benchmark_answer when the requested findings are supported by observations."
 			}
 			event, _ := json.Marshal(transcriptEvent{Time: time.Now().UTC().Format(time.RFC3339Nano), Kind: input.Kind, Value: input.Value, OK: ok, Output: output})
 			file, openErr := os.OpenFile(filepath.Join(root, "transcript.jsonl"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
@@ -176,7 +211,7 @@ func main() {
 			if input.Kind == "run" {
 				executedCommands = append(executedCommands, input.Value)
 			} else if input.Kind == "menu" {
-				executedMenus = append(executedMenus, input.Value)
+				executedMenus = append(executedMenus, strings.Split(input.Value, ">")...)
 			}
 			return runtime.ToolResult{Content: output, Effect: runtime.ConfirmedEffect}, nil
 		},
@@ -210,38 +245,7 @@ func main() {
 			return runtime.ToolResult{Content: "answer.json saved", Effect: runtime.ConfirmedEffect}, nil
 		},
 	}
-	dbPath := *database
-	if dbPath == "" {
-		dbPath = filepath.Join(root, "darwinrouter.db")
-	}
-	client, err := sdk.New(sdk.ConfigOptions{
-		ProjectFile: *configPath,
-		Overrides: map[string]string{
-			"telemetry.database": dbPath,
-			"runtime.max_turns":  "32",
-			"tools.max_turns":    "32",
-		},
-		LookupSecret: os.Getenv,
-		Tools:        []sdk.Tool{readTool, runTool, saveTool},
-		ToolPolicy:   &sdk.ToolPolicy{Default: tools.Ask},
-		ApprovalReviewer: func(_ context.Context, review sdk.ApprovalPrompt) (string, bool, error) {
-			allowed := review.Request.ToolName == "read_benchmark_instructions" || review.Request.ToolName == "run_terminal_lab" || review.Request.ToolName == "save_benchmark_answer"
-			return "benchmark-suite-operator", allowed, nil
-		},
-	})
-	if err != nil {
-		fatal(err)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
-	defer cancel()
-	result, err := client.Run(ctx, sdk.Request{Version: 1, ModelID: *model, Prompt: *prompt, Domain: "commandline", Profile: "benchmark", Capabilities: []string{"tools"}, LocalRequired: true})
-	if err != nil {
-		encoded, _ := json.Marshal(result)
-		fmt.Println(string(encoded))
-		fatal(err)
-	}
-	encoded, _ := json.Marshal(result)
-	fmt.Println(string(encoded))
+	return []sdk.Tool{readTool, runTool, saveTool}
 }
 
 func fatal(err error) {

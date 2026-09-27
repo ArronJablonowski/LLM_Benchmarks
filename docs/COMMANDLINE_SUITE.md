@@ -86,3 +86,25 @@ model-residency guards remain active.
 The same profile can run through the direct workspace agent, Hermes, and
 OpenClaw with `BENCH_PROJECT_SUITES="commandline"` and
 `ops/run_ollama_project_three_path_campaign.sh`.
+
+## DarwinRouter campaign recovery
+
+`darwinrouter_commandline_campaign.py --campaign-dir PATH` resumes the preserved
+manifest and result files. Each model/task case receives at most two attempts;
+a retry uses `retries/MODEL/TASK/attempt-2` and its own workspace. Original JSONL
+rows and transcripts remain unchanged. Infrastructure failures receive no
+quality feedback. An exhausted case is recorded for final investigation and
+independent cases continue; three consecutive exhausted cases stop the run.
+Grader errors, ambiguous interrupted launches, ownership conflicts, changed
+host/config hashes, and feedback mismatches stop before another inference.
+Missing feedback is repaired and independently read back without rerunning a
+valid task. Counts distinguish completed cases, valid grades, total attempts,
+and infrastructure attempts.
+
+The SDK simulator exposes native `kind=help` and explains that unsupported
+commands are unavailable in the fixed simulation. Recovery guidance contains
+no findings or command output. Multi-step menu paths are saved as audited
+individual steps for the existing grader; the original full path remains in
+the transcript. The 32-turn and per-attempt wall-time limits remain unchanged.
+These adapter changes must be recorded as a new harness revision when comparing
+results with earlier runs.
