@@ -167,3 +167,14 @@ campaign through `manifest.maintenance_hold` until any previously written qualit
 feedback is withdrawn through an audited expected-head correction. An invalidated
 attempt still consumes its original retry slot; this does not authorize a third
 attempt or removal of the original execution history.
+
+For an explicitly reviewed stream investigation, `scripts/ollama_wire_diagnostic.py`
+can relay a single configured Ollama model through a temporary loopback endpoint.
+It issues no inference itself, leaves request/response bodies unchanged, forwards
+only to local port 11434, and records at most 17 MiB of each chat response with
+exclusive files and byte/hash metadata. It does not log request bodies or headers.
+Use it only with synthetic benchmark data in an isolated attempt, a separate
+configuration copy, recorded hashes, no other active inference, and the normal
+attempt/deadline limits. A diagnostic consumes the scheduled case's attempt; it
+is not permission to repeat exhausted work. Preserve wire evidence privately and
+stop the relay after the attempt. Normal campaign configuration stays unchanged.
