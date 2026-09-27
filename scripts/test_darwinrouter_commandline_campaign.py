@@ -196,6 +196,77 @@ class CampaignTests(unittest.TestCase):
         resumed=Simulated(self.root,['pass','pass']);resumed.run()
         self.assertEqual(resumed.launches[0][:2],('first',2))
 
+    def fail_model(self, tasks=('second',)):
+        audit = self.root/'model-failure.json'
+        audit.write_text(json.dumps(dict(model='model', status='failed_model_harness',
+            tasks=list(tasks), reason='Operator stopped incompatible combination',
+            user_instruction='Skip this model and harness; mark failed and continue')))
+        self.manifest['model_failures'] = {'model':dict(audit=audit.name,
+            audit_sha256=hashlib.sha256(audit.read_bytes()).hexdigest())}
+        config = self.root/'auto-config'
+        config.write_text('catalog without failed model')
+        self.manifest['auto_config'] = dict(path=str(config),
+            sha256=hashlib.sha256(config.read_bytes()).hexdigest(),
+            original_config_sha256=self.manifest['config_sha256'], excluded_models=['model'])
+        (self.root/'manifest.json').write_text(json.dumps(self.manifest))
+        return audit
+
+    def test_model_failure_skips_untouched_cases_and_resumes_auto_without_fake_grades(self):
+        original=self.prior('fail'); before=original.read_bytes()
+        self.manifest.update(phases=['model','auto'], total=4)
+        self.hold_model(); self.fail_model()
+        c=Simulated(self.root,['pass','pass']); c.run()
+        self.assertEqual([p.name for _,_,p in c.launches],['auto','auto'])
+        self.assertEqual(original.read_bytes(),before)
+        self.assertEqual(c.counts['completed'],4)
+        self.assertEqual(c.counts['failed_model_cases'],1)
+        self.assertEqual(c.counts['valid_grades'],3)
+        self.assertEqual(c.counts['attempts'],3)
+        self.assertEqual(c.counts['mismatch_count'],1)
+        self.assertFalse((self.root/'retries').exists())
+        self.assertEqual(json.loads((self.root/'state.json').read_text())['status'],'complete')
+        again=Simulated(self.root);again.run()
+        self.assertEqual(again.launches,[])
+        self.assertEqual(again.counts,c.counts)
+        with patch.object(again,'verify_feedback',side_effect=RuntimeError('feedback mismatch')):
+            with self.assertRaisesRegex(RuntimeError,'feedback mismatch'):again.run()
+
+    def test_model_failure_rejects_changed_audit_and_completed_or_ambiguous_skip(self):
+        audit=self.fail_model(); audit.write_text('{}')
+        with self.assertRaisesRegex(RuntimeError,'failure audit changed'):Simulated(self.root).run()
+        self.prior('pass');self.fail_model(('first',))
+        with self.assertRaisesRegex(RuntimeError,'cannot skip attempted'):Simulated(self.root).run()
+        self.fail_model()
+        append(self.root/'attempt-launches.jsonl',dict(model='model',task='second',attempt=1))
+        with self.assertRaisesRegex(RuntimeError,'cannot skip attempted'):Simulated(self.root).run()
+
+    def test_failed_model_cannot_launch_and_auto_requires_scoped_config(self):
+        self.fail_model()
+        c=Campaign(self.root)
+        with patch('subprocess.Popen') as launch:
+            with self.assertRaisesRegex(RuntimeError,'model failed'):c.launch('model','second',self.root/'model',1)
+        launch.assert_not_called()
+        self.assertEqual(c.execution_config('auto'),str(self.root/'auto-config'))
+        (self.root/'auto-config').write_text('changed')
+        with self.assertRaisesRegex(RuntimeError,'auto config provenance'):c.execution_config('auto')
+        self.manifest.pop('auto_config');(self.root/'manifest.json').write_text(json.dumps(self.manifest))
+        with self.assertRaisesRegex(RuntimeError,'auto config required'):Campaign(self.root).execution_config('auto')
+
+    def test_auto_launch_uses_scoped_config_and_does_not_unload_failed_model(self):
+        self.fail_model()
+        self.manifest['models'].append(dict(id='healthy',model='healthy-wire'))
+        (self.root/'manifest.json').write_text(json.dumps(self.manifest))
+        c=Campaign(self.root)
+        with patch.object(c,'residents',return_value=[]),patch('subprocess.Popen') as launch:
+            launch.return_value.wait.return_value=0;launch.return_value.pid=123
+            c.launch('auto','first',self.root/'auto',1)
+        command=launch.call_args.args[0]
+        self.assertEqual(command[command.index('--config')+1],str(self.root/'auto-config'))
+        self.assertNotIn('wire-model',command)
+        self.assertIn('healthy-wire',command)
+        ledger=[json.loads(v) for v in (self.root/'attempt-launches.jsonl').read_text().splitlines()]
+        self.assertEqual(ledger[-1]['config_sha256'],self.manifest['auto_config']['sha256'])
+
     def test_read_only_capacity_preflight_precedes_launch_intent_and_workspace(self):
         self.manifest.update(capacity_preflight=True,darwin='darwin')
         (self.root/'manifest.json').write_text(json.dumps(self.manifest))

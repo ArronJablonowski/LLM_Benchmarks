@@ -37,7 +37,8 @@ class Campaign:
         self.manifest = json.loads((self.here / 'manifest.json').read_text())
         self.root = Path(__file__).resolve().parents[1]
         self.counts = dict(completed=0, valid_grades=0, pass_count=0, mismatch_count=0,
-                           infrastructure_cases=0, infrastructure_attempts=0, attempts=0)
+                           infrastructure_cases=0, infrastructure_attempts=0, attempts=0,
+                           failed_model_cases=0)
         self.active = {}
 
     def capacity_preflight(self, model):
@@ -150,8 +151,60 @@ class Campaign:
         with opener.open('http://127.0.0.1:11434/api/ps', timeout=10) as response:
             return [m['name'] for m in json.load(response).get('models', [])]
 
+    def reviewed_model_failures(self):
+        """Dispose untouched cases after an explicit operator model/harness failure.
+
+        These are not inference results or model-quality observations. Existing
+        attempts and feedback still pass through normal reconciliation.
+        """
+        failures = self.manifest.get('model_failures', {})
+        if not isinstance(failures, dict):
+            raise RuntimeError('invalid model failures')
+        reviewed = {}
+        launches = records(self.here / 'attempt-launches.jsonl')
+        for model, binding in failures.items():
+            if model not in self.manifest['phases'] or model == 'auto' or not isinstance(binding, dict):
+                raise RuntimeError('invalid model failure identity')
+            audit = (self.here / binding.get('audit', '')).resolve()
+            if not audit.is_relative_to(self.here) or not audit.is_file():
+                raise RuntimeError('model failure audit must be a campaign file')
+            raw = audit.read_bytes()
+            if hashlib.sha256(raw).hexdigest() != binding.get('audit_sha256'):
+                raise RuntimeError('model failure audit changed')
+            decision = json.loads(raw)
+            tasks = decision.get('tasks')
+            if (decision.get('model') != model or decision.get('status') != 'failed_model_harness'
+                    or not decision.get('reason') or not decision.get('user_instruction')
+                    or not isinstance(tasks, list) or not tasks
+                    or any(not isinstance(t, str) for t in tasks)
+                    or len(set(tasks)) != len(tasks) or not set(tasks) <= set(self.manifest['tasks'])):
+                raise RuntimeError('model failure audit identity or tasks mismatch')
+            for task in tasks:
+                if self.evidence(model, task) or any(r.get('model') == model and r.get('task') == task for r in launches):
+                    raise RuntimeError('model failure cannot skip attempted or ambiguous case')
+            reviewed[model] = decision
+        return reviewed
+
+    def execution_config(self, model):
+        failures = self.reviewed_model_failures()
+        if model in failures:
+            raise RuntimeError('model failed for this harness; no further launches')
+        if model != 'auto':
+            return self.manifest['config']
+        scoped = self.manifest.get('auto_config')
+        if not scoped:
+            if failures:
+                raise RuntimeError('auto config required to exclude failed models')
+            return self.manifest['config']
+        if (set(scoped.get('excluded_models', [])) != set(failures)
+                or scoped.get('original_config_sha256') != self.manifest['config_sha256']
+                or hashlib.sha256(Path(scoped['path']).read_bytes()).hexdigest() != scoped.get('sha256')):
+            raise RuntimeError('auto config provenance or exclusions changed')
+        return scoped['path']
+
     def launch(self, model, task, path, attempt):
         self.guard_provenance()
+        config = self.execution_config(model)
         if model in self.reviewed_model_holds():
             raise RuntimeError('model held for provider investigation')
         if self.residents():
@@ -165,17 +218,19 @@ class Campaign:
                            output_dir=str(path), deadline_seconds=self.manifest['timeout_seconds'])
         self.state('running')
         cmd = [sys.executable, str(self.root / 'scripts/darwinrouter_commandline_benchmarks.py'),
-               '--run', '--host', self.manifest['host'], '--config', self.manifest['config'],
+               '--run', '--host', self.manifest['host'], '--config', config,
                '--database', self.manifest['database'], '--darwin', self.manifest.get('darwin', '/Users/aj_lobster/DarwinRouter/bin/darwin'),
                '--model', model, '--output-dir', str(path), '--workspace', str(workspace),
                '--timeout', str(self.manifest['timeout_seconds']), '--telemetry', 'none', '--tasks', task]
-        owned = {m['id']: m['model'] for m in self.manifest['models']}
+        owned = {m['id']: m['model'] for m in self.manifest['models']
+                 if m['id'] not in self.manifest.get('model_failures', {})}
         for name in ([owned[model]] if model != 'auto' else list(owned.values())):
             cmd += ['--unload-model', name]
         append(self.here / 'attempt-launches.jsonl', dict(**self.active, event='launch_intent', recorded_at=now()))
         process = subprocess.Popen(cmd, cwd=self.root)
         append(self.here / 'attempt-launches.jsonl', dict(**self.active, pid=process.pid,
-               host_sha256=self.manifest['host_sha256'], config_sha256=self.manifest['config_sha256'],
+               host_sha256=self.manifest['host_sha256'], config_sha256=hashlib.sha256(Path(config).read_bytes()).hexdigest(),
+               config=config,
                benchmark_commit=self.manifest.get('benchmark_commit'), darwin_commit=self.manifest.get('darwin_commit')))
         self.state('running', runner_pid=process.pid)
         code = process.wait()
@@ -216,6 +271,7 @@ class Campaign:
                 raise RuntimeError('validation not passed: ' + receipt)
         self.guard_provenance()
         model_holds = self.reviewed_model_holds()
+        model_failures = self.reviewed_model_failures()
         consecutive_errors = 0
         deferred = []
         resolved_exclusions = 0
@@ -224,9 +280,17 @@ class Campaign:
             # direct-model case has a result or a reviewed exclusion.
             if model == 'auto' and deferred:
                 continue
+            if model == 'auto':
+                self.execution_config(model)
             for task in self.manifest['tasks']:
                 self.active = dict(model=model, task=task)
                 found = self.evidence(model, task)
+                if task in model_failures.get(model, {}).get('tasks', []):
+                    self.counts['failed_model_cases'] += 1
+                    self.counts['completed'] += 1
+                    consecutive_errors = 0
+                    self.state('model_case_skipped')
+                    continue
                 needs_attempt = not found or (found[-1][1]['verdict'] == 'infrastructure_error' and len(found) < 2)
                 if needs_attempt and model in model_holds:
                     decision = dict(model=model, task=task, kind='provider_investigation', **model_holds[model])
