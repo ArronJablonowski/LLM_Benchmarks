@@ -141,3 +141,33 @@ func TestFailedAuditWriteDoesNotApplyRecovery(t *testing.T) {
 		t.Fatal("uncommitted recovery changed state", r)
 	}
 }
+
+func TestFutureSubmissionSealsEvidenceAndClosesToolUse(t *testing.T) {
+	root := t.TempDir()
+	ts := benchmarkToolsVersion(root, scenario{Commands: map[string]string{"uname -a": "observed"}}, "v3")
+	bad := invoke(t, ts[1], `{"kind":"run","value":"uname --invented"}`)
+	if !bad.Failed {
+		t.Fatal("v3 silently repaired unexecuted flags")
+	}
+	invoke(t, ts[1], `{"kind":"run","value":"uname -a"}`)
+	saved := invoke(t, ts[2], `{"findings":["observed"],"actions":["Preserve the collected evidence for operator review."]}`)
+	if !saved.EndToolUse || saved.Effect != runtime.ConfirmedEffect {
+		t.Fatal(saved)
+	}
+	before, _ := os.ReadFile(filepath.Join(root, "answer.json"))
+	if _, err := os.Stat(filepath.Join(root, "submission.json")); err != nil {
+		t.Fatal(err)
+	}
+	duplicate, err := ts[2].Handler(context.Background(), json.RawMessage(`{"findings":["overwrite"]}`))
+	if err == nil || duplicate.Effect != runtime.NoEffect {
+		t.Fatal("duplicate submission allowed")
+	}
+	after, _ := os.ReadFile(filepath.Join(root, "answer.json"))
+	if string(before) != string(after) {
+		t.Fatal("sealed answer overwritten")
+	}
+	_, err = ts[1].Handler(context.Background(), json.RawMessage(`{"kind":"run","value":"uname -a"}`))
+	if err == nil {
+		t.Fatal("post-submission mutation allowed")
+	}
+}

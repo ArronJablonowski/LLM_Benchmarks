@@ -40,6 +40,7 @@ def parse_args():
     p.add_argument("--timeout", type=int, default=900)
     p.add_argument("--unload-model", action="append", default=[], help="Allow cleanup of this Ollama model only if the isolated task lineage actually used it")
     p.add_argument("--tasks", nargs="*")
+    p.add_argument("--grading-version", choices=["v2", "v3"], default="v3", help="v3 is strict future evidence grading; v2 only for explicit legacy compatibility")
     p.add_argument("--run", action="store_true")
     return p.parse_args()
 
@@ -83,7 +84,11 @@ def main():
         wanted = set(args.tasks); tasks = [t for t in tasks if t["id"] in wanted]
         missing = wanted - {t["id"] for t in tasks}
         if missing: raise SystemExit("Unknown task(s): " + ", ".join(sorted(missing)))
+    grading_version = getattr(args, "grading_version", "v3")
+    if grading_version == "v3":
+        tasks = [{**task, "grader": "cli_tasks/grader_v3.py"} for task in tasks]
     profile = "commandline-agent-v2-expanded" if any(t['id'].startswith('cli_exp_') for t in tasks) else "commandline-agent-v2-standard-20"
+    profile = profile.replace("-v2-", "-" + grading_version + "-")
     print(f"Suite: commandline ({profile}); harness: DarwinRouter; tasks: {len(tasks)}")
     if not args.run: return 0
     if not args.host.is_file() or not args.config.is_file():
@@ -92,8 +97,27 @@ def main():
     jsonl = args.output_dir / "darwinrouter_commandline.jsonl"
     csv_path = args.output_dir / "darwinrouter_commandline.csv"
     records = [json.loads(x) for x in jsonl.read_text().splitlines()] if jsonl.exists() else []
+    if any(r["row"].get("benchmark_profile") != profile for r in records):
+        raise RuntimeError("cannot mix grading versions in an existing run")
     completed = {r["row"]["task_id"] for r in records}
     if len(completed) != len(records): raise RuntimeError("duplicate command-line evidence")
+    source_root = Path(__file__).resolve().parents[1]
+    grader_paths = [source_root / "cli_tasks/grader.py"]
+    if grading_version == "v3":
+        grader_paths.append(source_root / "cli_tasks/grader_v3.py")
+    provenance = {"benchmark_profile": profile, "host_sha256": hashlib.sha256(args.host.read_bytes()).hexdigest(),
+                  "graders": {str(path.relative_to(source_root)): hashlib.sha256(path.read_bytes()).hexdigest() for path in grader_paths},
+                  "task_catalog_sha256": hashlib.sha256(json.dumps(suite_task_catalog("commandline", full=True), sort_keys=True).encode()).hexdigest()}
+    provenance_path = args.output_dir / "run-provenance.json"
+    if provenance_path.exists():
+        if json.loads(provenance_path.read_text()) != provenance:
+            raise RuntimeError("host, grader or task contract changed; use a fresh run directory")
+    elif records:
+        raise RuntimeError("existing run lacks a pinned grading contract; do not resume ambiguously")
+    else:
+        with provenance_path.open("x") as receipt:
+            json.dump(provenance, receipt, indent=2, sort_keys=True)
+            receipt.write("\n")
     sampler = create_sampler(args.telemetry, interval_ms=1000); sampler.start()
     run_id = records[0]["row"]["run_id"] if records else time.strftime("%Y%m%d_%H%M%S")
     try:
@@ -101,10 +125,15 @@ def main():
             if task["id"] in completed: continue
             print(f"[{len(completed)+1}/{len(tasks)}] DarwinRouter {args.model} :: {task['id']}", flush=True)
             workspace = prepare_workspace(args.workspace / run_id, "darwinrouter", args.model, task)
+            if grading_version == "v3":
+                sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "cli_tasks"))
+                from grader_v3 import INSTRUCTIONS
+                instructions = workspace / "README.md"
+                instructions.write_text((instructions.read_text() if instructions.exists() else "") + INSTRUCTIONS)
             prompt = task["prompt"] + "\n\nUse the supplied benchmark tools and save the final answer.json."
             start_sample = sampler.snapshot_len(); started = time.monotonic()
             command = [str(args.host), "--config", str(args.config), "--workspace", str(workspace),
-                       "--database", str(args.database), "--model", args.model, "--prompt", prompt, "--timeout", f"{args.timeout}s"]
+                       "--database", str(args.database), "--model", args.model, "--prompt", prompt, "--timeout", f"{args.timeout}s", "--grading-version", grading_version]
             try:
                 proc = subprocess.run(command, text=True, capture_output=True, timeout=args.timeout + 30,
                                       env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
@@ -139,7 +168,7 @@ def main():
                    "max_gpu_usage_pct":maximum(samples,"gpu_usage_pct"),"sample_count":len(samples),"error":error}
             row.update(darwin_task_id=task_id, previous_task_ids=previous_ids, resolved_model=metadata.get("model_id", ""), resolved_provider=metadata.get("provider_id", ""),
                        context_window_tokens=metadata.get("context_tokens", ""), feedback_recorded=False)
-            record={"row":row,"stdout":stdout,"stderr":proc.stderr,"grading":grading,"telemetry_samples":samples,
+            record={"grading_provenance":provenance,"row":row,"stdout":stdout,"stderr":proc.stderr,"grading":grading,"telemetry_samples":samples,
                     "workspace":str(workspace), "learning_database":str(args.database)}
             with jsonl.open("a",encoding="utf-8") as f: f.write(json.dumps(record)+"\n")
             # Save inference evidence before feedback; a crash can be repaired

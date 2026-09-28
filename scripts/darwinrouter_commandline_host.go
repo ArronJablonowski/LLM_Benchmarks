@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -13,6 +14,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ArronJablonowski/DarwinRouter/providers"
@@ -49,8 +51,12 @@ func main() {
 	workspace := flag.String("workspace", "", "isolated command-line benchmark workspace")
 	model := flag.String("model", "local-worker", "configured local DarwinRouter model ID")
 	prompt := flag.String("prompt", "", "benchmark prompt")
+	gradingVersion := flag.String("grading-version", "v3", "v3 strict future contract or v2 legacy")
 	timeout := flag.Duration("timeout", 15*time.Minute, "task deadline")
 	flag.Parse()
+	if *gradingVersion != "v2" && *gradingVersion != "v3" {
+		fatal(errors.New("invalid grading version"))
+	}
 	if *configPath == "" || *workspace == "" || *prompt == "" || !filepath.IsAbs(*workspace) {
 		fatal(errors.New("config, absolute workspace, and prompt are required"))
 	}
@@ -73,12 +79,14 @@ func main() {
 	client, err := sdk.New(sdk.ConfigOptions{
 		ProjectFile: *configPath,
 		Overrides: map[string]string{
-			"telemetry.database": dbPath,
-			"runtime.max_turns":  "32",
-			"tools.max_turns":    "32",
+			"telemetry.database":          dbPath,
+			"runtime.max_turns":           "32",
+			"tools.max_turns":             "32",
+			"tools.enabled":               "false",
+			"workers.delegate_read_tools": "false",
 		},
 		LookupSecret: os.Getenv,
-		Tools:        benchmarkTools(root, lab),
+		Tools:        benchmarkToolsVersion(root, lab, *gradingVersion),
 		ToolPolicy:   &sdk.ToolPolicy{Default: tools.Ask},
 		ApprovalReviewer: func(_ context.Context, review sdk.ApprovalPrompt) (string, bool, error) {
 			allowed := review.Request.ToolName == "read_benchmark_instructions" || review.Request.ToolName == "run_terminal_lab" || review.Request.ToolName == "save_benchmark_answer"
@@ -90,7 +98,11 @@ func main() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
-	result, err := client.Run(ctx, sdk.Request{Version: 1, ModelID: *model, Prompt: *prompt, Domain: "commandline", Profile: "benchmark", Capabilities: []string{"tools"}, LocalRequired: true})
+	profile := "benchmark"
+	if *gradingVersion == "v3" {
+		profile = "benchmark-v3"
+	}
+	result, err := client.Run(ctx, sdk.Request{Version: 1, ModelID: *model, Prompt: *prompt, Domain: "commandline", Profile: profile, Capabilities: []string{"tools"}, LocalRequired: true})
 	if err != nil {
 		encoded, _ := json.Marshal(result)
 		fmt.Println(string(encoded))
@@ -101,6 +113,12 @@ func main() {
 }
 
 func benchmarkTools(root string, lab scenario) []sdk.Tool {
+	return benchmarkToolsVersion(root, lab, "v2")
+}
+
+func benchmarkToolsVersion(root string, lab scenario, version string) []sdk.Tool {
+	submitted := false
+	var mu sync.Mutex
 	// Each isolated workspace owns its simulated state. Never mutate a shared
 	// fixture map or report the pre-recovery state after a successful action.
 	commandOutputs := make(map[string]string, len(lab.Commands))
@@ -113,6 +131,8 @@ func benchmarkTools(root string, lab scenario) []sdk.Tool {
 		Tool:  providers.Tool{Name: "read_benchmark_instructions", Description: "Read the fixed offline command-line lab instructions before choosing simulator actions.", Parameters: json.RawMessage(`{"type":"object","additionalProperties":false}`)},
 		Scope: "workspace", ReadOnly: true, Behavior: tools.BehaviorReadOnly,
 		Handler: func(ctx context.Context, _ json.RawMessage) (runtime.ToolResult, error) {
+			mu.Lock()
+			defer mu.Unlock()
 			if ctx.Err() != nil {
 				return runtime.ToolResult{Effect: runtime.NoEffect}, ctx.Err()
 			}
@@ -120,7 +140,7 @@ func benchmarkTools(root string, lab scenario) []sdk.Tool {
 			if err != nil || len(instructions) > 16<<10 {
 				return runtime.ToolResult{Effect: runtime.NoEffect}, errors.New("benchmark instructions unavailable")
 			}
-			toolNote := "\nDarwinRouter tool mapping: call run_terminal_lab with kind=run and only the inner command (for example, uname -a), kind=menu and only the inner menu path, or kind=context. For simulator help, call kind=help with value empty. This is a finite simulation: unsupported commands will not become available by retrying variants. Once the requested findings are supported by observations, save the answer instead of continuing unrelated probes. Do not include the python3 terminal_lab.py wrapper. Finish by calling save_benchmark_answer.\n"
+			toolNote := "\nDarwinRouter tool mapping: call run_terminal_lab with kind=run and only the inner command (for example, uname -a), kind=menu and only the inner menu path, or kind=context. For simulator help, call kind=help with value empty. This is a finite simulation: unsupported commands will not become available by retrying variants. Once the requested findings are supported by observations, save the answer instead of continuing unrelated probes. Do not include the python3 terminal_lab.py wrapper. Call save_benchmark_answer exactly once, then respond with a short final confirmation and no further tools. The save receipt is authoritative; native read_file uses a different root and must not be used to verify it.\n"
 			return runtime.ToolResult{Content: string(instructions) + toolNote, Effect: runtime.NoEffect}, nil
 		},
 	}
@@ -128,6 +148,11 @@ func benchmarkTools(root string, lab scenario) []sdk.Tool {
 		Tool:  providers.Tool{Name: "run_terminal_lab", Description: "Run one exact command or menu path in the deterministic offline terminal simulator. Use kind run or command for shell commands. Use kind=help with an empty value for available operations, or kind=context for the scenario. Unsupported commands are not transient failures. Nothing is executed on the benchmark host.", Parameters: json.RawMessage(`{"type":"object","properties":{"kind":{"type":"string","enum":["run","command","shell","menu","context","help"]},"value":{"type":"string","maxLength":4096}},"required":["kind","value"],"additionalProperties":false}`)},
 		Scope: "workspace", Behavior: tools.BehaviorIdempotentWrite,
 		Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			if submitted {
+				return runtime.ToolResult{Failed: true, Effect: runtime.NoEffect}, errors.New("submission is sealed; no more simulator operations")
+			}
 			var input struct{ Kind, Value string }
 			if json.Unmarshal(raw, &input) != nil || ctx.Err() != nil {
 				return runtime.ToolResult{Effect: runtime.NoEffect}, errors.New("invalid simulator request")
@@ -165,7 +190,7 @@ func benchmarkTools(root string, lab scenario) []sdk.Tool {
 				}
 				return runtime.ToolResult{Content: content, Effect: runtime.NoEffect}, nil
 			}
-			if input.Kind == "run" {
+			if input.Kind == "run" && version == "v2" {
 				for available := range lab.Commands {
 					if strings.HasPrefix(input.Value, available+" | head") {
 						input.Value = available
@@ -233,6 +258,11 @@ func benchmarkTools(root string, lab scenario) []sdk.Tool {
 		Tool:  providers.Tool{Name: "save_benchmark_answer", Description: "Save the final evidence-backed answer.json in the isolated benchmark workspace. Include commands, findings, actions, and menu_path; omitted arrays are saved empty and may fail grading.", Parameters: json.RawMessage(`{"type":"object","properties":{"commands":{"type":"array","items":{"type":"string"},"maxItems":64},"findings":{"type":"array","items":{"type":"string"},"maxItems":64},"actions":{"type":"array","items":{"type":"string"},"maxItems":64},"menu_path":{"type":"array","items":{"type":"string"},"maxItems":64}},"additionalProperties":false}`)},
 		Scope: "workspace", Behavior: tools.BehaviorNonIdempotentWrite,
 		Handler: func(ctx context.Context, raw json.RawMessage) (runtime.ToolResult, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			if submitted {
+				return runtime.ToolResult{Failed: true, Effect: runtime.NoEffect}, errors.New("answer already submitted; no overwrite permitted")
+			}
 			var value answer
 			if json.Unmarshal(raw, &value) != nil || ctx.Err() != nil {
 				return runtime.ToolResult{Effect: runtime.NoEffect}, errors.New("invalid answer")
@@ -252,10 +282,29 @@ func benchmarkTools(root string, lab scenario) []sdk.Tool {
 			if err != nil || len(encoded) > 64<<10 {
 				return runtime.ToolResult{Effect: runtime.NoEffect}, errors.New("answer exceeds bounds")
 			}
-			if err = os.WriteFile(filepath.Join(root, "answer.json"), append(encoded, '\n'), 0600); err != nil {
-				return runtime.ToolResult{Effect: runtime.UncertainEffect}, err
+			file, openErr := os.OpenFile(filepath.Join(root, "answer.json"), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+			if openErr != nil {
+				return runtime.ToolResult{Effect: runtime.NoEffect, Failed: true}, openErr
 			}
-			return runtime.ToolResult{Content: "answer.json saved", Effect: runtime.ConfirmedEffect}, nil
+			_, writeErr := file.Write(append(encoded, '\n'))
+			closeErr := file.Close()
+			if writeErr != nil || closeErr != nil {
+				submitted = true
+				return runtime.ToolResult{Effect: runtime.UncertainEffect}, errors.Join(writeErr, closeErr)
+			}
+
+			submitted = true
+			if version == "v3" {
+				transcript, readErr := os.ReadFile(filepath.Join(root, "transcript.jsonl"))
+				if readErr != nil {
+					return runtime.ToolResult{Effect: runtime.ConfirmedEffect, Failed: true}, readErr
+				}
+				receipt, _ := json.Marshal(map[string]any{"version": 3, "answer_sha256": fmt.Sprintf("%x", sha256.Sum256(append(encoded, '\n'))), "transcript_sha256": fmt.Sprintf("%x", sha256.Sum256(transcript))})
+				if err := os.WriteFile(filepath.Join(root, "submission.json"), receipt, 0600); err != nil {
+					return runtime.ToolResult{Effect: runtime.ConfirmedEffect, Failed: true}, err
+				}
+			}
+			return runtime.ToolResult{Content: "answer.json saved and sealed in the isolated workspace. Do not call more tools or read_file. Return a short final confirmation now.", Effect: runtime.ConfirmedEffect, EndToolUse: true}, nil
 		},
 	}
 	return []sdk.Tool{readTool, runTool, saveTool}

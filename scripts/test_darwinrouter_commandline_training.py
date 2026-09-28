@@ -33,6 +33,22 @@ class TrainingTests(unittest.TestCase):
                 self.assertEqual(row['previous_task_ids'],['failed'])
                 self.assertEqual(row['resolved_model'],'winner')
 
+    def test_campaign_adds_tasks_without_changing_pinned_contract(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);host=root/'host';host.touch();config=root/'config';config.touch()
+            args=argparse.Namespace(host=host,config=config,database=root/'learning.db',darwin='darwin',model='auto',output_dir=root/'out',workspace=root/'work',timeout=30,unload_model=[],tasks=['lab-one'],run=True,telemetry='none',grading_version='v3')
+            tasks=[{'id':name,'name':name,'prompt':'Do the lab'} for name in ['lab-one','lab-two']]
+            sampler=Mock();sampler.get_since.return_value=[]
+            with patch.object(runner,'parse_args',return_value=args),patch.object(runner,'suite_task_catalog',return_value=tasks),patch.object(runner,'create_sampler',return_value=sampler),patch.object(runner,'prepare_workspace',return_value=root),patch.object(runner,'grade_workspace',return_value=({'verdict':'pass','passed':1,'total':1},'')),patch.object(runner.subprocess,'run',return_value=subprocess.CompletedProcess([],0,json.dumps({'TaskID':'fixture'}),'')),patch.object(runner,'task_metadata',return_value={'model_id':'winner','provider_id':'local'}),patch.object(runner,'record_feedback') as feedback:
+                self.assertEqual(runner.main(),0)
+                args.tasks=['lab-two']
+                self.assertEqual(runner.main(),0)
+                self.assertEqual(feedback.call_count,2)
+                self.assertEqual(len((args.output_dir/'darwinrouter_commandline.jsonl').read_text().splitlines()),2)
+                host.write_text('different executable')
+                with self.assertRaisesRegex(RuntimeError,'contract changed|host, grader'):
+                    runner.main()
+
     def check_run(self, exit_code, grade_error, expected, feedback):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);host=root/'host';host.touch();config=root/'config';config.touch()
