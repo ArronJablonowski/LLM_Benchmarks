@@ -22,7 +22,7 @@ CREATIVE_COMPONENT_DIRECTORY = Path(__file__).with_name("creative")
 CYBERSECURITY_COMPONENT_DIRECTORY = Path(__file__).with_name("cybersecurity")
 COMMANDLINE_COMPONENT_DIRECTORY = Path(__file__).with_name("commandline")
 DEFAULT_SUITE = "standard"
-SUITE_CHOICES = (DEFAULT_SUITE, "coding", "creative", "cybersecurity", "commandline")
+SUITE_CHOICES = (DEFAULT_SUITE, "coding", "creative", "cybersecurity", "commandline", "ocr")
 REQUIRED_FIELDS = {"id", "family", "category", "name", "prompt", "grading"}
 CORE_TASK_ORDER = (
     "exact_reply", "simple_reasoning", "coding_micro", "ifeval_exact",
@@ -144,6 +144,15 @@ def _compile_task(path: Path, descriptor: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(expected, str):
             raise _fail(path, "final_answer grading requires a string expected value")
         task["final_answer"] = expected
+    elif kind == "ocr":
+        if not isinstance(expected, dict) or not expected or not all(
+            isinstance(k, str) and isinstance(v, str) for k, v in expected.items()
+        ):
+            raise _fail(path, "OCR expected fields must be non-empty string mappings")
+        fields = grading.get("transcription_fields", [])
+        if not isinstance(fields, list) or any(field not in expected for field in fields):
+            raise _fail(path, "unknown OCR transcription field")
+        task["ocr_grader"] = copy.deepcopy(grading)
     elif kind == "json":
         if expected is None:
             raise _fail(path, "json grading requires expected")
@@ -166,7 +175,7 @@ def _compile_task(path: Path, descriptor: dict[str, Any]) -> dict[str, Any]:
                 raise _fail(path, "python line_limit must be a positive integer")
             task["python_grader"]["line_limit"] = limit
     else:
-        raise _fail(path, "grading.kind must be exact, final_answer, json, or python")
+        raise _fail(path, "grading.kind must be exact, final_answer, json, python, or ocr")
     return task
 
 
@@ -409,6 +418,8 @@ def suite_task_catalog(
     """
     if suite == DEFAULT_SUITE:
         return core_task_catalog()
+    if suite == "ocr":
+        return _ocr_tasks()
     if suite == "coding":
         return copy.deepcopy(list(_coding_tasks()))
     if suite == "creative":
@@ -438,3 +449,38 @@ def list_core_components() -> list[Path]:
     """Return the component files used for the deterministic core profile."""
     _core_tasks()
     return sorted(COMPONENT_DIRECTORY.glob("*.json"))
+
+
+def _ocr_tasks() -> list[dict[str, Any]]:
+    """Read frozen descriptors and reject drift before any model is dispatched."""
+    import hashlib
+    from vision_benchmark_support import task_image_base64
+
+    root = Path(__file__).resolve().parents[2]
+    manifest = json.loads((root / "data/ocr_progressive_v1/manifest.json").read_text())
+    if manifest.get("schema_version") != 1 or manifest.get("profile") != "ocr-progressive-v1":
+        raise BenchmarkComponentError("unsupported OCR manifest")
+    records = manifest["tasks"]
+    if len(records) != 30 or len({r["id"] for r in records}) != 30:
+        raise BenchmarkComponentError("OCR manifest must contain 30 unique cases")
+    tasks = []
+    for record in records:
+        task_id = record["id"]
+        if not isinstance(task_id, str) or not task_id.startswith("ocr_l") or not all(
+            ch.isalnum() or ch == "_" for ch in task_id
+        ):
+            raise BenchmarkComponentError("invalid OCR task id")
+        path = Path(__file__).with_name("ocr") / (task_id + ".json")
+        if hashlib.sha256(path.read_bytes()).hexdigest() != record["descriptor_sha256"]:
+            raise _fail(path, "OCR descriptor hash mismatch")
+        task = _compile_task(path, _load_descriptor(path))
+        if (task.get("difficulty_level") != record["level"]
+                or task.get("image_asset") != record["image"]
+                or task.get("image_sha256") != record["image_sha256"]
+                or task.get("requires_image") is not True):
+            raise _fail(path, "OCR manifest binding mismatch")
+        task_image_base64(task)
+        tasks.append(task)
+    if [t["difficulty_level"] for t in tasks] != [level for level in range(1, 7) for _ in range(5)]:
+        raise BenchmarkComponentError("OCR tasks must progress through six ordered levels")
+    return tasks

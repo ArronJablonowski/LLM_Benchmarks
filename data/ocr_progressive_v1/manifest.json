@@ -1,0 +1,258 @@
+{
+  "profile": "ocr-progressive-v1",
+  "schema_version": 1,
+  "source": "Original synthetic fixtures; fictional names and values. No private documents.",
+  "pillow_version": "12.3.0",
+  "fonts": [
+    {
+      "name": "Arial.ttf",
+      "sha256": "525979822591a3447cfc49d943d6f7683508e25543407871c0ed8fed05fd2bd9"
+    },
+    {
+      "name": "Times New Roman.ttf",
+      "sha256": "f3b4ffff71c2a0c7227d37497683b2498fb2d0a4e8beae26f022e3ccfcaabfa3"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "ocr_l1_01_memo",
+      "level": 1,
+      "kind": "memo",
+      "image": "data/ocr_progressive_v1/images/ocr_l1_01_memo.png",
+      "image_sha256": "09e126bb91fe5acffa5e225351960754824b54dd9cc732a5b78dff9d4816ae47",
+      "descriptor_sha256": "de4df49463feea1bf1ba2911e808b170fa2f40d4669d1afdf622b81ffac0fc17"
+    },
+    {
+      "id": "ocr_l1_02_form",
+      "level": 1,
+      "kind": "form",
+      "image": "data/ocr_progressive_v1/images/ocr_l1_02_form.png",
+      "image_sha256": "1ca381c4ab8e46b9f2b7390f834e88c9da48045a1967cd53da6653014f32db0e",
+      "descriptor_sha256": "ffc03c54576f03145c9d6930b6f606657fd3be77124daa06f21e8c0d558f2f48"
+    },
+    {
+      "id": "ocr_l1_03_table",
+      "level": 1,
+      "kind": "table",
+      "image": "data/ocr_progressive_v1/images/ocr_l1_03_table.png",
+      "image_sha256": "7a885f9e7e7c4b30dc0892cd086b8d6ac64339e0b3e58af3e508025e05d074bb",
+      "descriptor_sha256": "c4ce42fc444431ab79e83bb57d04cfd7fcdbc0abf0131f927bf7276de2cc0331"
+    },
+    {
+      "id": "ocr_l1_04_chart",
+      "level": 1,
+      "kind": "chart",
+      "image": "data/ocr_progressive_v1/images/ocr_l1_04_chart.png",
+      "image_sha256": "17aa85b18ea95af5d819baaa9e1cdc8d4d2bb8eeb427a8229f395f17762bc212",
+      "descriptor_sha256": "dfc3880aea1d77a969825da09874562bea05f3ae3f620f2dd4a1e23ea277b737"
+    },
+    {
+      "id": "ocr_l1_05_diagram",
+      "level": 1,
+      "kind": "diagram",
+      "image": "data/ocr_progressive_v1/images/ocr_l1_05_diagram.png",
+      "image_sha256": "0897765f59808261249c218e4adebc4b3d653159cb3e84dfa484a1e55b10db2d",
+      "descriptor_sha256": "43c121a056b956121ba4c39914cc457a7ef4dcc1301bd419c1861979941c6d73"
+    },
+    {
+      "id": "ocr_l2_01_memo",
+      "level": 2,
+      "kind": "memo",
+      "image": "data/ocr_progressive_v1/images/ocr_l2_01_memo.png",
+      "image_sha256": "8521ceb72790b91cb1b10f8de1b551fbda69af4db95840657b5f6e2b6fef6af8",
+      "descriptor_sha256": "69c0a34778acf93b617d7be62822bd31353d7f29de3e44c942378c53f1c28fd6"
+    },
+    {
+      "id": "ocr_l2_02_form",
+      "level": 2,
+      "kind": "form",
+      "image": "data/ocr_progressive_v1/images/ocr_l2_02_form.png",
+      "image_sha256": "d8fa669d738b4135fd76fbbea3eacd0b57d208ce1f40f48ccc6ed22d87a35d68",
+      "descriptor_sha256": "2847be990911fae1e7d9b9439f286fa777d7faf212d0bec277535ba674ed0cdd"
+    },
+    {
+      "id": "ocr_l2_03_table",
+      "level": 2,
+      "kind": "table",
+      "image": "data/ocr_progressive_v1/images/ocr_l2_03_table.png",
+      "image_sha256": "3b20ea090c75217e354043a65ab339aedbdd26e430b4c3da4b7f07456bb6fbe1",
+      "descriptor_sha256": "f3c19a0f9921bc7712a6508969c3dfcd4eea0e562fb1007afaa6b8c5642d9c55"
+    },
+    {
+      "id": "ocr_l2_04_chart",
+      "level": 2,
+      "kind": "chart",
+      "image": "data/ocr_progressive_v1/images/ocr_l2_04_chart.png",
+      "image_sha256": "0163efcd8815721ff4e35bc9f690db34982f1fbfbf8c0aa9048540a2ad2c37c6",
+      "descriptor_sha256": "a156ce6cbc745d318e06b9f3009996ac10f85303decabc97c0dc599e06182bc3"
+    },
+    {
+      "id": "ocr_l2_05_diagram",
+      "level": 2,
+      "kind": "diagram",
+      "image": "data/ocr_progressive_v1/images/ocr_l2_05_diagram.png",
+      "image_sha256": "df8c76fbf351ac8b57285f12d20d518154c49035da8d58ce3b562db0696efd0f",
+      "descriptor_sha256": "ea39a24a4f605ff6385e837af689b38e2e1cc8f5476436438b2f12d4162c08ce"
+    },
+    {
+      "id": "ocr_l3_01_memo",
+      "level": 3,
+      "kind": "memo",
+      "image": "data/ocr_progressive_v1/images/ocr_l3_01_memo.png",
+      "image_sha256": "9b11740ad360584b81f50862c68f4542985032b0fda72e93a65456f65e8081d7",
+      "descriptor_sha256": "8964995d3d67110a6be741dc375cfa185ecaf3812ddc9b8e7b99a20cf7d3b845"
+    },
+    {
+      "id": "ocr_l3_02_form",
+      "level": 3,
+      "kind": "form",
+      "image": "data/ocr_progressive_v1/images/ocr_l3_02_form.png",
+      "image_sha256": "320b41aa44e37bba44f4814d20c20f28c9f915737c2501b99442ffbf7a7eecdb",
+      "descriptor_sha256": "526acbe3eb7b4159b7d2e1aa3eb267e7eb216c5c8f87d5d7c757106ebbd47699"
+    },
+    {
+      "id": "ocr_l3_03_table",
+      "level": 3,
+      "kind": "table",
+      "image": "data/ocr_progressive_v1/images/ocr_l3_03_table.png",
+      "image_sha256": "a13b5728ffb0d8276aab81b7d26aafccac751a78fc4047963b758c1f8b6caa40",
+      "descriptor_sha256": "c4a0803cf24f59b68b25d547c3ef1537bd39cadc91dc401953580b1b1c24fa9a"
+    },
+    {
+      "id": "ocr_l3_04_chart",
+      "level": 3,
+      "kind": "chart",
+      "image": "data/ocr_progressive_v1/images/ocr_l3_04_chart.png",
+      "image_sha256": "f11bf6cbb04a8dfbeba08559beccb544265772dd25c72427e7d2a4a0ba188dc3",
+      "descriptor_sha256": "24bdd5ca6964f0404c9cedd824bde05e52564db9e93e276948c0cf5f4b359350"
+    },
+    {
+      "id": "ocr_l3_05_diagram",
+      "level": 3,
+      "kind": "diagram",
+      "image": "data/ocr_progressive_v1/images/ocr_l3_05_diagram.png",
+      "image_sha256": "339038bb82bae7531048d652033090b2e86d9e272ab4c3ebc98fe47cb60658e7",
+      "descriptor_sha256": "2fd3db888f3ca978e9872195fd95a1a998eed29576e0d0307dc9fea6d44e94e4"
+    },
+    {
+      "id": "ocr_l4_01_memo",
+      "level": 4,
+      "kind": "memo",
+      "image": "data/ocr_progressive_v1/images/ocr_l4_01_memo.png",
+      "image_sha256": "eeb2841f686e784dd1b0f7e4e40df16ea155b8fd9560afdfaa0b8cf16c82a5d5",
+      "descriptor_sha256": "332d1ab9a96b79fbca19b7481bbd89d762ac61d1877a795987882fabe8b61b85"
+    },
+    {
+      "id": "ocr_l4_02_form",
+      "level": 4,
+      "kind": "form",
+      "image": "data/ocr_progressive_v1/images/ocr_l4_02_form.png",
+      "image_sha256": "de0e16166c3a36a0f20f67057d05b0e6b9320f15ac106fbdba1066522f4e4a72",
+      "descriptor_sha256": "928bd22d5fe207a2db71f63f29d48d3491450d0e83c57689ce7b004d3f1556e4"
+    },
+    {
+      "id": "ocr_l4_03_table",
+      "level": 4,
+      "kind": "table",
+      "image": "data/ocr_progressive_v1/images/ocr_l4_03_table.png",
+      "image_sha256": "93071c45eb53b76bfe4a3095486a67af5b65ae495094c76c5effbdf4078b0fc5",
+      "descriptor_sha256": "c3ee4c533c7bc03b9d5896d722254898a5f8b557fc2391553a5a514cda0bbcf5"
+    },
+    {
+      "id": "ocr_l4_04_chart",
+      "level": 4,
+      "kind": "chart",
+      "image": "data/ocr_progressive_v1/images/ocr_l4_04_chart.png",
+      "image_sha256": "db9b70e77a6bd2d20f02ac8e3a979d99d3ef875baa8e3c8921d1dce65a3c7e2d",
+      "descriptor_sha256": "6d7459374b995cc38092510963245b1a436d701f3b36337a0a2b0aefa790cab4"
+    },
+    {
+      "id": "ocr_l4_05_diagram",
+      "level": 4,
+      "kind": "diagram",
+      "image": "data/ocr_progressive_v1/images/ocr_l4_05_diagram.png",
+      "image_sha256": "73cae9127cb0541c56564a3a30cf72d93c4361395748130c1112cf36f4722860",
+      "descriptor_sha256": "70ef1fc1a2db000077059955ba2b744190dc7a60e5a9d68a8e252c32cce76334"
+    },
+    {
+      "id": "ocr_l5_01_memo",
+      "level": 5,
+      "kind": "memo",
+      "image": "data/ocr_progressive_v1/images/ocr_l5_01_memo.png",
+      "image_sha256": "c7b501f1670e7b80899d112e868cf3e73978a33a95c595cb71bf429e4d829292",
+      "descriptor_sha256": "11755120cebf21672d256542cf753c84ef8246d142b7da3920de17cee01190f8"
+    },
+    {
+      "id": "ocr_l5_02_form",
+      "level": 5,
+      "kind": "form",
+      "image": "data/ocr_progressive_v1/images/ocr_l5_02_form.png",
+      "image_sha256": "e73e5564f60c617749c32e0a77519cb0843d701f633f14318ebd6dd64a089c6b",
+      "descriptor_sha256": "5a4ee4605affdbd3343c35860d99c262cbc2c7a3cc088bfdc9cabbbd83124cba"
+    },
+    {
+      "id": "ocr_l5_03_table",
+      "level": 5,
+      "kind": "table",
+      "image": "data/ocr_progressive_v1/images/ocr_l5_03_table.png",
+      "image_sha256": "8794327d0a1fdb6b653f46552bd92cab61d232e577aa5c86b9a292c3ce0708e6",
+      "descriptor_sha256": "ebf88322dcc48d38ee3d912e60e0f3170e7d42463bbee02f49e19f9c3a29819e"
+    },
+    {
+      "id": "ocr_l5_04_chart",
+      "level": 5,
+      "kind": "chart",
+      "image": "data/ocr_progressive_v1/images/ocr_l5_04_chart.png",
+      "image_sha256": "ef3343f9f4da74459ff1eab93e24bd6857d64580760c1f0e042c6f6f9c953bc6",
+      "descriptor_sha256": "06f4729ddc76ee87526772907489811447503df0933884fa4f9321f766431fbf"
+    },
+    {
+      "id": "ocr_l5_05_diagram",
+      "level": 5,
+      "kind": "diagram",
+      "image": "data/ocr_progressive_v1/images/ocr_l5_05_diagram.png",
+      "image_sha256": "6f21bfc002084987dcf6b9202ba3d89283460ee13b6c433f20b0f610e9e3c319",
+      "descriptor_sha256": "9f225016a9dcfffe357c9c1edde6cbaa4754f3ea2ea9c2aed17d813b568ad3db"
+    },
+    {
+      "id": "ocr_l6_01_memo",
+      "level": 6,
+      "kind": "memo",
+      "image": "data/ocr_progressive_v1/images/ocr_l6_01_memo.png",
+      "image_sha256": "901f09da1bbda8e14b1cec9c35bf66bc62ba5030c96919db010b068208332ae4",
+      "descriptor_sha256": "6349b0ffbee43fbfd6b1af31f5475b90f9332918a73093605121ead1c9f5e41c"
+    },
+    {
+      "id": "ocr_l6_02_form",
+      "level": 6,
+      "kind": "form",
+      "image": "data/ocr_progressive_v1/images/ocr_l6_02_form.png",
+      "image_sha256": "9c2386e6e9493021454d35a70969686d88fefb6abca74c33536604b6a7de6985",
+      "descriptor_sha256": "09edd3696f80ed792c960e2522bf1052db1d2f7411a1aa0eeb938385a6f81f52"
+    },
+    {
+      "id": "ocr_l6_03_table",
+      "level": 6,
+      "kind": "table",
+      "image": "data/ocr_progressive_v1/images/ocr_l6_03_table.png",
+      "image_sha256": "4bfc137719a35262493da9b5fce27d19b99d6655fde2a8074d62087eb28d24db",
+      "descriptor_sha256": "15df25a1468e3c7821e04c3fcbd3c39095f2c9983717e843e4f1763bbd40957d"
+    },
+    {
+      "id": "ocr_l6_04_chart",
+      "level": 6,
+      "kind": "chart",
+      "image": "data/ocr_progressive_v1/images/ocr_l6_04_chart.png",
+      "image_sha256": "6efaab9ae939b86230eda17a99db55857ccad071208e24cfdd194185bb850813",
+      "descriptor_sha256": "abb0e051edcd86b45e39788810c984540eba6e53d688b4fc74d9b042adec2bc9"
+    },
+    {
+      "id": "ocr_l6_05_diagram",
+      "level": 6,
+      "kind": "diagram",
+      "image": "data/ocr_progressive_v1/images/ocr_l6_05_diagram.png",
+      "image_sha256": "bcf7b515523d495ae2e39fc6ff339412795b8036532a8f7e17442d8fe43b8067",
+      "descriptor_sha256": "daf17a3d1c87f61d5cc8bc689633bd852d97a14d587a311413bfac4ba2ab0555"
+    }
+  ]
+}

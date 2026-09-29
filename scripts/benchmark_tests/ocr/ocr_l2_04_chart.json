@@ -1,0 +1,25 @@
+{
+  "id": "ocr_l2_04_chart",
+  "family": "Original progressive OCR / document understanding",
+  "category": "vision_ocr",
+  "name": "Level 2: chart (formatted)",
+  "difficulty_level": 2,
+  "difficulty": "formatted",
+  "benchmark_profile": "ocr-progressive-v1",
+  "requires_image": true,
+  "image_asset": "data/ocr_progressive_v1/images/ocr_l2_04_chart.png",
+  "image_sha256": "0163efcd8815721ff4e35bc9f690db34982f1fbfbf8c0aa9048540a2ad2c37c6",
+  "image_width": 1200,
+  "image_height": 1550,
+  "transformations": [],
+  "prompt": "Analyze the bar chart. Name the region with the highest count, read East's count, and calculate highest minus lowest. Return counts as integer strings. Read only the attached image. Return only one JSON object with exactly these keys: highest_region, east_count, highest_minus_lowest. Every value must be a string. Do not use external tools or prior answers.",
+  "grading": {
+    "kind": "ocr",
+    "expected": {
+      "highest_region": "North",
+      "east_count": "37",
+      "highest_minus_lowest": "25"
+    },
+    "transcription_fields": []
+  }
+}

@@ -8,6 +8,7 @@ from accuracy_grading import (
     grade_task,
 )
 from benchmark_tests import DEFAULT_SUITE, SUITE_CHOICES, core_task_catalog, suite_task_catalog
+from vision_benchmark_support import task_image_base64, ocr_provenance
 from benchmark_settings import SETTINGS
 from platform_support import create_sampler, run_metadata
 from standard_local_tasks import (
@@ -2552,7 +2553,7 @@ def run_task(
     if think_present:
         payload['think'] = think_value
     if task.get('requires_image'):
-        payload['images']=[make_text_png_base64(task.get('image_text','LOCAL OCR 42'))]
+        payload['images']=[task_image_base64(task)]
     result = stream_generate(
         base_url.rstrip('/') + '/api/generate', payload, timeout,
         connection_observer=(
@@ -3459,7 +3460,7 @@ def main(argv=None):
     ap.add_argument('--list-tasks', '--list-tests', dest='list_tasks', action='store_true', help='List selected/profile task IDs without contacting Ollama.')
     args=ap.parse_args(argv)
 
-    if args.suite != DEFAULT_SUITE:
+    if args.suite not in (DEFAULT_SUITE, "ocr"):
         ap.error(f'--suite {args.suite} requires its isolated tool-capable agent runner')
 
     if args.task_profile is None:
@@ -3484,6 +3485,13 @@ def main(argv=None):
         BENCHMARK_PROFILE if args.task_profile == 'core'
         else f'{STANDARD_LOCAL_PROFILE}:{args.task_profile}'
     )
+
+    if args.suite == "ocr":
+        if args.task_profile != "core":
+            ap.error("--suite ocr cannot be combined with another task profile")
+        if args.thinking == "paired":
+            ap.error("OCR difficulty progression requires a sequential single-arm run")
+        benchmark_profile = "ocr-progressive-v1"
 
     if args.limit_tasks < 0:
         ap.error('--limit-tasks must be zero or greater')
@@ -3757,9 +3765,10 @@ def main(argv=None):
         jsonl_path=out_dir/f'{report_prefix}.jsonl'
         md_path=out_dir/f'{report_prefix}.md'
     metadata['run_id']=stamp
+    metadata.update(ocr_provenance(tasks))
     metadata.update({
         'benchmark_profile': benchmark_profile,
-        'grading_profile': GRADING_PROFILE,
+        'grading_profile': 'ocr-progressive-v1' if args.suite == 'ocr' else GRADING_PROFILE,
         'output_token_policy': OUTPUT_TOKEN_POLICY,
         'output_token_limit': OUTPUT_TOKEN_LIMIT,
         'response_timeout_seconds': args.timeout,
@@ -4064,7 +4073,7 @@ def main(argv=None):
                         'protocol_valid':str(protocol_valid).lower(),'protocol_error':protocol_error,
                         'model_aliases':','.join(model.get('aliases') or [model['name']]),
                         **qualification_fields,
-                        'benchmark_profile':benchmark_profile,'grading_profile':GRADING_PROFILE,
+                        'benchmark_profile':benchmark_profile,'grading_profile':metadata['grading_profile'],
                         'runner_sha256':metadata['runner_sha256'],'grader_sha256':metadata['grader_sha256'],'planner_sha256':metadata.get('planner_sha256',''),
                         'output_token_policy':OUTPUT_TOKEN_POLICY,
                         'output_token_limit':OUTPUT_TOKEN_LIMIT,'num_predict':OUTPUT_TOKEN_LIMIT,'temperature':0,'seed':42,'response_timeout_seconds':args.timeout,
@@ -4140,6 +4149,7 @@ def main(argv=None):
                         'metadata':record_metadata,'row':row,'grading':grading,
                         'raw':raw,'response':text,'thinking':thinking,
                         'telemetry_samples':samples,
+                        'image_evidence': ({'image_asset': task.get('image_asset'), 'sha256': task.get('image_sha256'), 'difficulty_level': task.get('difficulty_level'), 'benchmark_profile': task.get('benchmark_profile'), 'transport': 'ollama_generate_images', 'attempted': result['status'] != 'skip'} if task.get('image_asset') else None),
                         'resource_guard':task_resource_evidence,
                     }
                     if paired_plan and schema3_qualification_enabled(paired_plan):
@@ -4260,6 +4270,8 @@ def main(argv=None):
         f"Plan SHA-256: `{metadata.get('plan_sha256') or 'not applicable'}`",'',
         f'Models: {len(models)}','',f'Tasks per model: {len(tasks)}','',
         (
+            'Suite definition: 30 original image-only OCR cases, six ascending difficulty levels; text-only models skip all cases.'
+            if args.suite == 'ocr' else
             'Suite definition: 3 smoke tests + 15 standardized mini tasks = 18 defined tests. '
             'Text-only models skip OCR, leaving 17 applicable tests.'
             if args.task_profile == 'core' else

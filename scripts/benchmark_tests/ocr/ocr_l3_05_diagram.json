@@ -1,0 +1,26 @@
+{
+  "id": "ocr_l3_05_diagram",
+  "family": "Original progressive OCR / document understanding",
+  "category": "vision_ocr",
+  "name": "Level 3: diagram (layout)",
+  "difficulty_level": 3,
+  "difficulty": "layout",
+  "benchmark_profile": "ocr-progressive-v1",
+  "requires_image": true,
+  "image_asset": "data/ocr_progressive_v1/images/ocr_l3_05_diagram.png",
+  "image_sha256": "339038bb82bae7531048d652033090b2e86d9e272ab4c3ebc98fe47cb60658e7",
+  "image_width": 1200,
+  "image_height": 1550,
+  "transformations": [],
+  "prompt": "Follow the arrows in the approval diagram. Read the numeric threshold, identify the next action for an amount exactly equal to it, and the next action for an amount greater than it. Also identify the step immediately after Auto approve. Read only the attached image. Return only one JSON object with exactly these keys: threshold, equal_amount_next, above_threshold_next, after_auto_approve. Every value must be a string. Do not use external tools or prior answers.",
+  "grading": {
+    "kind": "ocr",
+    "expected": {
+      "threshold": "325",
+      "equal_amount_next": "Auto approve",
+      "above_threshold_next": "Manager review",
+      "after_auto_approve": "Notify requester"
+    },
+    "transcription_fields": []
+  }
+}

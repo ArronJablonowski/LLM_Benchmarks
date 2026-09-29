@@ -145,6 +145,10 @@ def grade_task(task, status, text, skipped=False):
     if status != "ok":
         return _base_result("fail", "transport", f"generation status was {status!r}")
 
+    if task.get("ocr_grader"):
+        from ocr_grading import grade_ocr
+        return grade_ocr(task, text)
+
     if task.get("python_grader"):
         return grade_python_function(text, task["python_grader"])
 

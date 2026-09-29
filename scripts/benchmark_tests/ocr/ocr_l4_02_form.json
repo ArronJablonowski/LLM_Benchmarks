@@ -1,0 +1,30 @@
+{
+  "id": "ocr_l4_02_form",
+  "family": "Original progressive OCR / document understanding",
+  "category": "vision_ocr",
+  "name": "Level 4: form (scan)",
+  "difficulty_level": 4,
+  "difficulty": "scan",
+  "benchmark_profile": "ocr-progressive-v1",
+  "requires_image": true,
+  "image_asset": "data/ocr_progressive_v1/images/ocr_l4_02_form.png",
+  "image_sha256": "de0e16166c3a36a0f20f67057d05b0e6b9320f15ac106fbdba1066522f4e4a72",
+  "image_width": 1200,
+  "image_height": 1550,
+  "transformations": [
+    "page skew +/-1.4 degrees",
+    "scan tint and reduced contrast"
+  ],
+  "prompt": "Read the reference, requested date, amount (digits and decimal only), checked priority and authorization. For a fully obscured authorization return exactly unreadable. Read only the attached image. Return only one JSON object with exactly these keys: reference, date, amount, priority, authorization. Every value must be a string. Do not use external tools or prior answers.",
+  "grading": {
+    "kind": "ocr",
+    "expected": {
+      "reference": "D-072",
+      "date": "2026-11-14",
+      "amount": "276.05",
+      "priority": "Urgent",
+      "authorization": "Approved"
+    },
+    "transcription_fields": []
+  }
+}

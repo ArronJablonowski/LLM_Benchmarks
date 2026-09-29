@@ -218,6 +218,12 @@ toolsets. OpenClaw uses unique benchmark sessions and an explicit per-run
 The runners use the same core task registry. Run each path separately so
 their scores remain attributable to their actual transport and agent behavior.
 
+### Progressive OCR and document images
+
+The separate `ocr` suite adds 30 image-only tests across six ascending difficulty levels: Word-style memo transcription, forms/checkboxes, table extraction and arithmetic, bar-chart analysis, and diagram reading. Harder fixtures add layout distractors, scan degradation, redaction and untrusted document instructions. Each task has its own hash-bound PNG and strict deterministic grading, with field accuracy and transcription CER/WER diagnostics.
+
+See [suite design, supported runners and limitations](docs/ocr-progressive-v1.md) and the [30-image gallery](data/ocr_progressive_v1/gallery.html). List without inference with `python3 scripts/ollama_standardized_local_benchmarks.py --suite ocr --list-tasks`. DarwinRouter image transport remains unqualified; adding this suite does not manufacture OCR routing evidence.
+
 ### DarwinRouter Standard path
 
 DarwinRouter has a native Standard-suite adapter that submits each text task

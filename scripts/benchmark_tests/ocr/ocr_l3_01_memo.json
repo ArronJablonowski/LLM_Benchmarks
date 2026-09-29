@@ -1,0 +1,27 @@
+{
+  "id": "ocr_l3_01_memo",
+  "family": "Original progressive OCR / document understanding",
+  "category": "vision_ocr",
+  "name": "Level 3: memo (layout)",
+  "difficulty_level": 3,
+  "difficulty": "layout",
+  "benchmark_profile": "ocr-progressive-v1",
+  "requires_image": true,
+  "image_asset": "data/ocr_progressive_v1/images/ocr_l3_01_memo.png",
+  "image_sha256": "9b11740ad360584b81f50862c68f4542985032b0fda72e93a65456f65e8081d7",
+  "image_width": 1200,
+  "image_height": 1550,
+  "transformations": [],
+  "prompt": "Transcribe only the main memorandum body, excluding masthead, title, sidebar and footnote. Also extract the room number and owner. Read only the attached image. Return only one JSON object with exactly these keys: body, room, owner. Every value must be a string. Do not use external tools or prior answers.",
+  "grading": {
+    "kind": "ocr",
+    "expected": {
+      "body": "Project PA-703 moves to Room 207. The review begins at 11:35 on October 13, 2026. Bring 6 signed copies. The owner is Morgan Vale. Draft material stays in the blue folder. Do not distribute the unsigned version. The revised allowance is $1419.50, excluding delivery.",
+      "room": "207",
+      "owner": "Morgan Vale"
+    },
+    "transcription_fields": [
+      "body"
+    ]
+  }
+}
