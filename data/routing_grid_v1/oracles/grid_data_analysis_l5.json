@@ -1,0 +1,4 @@
+{
+  "kind": "sql",
+  "reference_sql": "WITH d AS (SELECT DISTINCT * FROM events),r AS (SELECT order_id,state,ROW_NUMBER() OVER(PARTITION BY order_id ORDER BY seq DESC) n FROM d) SELECT order_id,state FROM r WHERE n=1 ORDER BY order_id"
+}

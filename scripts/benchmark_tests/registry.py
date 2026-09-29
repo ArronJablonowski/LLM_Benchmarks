@@ -22,7 +22,7 @@ CREATIVE_COMPONENT_DIRECTORY = Path(__file__).with_name("creative")
 CYBERSECURITY_COMPONENT_DIRECTORY = Path(__file__).with_name("cybersecurity")
 COMMANDLINE_COMPONENT_DIRECTORY = Path(__file__).with_name("commandline")
 DEFAULT_SUITE = "standard"
-SUITE_CHOICES = (DEFAULT_SUITE, "coding", "creative", "cybersecurity", "commandline", "ocr")
+SUITE_CHOICES = (DEFAULT_SUITE, "coding", "creative", "cybersecurity", "commandline", "ocr", "routing-grid")
 REQUIRED_FIELDS = {"id", "family", "category", "name", "prompt", "grading"}
 CORE_TASK_ORDER = (
     "exact_reply", "simple_reasoning", "coding_micro", "ifeval_exact",
@@ -233,9 +233,9 @@ def _coding_tasks() -> tuple[dict[str, Any], ...]:
     actual_ids = set(task_ids)
     expected_ids = set(CODING_TASK_ORDER)
     if actual_ids != expected_ids:
-        missing = sorted(expected_ids - actual_ids)
+        missing_ids = sorted(expected_ids - actual_ids)
         extra = sorted(actual_ids - expected_ids)
-        details = (["missing " + ", ".join(missing)] if missing else []) + (["unlisted " + ", ".join(extra)] if extra else [])
+        details = (["missing " + ", ".join(missing_ids)] if missing_ids else []) + (["unlisted " + ", ".join(extra)] if extra else [])
         raise BenchmarkComponentError("coding task order is out of sync: " + "; ".join(details))
     by_id = {task["id"]: task for task in tasks}
     return tuple(by_id[task_id] for task_id in CODING_TASK_ORDER)
@@ -418,6 +418,9 @@ def suite_task_catalog(
     """
     if suite == DEFAULT_SUITE:
         return core_task_catalog()
+    if suite == "routing-grid":
+        from routing_grid_suite import load_catalog
+        return load_catalog()
     if suite == "ocr":
         return _ocr_tasks()
     if suite == "coding":

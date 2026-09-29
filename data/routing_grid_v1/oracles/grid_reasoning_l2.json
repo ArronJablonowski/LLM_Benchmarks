@@ -1,0 +1,11 @@
+{
+  "kind": "exact_json",
+  "expected": {
+    "order": [
+      "A",
+      "C",
+      "B",
+      "D"
+    ]
+  }
+}

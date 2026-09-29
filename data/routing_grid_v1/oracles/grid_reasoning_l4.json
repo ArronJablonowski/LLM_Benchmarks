@@ -1,0 +1,10 @@
+{
+  "kind": "exact_json",
+  "expected": {
+    "projects": [
+      "A",
+      "B"
+    ],
+    "value": 17
+  }
+}

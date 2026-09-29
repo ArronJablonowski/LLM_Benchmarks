@@ -1,0 +1,9 @@
+{
+  "kind": "exact_json",
+  "expected": {
+    "days": 45,
+    "citations": [
+      "S2"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "grid_audio_l3",
+  "category": "audio",
+  "domain": "audio",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 3,
+  "difficulty": "multi-source",
+  "name": "Two-speaker handoff",
+  "challenge": "Attribute sequential speakers and tasks",
+  "prompt": "Return {\"sender\":string,\"reviewer\":string,\"review_day\":string}.",
+  "inputs": {},
+  "assets": [
+    {
+      "path": "assets/audio_l3.wav",
+      "sha256": "3b9dd3f3089a37430df1900693a4676808b892095d239f4add84c6d1d1952c53",
+      "mime": "audio/wav"
+    }
+  ],
+  "required_capabilities": [
+    "audio_input"
+  ],
+  "subtask": "speech_understanding"
+}

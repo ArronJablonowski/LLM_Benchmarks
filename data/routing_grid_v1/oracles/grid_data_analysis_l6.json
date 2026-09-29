@@ -1,0 +1,4 @@
+{
+  "kind": "sql",
+  "reference_sql": "WITH r AS (SELECT order_id,SUM(cents) cents FROM refunds GROUP BY order_id),d AS (SELECT o.day,SUM(o.cents) gross,SUM(COALESCE(r.cents,0)) refunded FROM orders o LEFT JOIN r ON r.order_id=o.id WHERE o.status='paid' GROUP BY o.day) SELECT day,gross,refunded,gross-refunded,SUM(gross-refunded) OVER(ORDER BY day) FROM d ORDER BY day"
+}

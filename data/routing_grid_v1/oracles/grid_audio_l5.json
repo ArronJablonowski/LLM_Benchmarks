@@ -1,0 +1,18 @@
+{
+  "kind": "exact_json",
+  "expected": {
+    "day": "Wednesday",
+    "time": "11:15",
+    "location": "north gate"
+  },
+  "transcript": [
+    [
+      "Daniel",
+      "The pickup is on Monday at ten."
+    ],
+    [
+      "Samantha",
+      "The date has changed to Wednesday. The time has changed to eleven fifteen. The location remains the north gate."
+    ]
+  ]
+}

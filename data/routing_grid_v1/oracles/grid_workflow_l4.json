@@ -1,0 +1,19 @@
+{
+  "kind": "workflow",
+  "reference_calls": [
+    {
+      "op": "charge",
+      "cents": 25,
+      "key": "K4"
+    },
+    {
+      "op": "charge",
+      "cents": 25,
+      "key": "K4"
+    },
+    {
+      "op": "confirm",
+      "key": "K4"
+    }
+  ]
+}

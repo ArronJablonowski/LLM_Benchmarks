@@ -1,0 +1,18 @@
+{
+  "id": "grid_reasoning_l1",
+  "category": "reasoning",
+  "domain": "reasoning",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 1,
+  "difficulty": "foundation",
+  "name": "Inventory balance",
+  "challenge": "One deterministic arithmetic constraint",
+  "prompt": "A store has 38 boxes. It ships 11 and receives 7. Return {\"boxes\":integer}.",
+  "inputs": {},
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

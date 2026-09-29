@@ -1,0 +1,8 @@
+{
+  "kind": "exact_json",
+  "expected": {
+    "feasible": false,
+    "minimum_makespan": 4,
+    "shortfall_hours": 1
+  }
+}

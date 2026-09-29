@@ -1,0 +1,18 @@
+{
+  "id": "grid_writing_l6",
+  "category": "writing",
+  "domain": "writing",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 6,
+  "difficulty": "expert",
+  "name": "Decision memo with limited evidence",
+  "challenge": "Recommendation, uncertainty and bounded inference",
+  "prompt": "Write a 220–300 word decision memo with headings EVIDENCE, OPTIONS, RECOMMENDATION, UNKNOWNS. Option A costs $8,000 and needs 3 staff-days; B costs $5,000 and needs 8. Budget $9,000; staff capacity 5 days. Both have only a 10-user pilot, no reliability measurement. Recommend a feasible option with a reversible next step; do not invent reliability or financial returns. State what evidence would change the recommendation.",
+  "inputs": {},
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

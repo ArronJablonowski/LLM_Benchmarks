@@ -1,0 +1,18 @@
+{
+  "id": "grid_creative_l3",
+  "category": "creative",
+  "domain": "creative",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 3,
+  "difficulty": "multi-source",
+  "name": "Dialogue subtext",
+  "challenge": "Two distinct voices without exposition",
+  "prompt": "Write a 140–200 word scene: two siblings pack a kitchen while disagreeing about selling the house. Convey disagreement through dialogue and action without explicitly stating their emotions. No narrator backstory.",
+  "inputs": {},
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

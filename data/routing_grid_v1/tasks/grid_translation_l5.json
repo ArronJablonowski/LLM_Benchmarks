@@ -1,0 +1,29 @@
+{
+  "id": "grid_translation_l5",
+  "category": "translation",
+  "domain": "translation",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 5,
+  "difficulty": "adversarial",
+  "name": "Arabic invoice clarification",
+  "challenge": "RTL text, currency and numeric fidelity",
+  "prompt": "Translate the supplied source into Arabic. Return only the translation. Preserve the listed literals exactly.",
+  "inputs": {
+    "source": "Invoice INV-204 is for 1,250.50 USD, not 1,205.50 USD. Payment is due on 2027-08-19.",
+    "target_language": "Arabic",
+    "protected_literals": [
+      "INV-204",
+      "1,250.50",
+      "1,205.50",
+      "USD",
+      "2027-08-19"
+    ],
+    "instructions": "Keep ASCII numbers and identifiers unchanged; render negation and due date accurately in natural Arabic."
+  },
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

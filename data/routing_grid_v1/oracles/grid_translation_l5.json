@@ -1,0 +1,19 @@
+{
+  "kind": "human_text",
+  "protected": [
+    "INV-204",
+    "1,250.50",
+    "1,205.50",
+    "USD",
+    "2027-08-19"
+  ],
+  "word_range": [
+    1,
+    250
+  ],
+  "dimensions": {
+    "semantic_fidelity": "Every source claim, negation and uncertainty is preserved; nothing invented.",
+    "language_quality": "Natural, grammatical Arabic, with appropriate register.",
+    "task_constraints": "Keep ASCII numbers and identifiers unchanged; render negation and due date accurately in natural Arabic."
+  }
+}

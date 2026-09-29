@@ -3,8 +3,9 @@
 ## About
 
 Local LLM Benchmark Suite is a reproducible evaluation toolkit for comparing
-local and cloud-connected models on your own hardware. It contains five
-isolated suites—Standard, Coding, Creative, Cybersecurity, and Command Line—plus guarded,
+local and cloud-connected models on your own hardware. It contains isolated
+suites for Standard, Coding, Creative, Cybersecurity, Command Line and OCR,
+plus the progressive Routing Grid pack and guarded,
 opt-in published profiles. Each campaign preserves the evidence needed to
 explain a result: model and runtime provenance, agent harness, task outcome,
 response timing, temperature, and peak-memory telemetry. Scores compare the
@@ -43,6 +44,8 @@ results from unlike evaluations from being merged.
 | `creative` | 6 design briefs, including Three.js and animated Next.js | Subjective human review; no automated aesthetic score | `creative_human_review.html` |
 | `cybersecurity` | 24 original tasks across 8 security tracks | Deterministic hidden checks on isolated local fixtures | `cybersecurity_agent_report.html` |
 | `commandline` | 20 escalating shell, administration, menu, firewall, and incident-response labs by default; 120 with `--full-suite` | Hidden sequence/evidence checks against safe simulated systems | Dedicated CSV and canonical JSONL evidence |
+| `ocr` | 30 real-image tasks, six levels across five document/visual families | Strict structured extraction and transcription checks | Separate OCR evidence and reports |
+| `routing-grid` | 60 tasks: six levels for each of ten previously unmeasured routing cards | Deterministic JSON/SQL/workflow checks plus required human language/media review | Offline input export and scoped assessment JSON; no model dispatch |
 | `aime2026`, `gpqa-diamond`, `standard-local` | 30, 198, or 228 official offline items | Exact-answer local grading | Standard evidence files, labeled by profile |
 | ExploitGym `sample` / `v1` | 20 / 869 published exploit-development instances | Upstream flag and on-target scoring | Separate section in `cybersecurity_agent_report.html` |
 
@@ -50,6 +53,10 @@ Start with `standard` below. The [Coding](#coding-agent-suite),
 [Creative](#creative-suite), and [Cybersecurity](#cybersecurity-suite) sections
 link to their complete task maps and execution guides.
 The Command Line suite is documented in [`docs/COMMANDLINE_SUITE.md`](docs/COMMANDLINE_SUITE.md).
+See [Progressive OCR](docs/ocr-progressive-v1.md) and the
+[Routing Grid task pack](docs/ROUTING_GRID_BENCHMARKS.md) for their separate contracts.
+To inspect the new pack offline, run
+`python3 scripts/routing_grid_benchmarks.py --list-tasks`.
 
 ## Quick start
 
@@ -611,6 +618,7 @@ Useful project references:
 | [`docs/PROVENANCE.md`](docs/PROVENANCE.md) | Source, model, runtime, and artifact provenance |
 | [`docs/BENCHMARK_COMPONENTS.md`](docs/BENCHMARK_COMPONENTS.md) | Standard task-component structure and extension workflow |
 | [`docs/CODING_SUITE.md`](docs/CODING_SUITE.md) | Coding and web-development projects, hidden checks, and execution |
+| [`docs/ROUTING_GRID_BENCHMARKS.md`](docs/ROUTING_GRID_BENCHMARKS.md) | Ten routing-card categories, progressive tasks, offline graders and human review |
 | [`docs/CREATIVE_SUITE.md`](docs/CREATIVE_SUITE.md) | Creative briefs and human-review protocol |
 | [`docs/CYBERSECURITY_SUITE.md`](docs/CYBERSECURITY_SUITE.md) | Security tracks, standards, safety, and ExploitGym |
 | [`docs/DGX_SPARK.md`](docs/DGX_SPARK.md) | Spark preflight, telemetry, context, and resource safeguards |

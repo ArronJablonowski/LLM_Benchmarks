@@ -1,0 +1,33 @@
+{
+  "id": "grid_research_l3",
+  "category": "research",
+  "domain": "research",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 3,
+  "difficulty": "multi-source",
+  "name": "Joined document evidence",
+  "challenge": "Join entity and schedule across documents",
+  "prompt": "Which team owns Kestrel and on what weekday is its review? Return {\"team\":string,\"weekday\":string,\"citations\":[IDs in sorted order]}.",
+  "inputs": {
+    "sources": [
+      {
+        "id": "S1",
+        "text": "The Larch team owns project Kestrel. The Ash team owns project Otter."
+      },
+      {
+        "id": "S2",
+        "text": "Larch reviews are on Thursday. Ash reviews are on Tuesday."
+      },
+      {
+        "id": "S3",
+        "text": "Project Heron previously belonged to Larch."
+      }
+    ]
+  },
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

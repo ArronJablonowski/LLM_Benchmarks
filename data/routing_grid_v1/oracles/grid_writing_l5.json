@@ -1,0 +1,15 @@
+{
+  "kind": "human_text",
+  "word_range": [
+    150,
+    220
+  ],
+  "protected": [
+    "20%"
+  ],
+  "dimensions": {
+    "factual_fidelity": "Preserve every supplied fact, scope, qualification and uncertainty; no unsupported claims.",
+    "usefulness": "Clear, complete communication appropriate to the specified audience and decision.",
+    "task_constraints": "Follow all requested structure, tone, length and content restrictions."
+  }
+}

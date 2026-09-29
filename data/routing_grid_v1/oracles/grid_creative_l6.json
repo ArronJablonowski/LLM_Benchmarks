@@ -1,0 +1,19 @@
+{
+  "kind": "human_text",
+  "word_range": [
+    300,
+    420
+  ],
+  "protected": [
+    "START",
+    "LEFT",
+    "RIGHT",
+    "END-A",
+    "END-B"
+  ],
+  "dimensions": {
+    "originality": "Specific, original creative choices rather than generic filler.",
+    "coherence": "Consistent characters, facts and causality; earned resolution and meaningful branches where requested.",
+    "task_constraints": "Meet every form, diction, perspective and narrative constraint in the brief."
+  }
+}

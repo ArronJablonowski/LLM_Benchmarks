@@ -1,0 +1,23 @@
+{
+  "kind": "workflow",
+  "reference_calls": [
+    {
+      "op": "read_ticket",
+      "id": "T5"
+    },
+    {
+      "op": "close_ticket",
+      "id": "T5",
+      "version": 1
+    },
+    {
+      "op": "read_ticket",
+      "id": "T5"
+    },
+    {
+      "op": "close_ticket",
+      "id": "T5",
+      "version": 2
+    }
+  ]
+}

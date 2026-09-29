@@ -1,0 +1,23 @@
+{
+  "id": "grid_workflow_l5",
+  "category": "workflow",
+  "domain": "workflow",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 5,
+  "difficulty": "adversarial",
+  "name": "Recover from version conflict",
+  "challenge": "Recover from version conflict",
+  "prompt": "Execute a simulated workflow by returning bare JSON {\"calls\":[{\"op\":string, ...arguments}]}. The grader executes this bounded call sequence, retaining errors and effects. Use only the documented API; no network or real accounts exist. All desired final states must be reached, with no extra writes. Read T5 (version 1). First close with version 1 conflicts because another actor updates it to version 2. Re-read, then close with version 2. Never force-write.",
+  "inputs": {
+    "api": [
+      "read_ticket(id)",
+      "close_ticket(id,version)"
+    ]
+  },
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

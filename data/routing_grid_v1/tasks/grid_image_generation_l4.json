@@ -1,0 +1,25 @@
+{
+  "id": "grid_image_generation_l4",
+  "category": "image_generation",
+  "domain": "image_generation",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 4,
+  "difficulty": "constraints",
+  "name": "Material and lighting",
+  "challenge": "Coherent rendering across mixed materials",
+  "prompt": "Generate the requested image artifact. Return only bare JSON {\"artifact\":\"filename.png\"} referring to an actual generated file. Text descriptions, code, SVG and existing input copies are not outputs. A transparent glass teapot beside a brushed steel spoon on dark oak. Warm light from upper left, consistent shadows. Teapot handle on the right, spout on the left. No text.",
+  "inputs": {
+    "brief": "A transparent glass teapot beside a brushed steel spoon on dark oak. Warm light from upper left, consistent shadows. Teapot handle on the right, spout on the left. No text.",
+    "technical_requirements": {
+      "format": "png",
+      "min_width": 512,
+      "min_height": 512
+    }
+  },
+  "assets": [],
+  "required_capabilities": [
+    "image_generation"
+  ]
+}

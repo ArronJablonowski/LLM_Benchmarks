@@ -1,0 +1,18 @@
+{
+  "id": "grid_writing_l2",
+  "category": "writing",
+  "domain": "writing",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 2,
+  "difficulty": "structured",
+  "name": "Plain language rewrite",
+  "challenge": "Preserve obligation and exception",
+  "prompt": "Rewrite in 60–100 words for a new employee: 'Personnel shall submit expenses within thirty calendar days, except where a documented outage prevents timely submission; in such event, submission shall occur within five days of service restoration.' Explain the exception without changing either deadline.",
+  "inputs": {},
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

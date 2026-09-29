@@ -1,0 +1,26 @@
+{
+  "id": "grid_translation_l3",
+  "category": "translation",
+  "domain": "translation",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 3,
+  "difficulty": "multi-source",
+  "name": "German formal instruction",
+  "challenge": "Register, negation and deadline",
+  "prompt": "Translate the supplied source into German. Return only the translation. Preserve the listed literals exactly.",
+  "inputs": {
+    "source": "Please do not restart the device before 18:00. Contact Ms. Weber if the amber light remains on.",
+    "target_language": "German",
+    "protected_literals": [
+      "18:00",
+      "Weber"
+    ],
+    "instructions": "Use formal Sie; preserve prohibition, condition and amber, not red."
+  },
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "grid_writing_l4",
+  "category": "writing",
+  "domain": "writing",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 4,
+  "difficulty": "constraints",
+  "name": "Audience adaptation",
+  "challenge": "Same facts, two distinct voices",
+  "prompt": "Return two labeled sections, CUSTOMERS and ENGINEERS, totaling 140–200 words. Facts: service unavailable 10:00–10:18 UTC; retry queue saturated; queued jobs preserved; root cause under investigation. Customers need impact and next update at 12:00 UTC; engineers need evidence and next diagnostic step. Do not invent root cause or lost jobs.",
+  "inputs": {},
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

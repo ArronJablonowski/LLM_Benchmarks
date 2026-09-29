@@ -1,0 +1,45 @@
+{
+  "id": "grid_reasoning_l4",
+  "category": "reasoning",
+  "domain": "reasoning",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 4,
+  "difficulty": "constraints",
+  "name": "Budget optimum",
+  "challenge": "Optimize value under two resource constraints",
+  "prompt": "Choose projects within cost <=10 and staff <=5. Maximize value; tie-break by lexicographically smallest sorted ID list. Return {\"projects\":[IDs sorted],\"value\":integer}.",
+  "inputs": {
+    "projects": [
+      {
+        "id": "A",
+        "cost": 6,
+        "staff": 3,
+        "value": 10
+      },
+      {
+        "id": "B",
+        "cost": 4,
+        "staff": 2,
+        "value": 7
+      },
+      {
+        "id": "C",
+        "cost": 5,
+        "staff": 2,
+        "value": 9
+      },
+      {
+        "id": "D",
+        "cost": 3,
+        "staff": 3,
+        "value": 6
+      }
+    ]
+  },
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "grid_video_generation_l6",
+  "category": "video_generation",
+  "domain": "video_generation",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 6,
+  "difficulty": "expert",
+  "name": "Three-shot continuity",
+  "challenge": "Cross-cut identity, chronology and readable closing title",
+  "prompt": "Generate the requested video artifact. Return only bare JSON {\"artifact\":\"filename.mp4\"} referring to an actual generated file. Text descriptions, code, SVG and existing input copies are not outputs. Three shots in order: close-up of a closed green notebook with one gold star; wider shot of the same notebook opening; close-up of its blank first page. Preserve notebook identity across cuts. End with readable title READY on that page. No people, extra notebooks or other words.",
+  "inputs": {
+    "brief": "Three shots in order: close-up of a closed green notebook with one gold star; wider shot of the same notebook opening; close-up of its blank first page. Preserve notebook identity across cuts. End with readable title READY on that page. No people, extra notebooks or other words.",
+    "technical_requirements": {
+      "format": "mp4",
+      "min_width": 512,
+      "min_height": 512,
+      "min_seconds": 4,
+      "max_seconds": 12,
+      "min_fps": 12
+    }
+  },
+  "assets": [],
+  "required_capabilities": [
+    "video_generation"
+  ]
+}

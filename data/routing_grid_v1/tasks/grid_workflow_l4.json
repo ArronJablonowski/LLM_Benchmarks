@@ -1,0 +1,23 @@
+{
+  "id": "grid_workflow_l4",
+  "category": "workflow",
+  "domain": "workflow",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 4,
+  "difficulty": "constraints",
+  "name": "Preserve idempotency after ambiguous acknowledgement",
+  "challenge": "Preserve idempotency after ambiguous acknowledgement",
+  "prompt": "Execute a simulated workflow by returning bare JSON {\"calls\":[{\"op\":string, ...arguments}]}. The grader executes this bounded call sequence, retaining errors and effects. Use only the documented API; no network or real accounts exist. All desired final states must be reached, with no extra writes. Charge 25 cents once. The first charge is applied but replies timeout; retry once with the same idempotency key \"K4\", then confirm receipt.",
+  "inputs": {
+    "api": [
+      "charge(cents,key)",
+      "confirm(key)"
+    ]
+  },
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

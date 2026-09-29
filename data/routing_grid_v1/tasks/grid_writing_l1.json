@@ -1,0 +1,18 @@
+{
+  "id": "grid_writing_l1",
+  "category": "writing",
+  "domain": "writing",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 1,
+  "difficulty": "foundation",
+  "name": "Short announcement",
+  "challenge": "Audience and length",
+  "prompt": "Write a 40–70 word internal announcement: the Cedar library closes Friday at 16:00 for maintenance and reopens Monday at 09:00. Friendly, factual, no invented contact details.",
+  "inputs": {},
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

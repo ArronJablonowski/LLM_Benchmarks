@@ -1,0 +1,22 @@
+{
+  "kind": "workflow",
+  "reference_calls": [
+    {
+      "op": "reserve",
+      "item": "I6"
+    },
+    {
+      "op": "pay",
+      "cents": 40,
+      "key": "K6"
+    },
+    {
+      "op": "release",
+      "item": "I6"
+    },
+    {
+      "op": "record_failure",
+      "key": "K6"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "kind": "workflow",
+  "reference_calls": [
+    {
+      "op": "create_ticket",
+      "id": "T1",
+      "title": "Printer offline"
+    }
+  ]
+}

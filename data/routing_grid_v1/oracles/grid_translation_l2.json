@@ -1,0 +1,17 @@
+{
+  "kind": "human_text",
+  "protected": [
+    "{name}",
+    "{order_id}",
+    "Cedar"
+  ],
+  "word_range": [
+    1,
+    250
+  ],
+  "dimensions": {
+    "semantic_fidelity": "Every source claim, negation and uncertainty is preserved; nothing invented.",
+    "language_quality": "Natural, grammatical French, with appropriate register.",
+    "task_constraints": "Preserve date, placeholders and brand; natural French, no invented facts."
+  }
+}

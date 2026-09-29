@@ -1,0 +1,12 @@
+{
+  "kind": "exact_json",
+  "expected": {
+    "remaining_cartons": 22
+  },
+  "transcript": [
+    [
+      "Samantha",
+      "Start with eighteen cartons. Ship five cartons. Then receive nine cartons. What remains is not the original count."
+    ]
+  ]
+}

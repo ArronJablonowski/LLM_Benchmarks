@@ -1,0 +1,18 @@
+{
+  "kind": "exact_json",
+  "expected": {
+    "sender": "Nora",
+    "reviewer": "Owen",
+    "review_day": "Tuesday"
+  },
+  "transcript": [
+    [
+      "Samantha",
+      "I am Nora. I will send the draft."
+    ],
+    [
+      "Daniel",
+      "I am Owen. I will review the draft on Tuesday."
+    ]
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "human_text",
+  "protected": [],
+  "word_range": [
+    1,
+    250
+  ],
+  "dimensions": {
+    "semantic_fidelity": "Every source claim, negation and uncertainty is preserved; nothing invented.",
+    "language_quality": "Natural, grammatical Spanish, with appropriate register.",
+    "task_constraints": "Preserve opening time and free admission."
+  }
+}
