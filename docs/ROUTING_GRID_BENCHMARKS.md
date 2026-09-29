@@ -77,10 +77,10 @@ python3 scripts/routing_grid_benchmarks.py \
 
 The registry also exposes `suite_task_catalog("routing-grid")`. Legacy inference
 runners deliberately reject this suite: they cannot silently send speech as text
-or treat descriptions of generated media as actual output. This addition is a
-**fixture/export/grading pack**, not a new DarwinRouter execution adapter. A
-future authorized campaign must connect a modality-capable adapter to these
-contracts. None of the examples above executes a model or updates its ranking.
+or treat descriptions of generated media as actual output. The separate [DarwinRouter campaign adapter](DARWINROUTER_ROUTING_GRID_CAMPAIGN.md)
+now executes supported text and audio cases through the SDK with durable
+provenance and feedback reconciliation. Generation still requires a native
+generator adapter. None of the examples above executes a model or updates its ranking.
 Exit status is 0 for pass/needs-review and 1 for other assessment verdicts; always
 read the explicit verdict, since `needs_review` is not a pass.
 
