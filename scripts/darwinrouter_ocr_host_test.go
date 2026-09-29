@@ -60,7 +60,7 @@ func TestSDKAutomaticRoutingExcludesTextModelAndDeliversImage(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	source := []byte("version: 1\nmode: local_only\nproviders:\n  - {id: local, kind: ollama, manage_residency: true, endpoint: " + server.URL + "}\nmodels:\n  - {id: a-text, model: text, provider: local, locality: local, capabilities: [chat, ocr], ram_bytes: 1, context_tokens: 32768, estimated_cost: 0}\n  - {id: z-image, model: seeing, provider: local, locality: local, capabilities: [chat], ram_bytes: 1, context_tokens: 32768, estimated_cost: 0}\n")
+	source := []byte("version: 1\nmode: local_only\nworkers:\n  delegate_model: z-image\nproviders:\n  - {id: local, kind: ollama, manage_residency: true, endpoint: " + server.URL + "}\nmodels:\n  - {id: a-text, model: text, provider: local, locality: local, capabilities: [chat, ocr], ram_bytes: 1, context_tokens: 32768, estimated_cost: 0}\n  - {id: z-image, model: seeing, provider: local, locality: local, capabilities: [chat], ram_bytes: 1, context_tokens: 32768, estimated_cost: 0}\n")
 	config, _, eligible, e := scopedConfig(context.Background(), source)
 	if e != nil {
 		t.Fatal(e)
@@ -68,7 +68,7 @@ func TestSDKAutomaticRoutingExcludesTextModelAndDeliversImage(t *testing.T) {
 	path := filepath.Join(dir, "config.yaml")
 	os.WriteFile(path, config, 0600)
 	f := &imageFactory{pixels: []byte("pixels"), hash: hashBytes([]byte("pixels")), marker: "bound", dir: dir, eligible: eligible}
-	client, e := sdk.New(sdk.ConfigOptions{ProjectFile: path, ResourceProfiler: fixtureProfiler{}, ProviderFactory: f, ContextEstimator: imageEstimate{}, Overrides: map[string]string{"telemetry.database": filepath.Join(dir, "tasks.db"), "runtime.max_turns": "1", "tools.max_turns": "2", "tools.enabled": "false", "workers.delegate_read_tools": "false", "memory.enabled": "false", "skills.enabled": "false"}})
+	client, e := sdk.New(sdk.ConfigOptions{ProjectFile: path, ResourceProfiler: fixtureProfiler{}, ProviderFactory: f, ContextEstimator: imageEstimate{}, Overrides: map[string]string{"telemetry.database": filepath.Join(dir, "tasks.db"), "runtime.max_turns": "1", "tools.max_turns": "2", "tools.enabled": "false", "workers.delegate_read_tools": "false", "workers.delegate_model": "", "memory.enabled": "false", "skills.enabled": "false"}})
 	if e != nil {
 		t.Fatal(e)
 	}

@@ -230,9 +230,14 @@ type imageTransport struct {
 	connection providers.Connection
 }
 
-func (t *imageTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+func (t *imageTransport) RoundTrip(r *http.Request) (out *http.Response, err error) {
 	f := t.factory
 	c := t.connection
+	defer func() {
+		if err != nil {
+			_ = f.appendAudit(map[string]any{"at": time.Now().UTC().Format(time.RFC3339Nano), "stage": "blocked", "reason": err.Error(), "provider": c.ID})
+		}
+	}()
 	if r.URL.Path != "/api/chat" || r.Method != http.MethodPost {
 		return c.Transport.RoundTrip(r)
 	}
@@ -371,7 +376,7 @@ func main() {
 	marker := "[OCR image sha256=" + *hash + "; 1200x1550 PNG]"
 	factory := &imageFactory{pixels: pixels, hash: *hash, marker: marker, dir: *dir, eligible: eligible}
 	client, e := sdk.New(sdk.ConfigOptions{ProjectFile: configPath, LookupSecret: os.Getenv, ProviderFactory: factory, ContextEstimator: imageEstimate{}, Overrides: map[string]string{
-		"telemetry.database": *db, "runtime.max_turns": "1", "tools.max_turns": "2", "tools.enabled": "false", "workers.delegate_read_tools": "false", "memory.enabled": "false", "skills.enabled": "false",
+		"telemetry.database": *db, "runtime.max_turns": "1", "tools.max_turns": "2", "tools.enabled": "false", "workers.delegate_read_tools": "false", "workers.delegate_model": "", "memory.enabled": "false", "skills.enabled": "false",
 	}, EventSink: sdk.EventSinkFunc(func(_ context.Context, event sdk.Event) error {
 		b, err := json.Marshal(event)
 		if err != nil {
