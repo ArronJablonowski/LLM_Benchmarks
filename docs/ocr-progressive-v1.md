@@ -39,7 +39,34 @@ python3 scripts/openclaw_18_test_benchmarks.py --suite ocr --list-tasks
 
 All three native vision runners accept `--suite ocr`. Continue using their documented model-selection, capacity and telemetry controls. Use fresh output directories. Text-only models skip image tasks. Do not infer image support from a model's name. The direct runner disallows paired/randomized OCR runs to preserve level order; ordinary single-arm runs execute levels 1–6 sequentially. Select individual IDs with `--tasks` when needed. No model campaign is launched by adding or listing this suite.
 
-**DarwinRouter integration is not yet qualified.** Its current Standard adapter accepts text tasks only and explicitly excludes image tasks. These direct Ollama / Hermes / OpenClaw observations must not be presented as DarwinRouter end-to-end OCR results or written into its routing feedback. Native DarwinRouter image input, actual-provider image delivery and feedback attribution must be implemented and tested before an OCR campaign can populate its grid. This change does not enable GLM-OCR or restart cancelled diagnostics.
+## DarwinRouter automatic OCR campaign
+
+`scripts/darwinrouter_ocr_host.go` provides a dedicated trusted SDK image adapter. DarwinRouter owns automatic ranking, local-only admission, reservations, durable task events, stream parsing and actual-model identity. The adapter attaches the hash-verified PNG to the admitted Ollama request using DarwinRouter's supplied policy transport. This does **not** add image support to the daemon's public text API or its legacy Standard adapter.
+
+Before every task, the host reads native Ollama capability metadata for configured local models. Only a fresh `ocr`, `image` or `vision` advertisement qualifies as image-reading support; names and manually configured labels are insufficient. Unsupported or unknown models lose OCR eligibility in a private per-attempt configuration, without changing normal settings or recording a quality rejection. Native `vision` is normalized to `ocr` for this campaign. The actual selected model is checked again immediately before image dispatch. GLM-OCR remains explicitly excluded under the prior operator cancellation.
+
+The request uses domain `ocr`, profile `ocr-progressive-v1`, a fresh context, no tools, one response turn, a 32,768-token context and 4,096-token output ceiling. The conservative text-byte estimate is supplemented by a 16,384-token image reserve and output reserve; this is not an exact model-specific vision tokenizer. The input is restricted to these frozen 1200 × 1550 PNGs. Reservations, locality, routing weights and configured model context ceilings remain intact. Gold answers are never passed to the host. Normal `ocr/default` cards do not automatically become this distinct evidence profile.
+
+Build and test the host from a compatible DarwinRouter checkout (the Go source depends on its SDK):
+
+```bash
+go test -race /absolute/benchmark/scripts/darwinrouter_ocr_host.go /absolute/benchmark/scripts/darwinrouter_ocr_host_test.go
+go build -o /absolute/private-output/darwin-ocr-host /absolute/benchmark/scripts/darwinrouter_ocr_host.go
+```
+
+Prepare a new campaign and then run its single supervisor:
+
+```bash
+python3 scripts/darwinrouter_ocr_campaign.py /absolute/new-campaign --init \
+  --host /absolute/private-output/darwin-ocr-host --config /absolute/config.yaml \
+  --database /absolute/shared/darwin.db --darwin /absolute/bin/darwin
+python3 scripts/darwinrouter_ocr_campaign.py /absolute/new-campaign
+python3 scripts/darwinrouter_ocr_campaign.py /absolute/new-campaign --poll
+```
+
+Supply the same secret lookup environment and `DARWIN_PROCESS_OWNER_DIR` as the running daemon, without logging secrets. Never run competing supervisors. A file lock, append-only launch ledger, exclusive attempt directories, pinned source/image/grader hashes and immutable results prevent ambiguous retries. Resume repairs missing feedback from completed evidence; it never silently reissues an ambiguous launch. Only one fresh infrastructure retry is allowed. Two failed attempts require a reviewed, hash-bound exclusion before continuation. Do not weaken grading, increase limits or turn partial answers after failed execution into passes.
+
+Feedback is written only after independently verifying a completed durable task, its local-only domain/profile, image handoff, actual provider/model and strict grade. Failed outer and SDK recovery lineages must have zero quality feedback. Current evaluation heads are checked read-only after feedback. The report and snapshot distinguish quality mismatches, infrastructure failures, exclusions and active inference. Campaign completion still requires an independent final audit; adapter tests alone do not constitute OCR results.
 
 After a native vision run:
 
