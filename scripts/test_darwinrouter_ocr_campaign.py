@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import sqlite3
 from unittest.mock import patch
 
 import darwinrouter_ocr_campaign as c
@@ -59,5 +60,36 @@ class OCRCampaignTests(unittest.TestCase):
         with patch.object(c,'sha',return_value='hash'),patch.object(c,'ocr_provenance',return_value={}),patch.object(c,'suite_task_catalog',return_value=[self.task]),patch.object(c.subprocess,'Popen') as dispatch:
             with self.assertRaisesRegex(RuntimeError,'ambiguous launch'):c.run(self.dir)
             dispatch.assert_not_called()
+
+    def admission_fixture(self):
+        d=self.dir/'attempts'/self.task['id']/'attempt-1';d.mkdir(parents=True)
+        out={'result':{'TaskID':'','PreviousTaskIDs':None,'Turns':0,'Text':''},'error':'task admission failed\nlocal resource capacity unavailable'}
+        c.save(d/'host-result.json',out)
+        c.append(self.dir/'attempt-launches.jsonl',{'attempt_dir':str(d),'event':'launch_intent','at':'2026-09-29T00:00:00+00:00'})
+        db=self.dir/'tasks.db'
+        with sqlite3.connect(db) as connection:connection.execute('CREATE TABLE events(sequence INTEGER,body BLOB)')
+        connection.close()
+        return {'campaign_dir':str(self.dir),'database':str(db)},d,out
+
+    def test_capacity_deferral_preserves_result_and_outer_attempt_budget(self):
+        m,d,out=self.admission_fixture();before=c.sha(d/'host-result.json')
+        self.assertTrue(c.capacity_deferral(m,self.task,d))
+        next_dir=c.attempt_location(self.dir,self.task['id'],1)
+        self.assertEqual(next_dir.name,'attempt-1-admission-1');self.assertFalse(next_dir.exists())
+        self.assertEqual(c.sha(d/'host-result.json'),before)
+        self.assertTrue(c.capacity_deferral(m,self.task,d));self.assertEqual(len(c.rows(self.dir/'admission-deferrals.jsonl')),1)
+        out['error']+=' changed';c.save(d/'host-result.json',out)
+        with self.assertRaisesRegex(RuntimeError,'deferral binding'):c.attempt_location(self.dir,self.task['id'],1)
+
+    def test_capacity_deferral_rejects_possible_dispatch(self):
+        m,d,out=self.admission_fixture();out['result']['TaskID']='dispatched';c.save(d/'host-result.json',out)
+        with self.assertRaisesRegex(RuntimeError,'execution evidence'):c.capacity_deferral(m,self.task,d)
+
+    def test_capacity_deferral_checks_durable_database_not_just_host_result(self):
+        m,d,out=self.admission_fixture()
+        event={'time':'2026-09-29T00:01:00Z','data':{'domain':'ocr','profile':c.PROFILE,'messages':[{'content':self.task['image_sha256']}]}}
+        with sqlite3.connect(m['database']) as connection:connection.execute('INSERT INTO events VALUES(1,?)',(json.dumps(event),))
+        connection.close()
+        with self.assertRaisesRegex(RuntimeError,'matching durable task'):c.capacity_deferral(m,self.task,d)
 
 if __name__=='__main__':unittest.main()

@@ -7,6 +7,7 @@ and block, never silently re-dispatch. Reconciliation never repeats inference.
 from __future__ import annotations
 import argparse
 from collections import Counter
+from contextlib import closing
 from datetime import datetime, timezone
 import fcntl
 import hashlib
@@ -43,7 +44,7 @@ def append(path, value):
     with Path(path).open('a') as f:
         f.write(json.dumps(value, sort_keys=True) + '\n'); f.flush(); os.fsync(f.fileno())
 
-def database(path): return sqlite3.connect(Path(path).as_uri() + '?mode=ro', uri=True, timeout=15)
+def database(path): return closing(sqlite3.connect(Path(path).as_uri() + '?mode=ro', uri=True, timeout=15))
 def events(db, task_id):
     with database(db) as c:
         return [json.loads(r[0]) for r in c.execute('SELECT body FROM events WHERE task_id=? ORDER BY sequence', (task_id,))]
@@ -58,6 +59,43 @@ def current_feedback(db, task_id):
 def verify_zero_feedback(db, ids):
     for task_id in ids:
         if current_feedback(db, task_id): raise RuntimeError('quality feedback on failed lineage: ' + task_id)
+
+def capacity_deferral(manifest, task, attempt_dir):
+    """Prove zero dispatch before separating an admission hold from attempts."""
+    d=Path(attempt_dir);out=json.loads((d/'host-result.json').read_text());result=out['result']
+    if 'local resource capacity unavailable' not in out.get('error',''):return False
+    if result.get('TaskID') or result.get('PreviousTaskIDs') or result.get('Turns') or result.get('Text') or rows(d/'events.jsonl') or rows(d/'image-delivery.jsonl') or (d/'record.json').exists():
+        raise RuntimeError('capacity failure contains possible execution evidence; cannot defer')
+    campaign=Path(manifest['campaign_dir'])
+    launch=next(x for x in rows(campaign/'attempt-launches.jsonl') if x.get('attempt_dir')==str(d) and x['event']=='launch_intent')
+    start=datetime.fromisoformat(launch['at'])
+    with database(manifest['database']) as db:
+        starts=[json.loads(r[0]) for r in db.execute("SELECT body FROM events WHERE sequence=1 AND json_extract(body,'$.data.domain')='ocr' AND json_extract(body,'$.data.profile')=?",(PROFILE,))]
+    for event in starts:
+        if datetime.fromisoformat(event['time'].replace('Z','+00:00'))>=start and any(task['image_sha256'] in message.get('content','') for message in event['data'].get('messages',[])):
+            raise RuntimeError('admission hold has a matching durable task; investigate')
+    ledger=campaign/'admission-deferrals.jsonl'
+    prior=[x for x in rows(ledger) if x['attempt_dir']==str(d)]
+    if prior:
+        if len(prior)!=1 or prior[0]['host_result_sha256']!=sha(d/'host-result.json'):raise RuntimeError('admission evidence drift')
+        return True
+    base=d.name.split('-admission-')[0]
+    index=1+sum(Path(x['attempt_dir']).parent==d.parent and Path(x['attempt_dir']).name.split('-admission-')[0]==base for x in rows(ledger))
+    next_dir=d.parent/f'{base}-admission-{index}'
+    if next_dir.exists():raise RuntimeError('admission resume path already exists')
+    append(ledger,{'at':now(),'task_id':task['id'],'attempt_dir':str(d),'next_attempt_dir':str(next_dir),'host_result_sha256':sha(d/'host-result.json'),'disposition':'capacity_deferred_before_dispatch','durable_tasks':0,'quality_feedback':0,'inference_attempt_consumed':False})
+    return True
+
+def attempt_location(campaign, task_id, attempt):
+    base=Path(campaign)/'attempts'/task_id/f'attempt-{attempt}';d=base
+    for index in range(1,101):
+        found=[x for x in rows(Path(campaign)/'admission-deferrals.jsonl') if x['attempt_dir']==str(d)]
+        if not found:return d
+        if len(found)!=1 or found[0]['host_result_sha256']!=sha(d/'host-result.json'):raise RuntimeError('invalid admission deferral binding')
+        expected=base.with_name(base.name+f'-admission-{index}')
+        if found[0]['next_attempt_dir']!=str(expected):raise RuntimeError('invalid admission resume path')
+        d=expected
+    raise RuntimeError('too many admission holds; investigate capacity')
 
 def validate_completion(task, attempt_dir, db):
     """Bind successful execution, provider image handoff and exact task identity."""
@@ -140,6 +178,7 @@ def snapshot(campaign):
     times=[r['row']['wall_seconds'] for r in final.values()]
     excluded=rows(campaign/'infrastructure-dispositions.jsonl')
     result={'at':now(),'campaign_dir':str(campaign),'status':state.get('status','prepared'),'total':30,'terminal':len(final)+len(excluded),'valid':len(final),'pass':counts['pass'],'mismatch':counts['content_mismatch'],'reviewed_infrastructure_exclusions':len(excluded),'outer_attempts_completed':len(records),'infrastructure_attempts':sum(r['row']['status']!='ok' for r in records),'internal_recovery_attempts':sum(len(r['row']['previous_task_ids']) for r in records),'accepted':sum(all(c.get('Passed') for c in h['Checks']) for h in heads),'rejected':sum(not all(c.get('Passed') for c in h['Checks']) for h in heads),'missing_feedback':len(final)-len(heads),'active':active,'timing':{'samples':len(times),'scope':'pooled automatic OCR phase','min_seconds':min(times) if times else None,'max_seconds':max(times) if times else None,'campaign_eta':None,'note':'No reliable campaign ETA yet; model selection and image difficulty can change.'},'state':state}
+    result['capacity_admission_deferrals']=len(rows(campaign/'admission-deferrals.jsonl'))
     save(campaign/'latest.json',result)
     text=f"# DarwinRouter OCR campaign\n\nUpdated {result['at']}. Domain `ocr`; evidence profile `{PROFILE}`.\n\n| Status | Count |\n|---|---:|\n"
     for key in ['terminal','valid','pass','mismatch','reviewed_infrastructure_exclusions','outer_attempts_completed','infrastructure_attempts','internal_recovery_attempts','accepted','rejected','missing_feedback']:text+=f"| {key.replace('_',' ')} | {result[key]} |\n"
@@ -162,28 +201,32 @@ def run_locked(campaign):
         dispositions=[x for x in rows(campaign/'infrastructure-dispositions.jsonl') if x['task_id']==task['id']]
         if dispositions:
             if len(dispositions)!=1:raise RuntimeError('duplicate infrastructure disposition')
-            expected={str(campaign/'attempts'/task['id']/f'attempt-{n}'/'record.json'):sha(campaign/'attempts'/task['id']/f'attempt-{n}'/'record.json') for n in (1,2)}
+            expected={str(attempt_location(campaign,task['id'],n)/'record.json'):sha(attempt_location(campaign,task['id'],n)/'record.json') for n in (1,2)}
             if dispositions[0].get('canonical_hashes')!=expected:raise RuntimeError('invalid infrastructure disposition binding')
             for n in (1,2):
-                reviewed=reconcile_attempt(m,task,campaign/'attempts'/task['id']/f'attempt-{n}')
+                reviewed=reconcile_attempt(m,task,attempt_location(campaign,task['id'],n))
                 if reviewed['row']['status']=='ok':raise RuntimeError('valid evidence cannot be infrastructure-excluded')
             continue
         for attempt in (1,2):
-            d=campaign/'attempts'/task['id']/f'attempt-{attempt}'
+            d=attempt_location(campaign,task['id'],attempt)
             if (d/'host-result.json').exists():
+                if capacity_deferral(m,task,d):
+                    save(campaign/'state.json',{'status':'waiting_capacity','at':now(),'task_id':task['id'],'attempt_dir':str(d)});snapshot(campaign);return
                 r=reconcile_attempt(m,task,d)
             else:
                 if d.exists() or any(x.get('attempt_dir')==str(d) for x in rows(campaign/'attempt-launches.jsonl')):raise RuntimeError('ambiguous launch; investigate without repeating inference: '+str(d))
                 d.parent.mkdir(parents=True,exist_ok=True)
-                append(campaign/'attempt-launches.jsonl',{'at':now(),'event':'launch_intent','attempt_dir':str(d),'task_id':task['id'],'attempt':attempt,'image_sha256':task['image_sha256']})
+                append(campaign/'attempt-launches.jsonl',{'at':now(),'event':'launch_intent','attempt_dir':str(d),'task_id':task['id'],'attempt':attempt,'image_sha256':task['image_sha256'],'host':m['host'],'host_sha256':m['host_sha256'],'manifest_sha256':sha(campaign/'manifest.json')})
                 command=[m['host'],'--config',m['config'],'--database',m['database'],'--attempt-dir',str(d),'--image',str(ROOT/task['image_asset']),'--sha256',task['image_sha256'],'--prompt',task['prompt']]
                 # No automatic watchdog re-dispatch; the host owns a bounded deadline.
-                with (d.parent/f'attempt-{attempt}.stdout').open('x') as out,(d.parent/f'attempt-{attempt}.stderr').open('x') as err:
+                with (d.parent/(d.name+'.stdout')).open('x') as out,(d.parent/(d.name+'.stderr')).open('x') as err:
                     p=subprocess.Popen(command,cwd=ROOT,stdout=out,stderr=err)
                     append(campaign/'attempt-launches.jsonl',{'at':now(),'event':'spawned','pid':p.pid,'attempt_dir':str(d)})
                     save(campaign/'state.json',{'status':'running','at':now(),'pid':os.getpid(),'runner_pid':p.pid,'task_id':task['id'],'attempt':attempt,'attempt_dir':str(d)})
                     code=p.wait(timeout=960)
                 if not (d/'host-result.json').exists():raise RuntimeError(f'host exited {code} without durable result: {d}')
+                if capacity_deferral(m,task,d):
+                    save(campaign/'state.json',{'status':'waiting_capacity','at':now(),'task_id':task['id'],'attempt_dir':str(d)});snapshot(campaign);return
                 r=reconcile_attempt(m,task,d)
             snapshot(campaign)
             if r['row']['status']=='ok':consecutive=0;break

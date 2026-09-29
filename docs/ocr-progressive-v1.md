@@ -68,6 +68,10 @@ Supply the same secret lookup environment and `DARWIN_PROCESS_OWNER_DIR` as the 
 
 Feedback is written only after independently verifying a completed durable task, its local-only domain/profile, image handoff, actual provider/model and strict grade. Failed outer and SDK recovery lineages must have zero quality feedback. Current evaluation heads are checked read-only after feedback. The report and snapshot distinguish quality mismatches, infrastructure failures, exclusions and active inference. Campaign completion still requires an independent final audit; adapter tests alone do not constitute OCR results.
 
+The adapter reads `/api/ps` through the admitted policy transport immediately before image dispatch. For a model that is not already resident, the request uses `keep_alive: 0` so its new load is released after the response. A pre-existing resident retains its existing lifetime; the host never sends a global or separate unload request. This avoids accumulating campaign models between independent cases without taking ownership of external residents.
+
+A capacity rejection with no task ID, SDK recovery lineage, turns, text, events or image dispatch is an admission hold, not a consumed inference attempt. The supervisor additionally checks the durable database for any matching task since that launch. It preserves the original result and appends a hash-bound admission deferral pointing to a fresh directory for the same outer-attempt ordinal. A later safe resume uses that directory. Possible execution, conflicting records or changed hashes stop the campaign for investigation.
+
 After a native vision run:
 
 ```bash

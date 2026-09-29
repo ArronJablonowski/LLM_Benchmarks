@@ -39,6 +39,8 @@ func TestSDKAutomaticRoutingExcludesTextModelAndDeliversImage(t *testing.T) {
 			} else {
 				io.WriteString(w, `{"capabilities":["completion"],"model_info":{"test.context_length":32768}}`)
 			}
+		case "/api/ps":
+			io.WriteString(w, `{"models":[]}`)
 		case "/api/tags":
 			io.WriteString(w, `{"models":[{"name":"seeing"},{"name":"text"}]}`)
 		case "/api/chat":
@@ -123,7 +125,7 @@ func TestCapabilityScopeUsesAdvertisementsAndRetainsReservations(t *testing.T) {
 }
 
 func TestImageAdapterDeliversExactPixelsThroughPolicyTransport(t *testing.T) {
-	for _, mode := range []string{"success", "no_advertisement", "disqualified", "wrong_binding", "tool_turn", "wrong_context"} {
+	for _, mode := range []string{"success", "no_advertisement", "disqualified", "wrong_binding", "tool_turn", "wrong_context", "preexisting_resident"} {
 		t.Run(mode, func(t *testing.T) {
 			pixels := []byte("unique pixel bytes")
 			calls := 0
@@ -135,10 +137,23 @@ func TestImageAdapterDeliversExactPixelsThroughPolicyTransport(t *testing.T) {
 					} else {
 						io.WriteString(w, `{"capabilities":["vision"]}`)
 					}
+				case "/api/ps":
+					if mode == "preexisting_resident" {
+						io.WriteString(w, `{"models":[{"name":"seeing"}]}`)
+					} else {
+						io.WriteString(w, `{"models":[]}`)
+					}
 				case "/api/chat":
 					calls++
 					var body map[string]any
 					json.NewDecoder(r.Body).Decode(&body)
+					if mode == "preexisting_resident" {
+						if _, ok := body["keep_alive"]; ok {
+							t.Error("external residency lifetime changed")
+						}
+					} else if body["keep_alive"] != float64(0) {
+						t.Error("new request load not released")
+					}
 					m := body["messages"].([]any)[0].(map[string]any)
 					data, e := base64.StdEncoding.DecodeString(m["images"].([]any)[0].(string))
 					if e != nil || !bytes.Equal(data, pixels) {
@@ -171,7 +186,7 @@ func TestImageAdapterDeliversExactPixelsThroughPolicyTransport(t *testing.T) {
 			}
 			var text string
 			e = p.Stream(context.Background(), request, func(c providers.Chunk) error { text += c.Text; return nil })
-			if mode == "success" {
+			if mode == "success" || mode == "preexisting_resident" {
 				if e != nil || calls != 1 || text != `{"room":"205"}` {
 					t.Fatal(e, calls, text)
 				}

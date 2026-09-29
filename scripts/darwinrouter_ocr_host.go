@@ -106,6 +106,45 @@ func nativeCapabilities(ctx context.Context, endpoint, model string, transport h
 	return data.Capabilities, nil
 }
 
+func residentNames(ctx context.Context, endpoint string, transport http.RoundTripper) (map[string]bool, error) {
+	if !localEndpoint(endpoint) {
+		return nil, errors.New("invalid residency endpoint")
+	}
+	r, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(endpoint, "/")+"/api/ps", nil)
+	if err != nil {
+		return nil, err
+	}
+	client := &http.Client{Transport: transport, Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("redirect forbidden") }}
+	response, err := client.Do(r)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != 200 {
+		return nil, errors.New("residency metadata unavailable")
+	}
+	b, err := io.ReadAll(io.LimitReader(response.Body, 1<<20))
+	if err != nil || len(b) >= 1<<20 {
+		return nil, errors.New("invalid residency metadata size")
+	}
+	var data struct {
+		Models *[]struct {
+			Name string `json:"name"`
+		} `json:"models"`
+	}
+	if json.Unmarshal(b, &data) != nil || data.Models == nil {
+		return nil, errors.New("invalid residency metadata")
+	}
+	names := map[string]bool{}
+	for _, m := range *data.Models {
+		if m.Name == "" {
+			return nil, errors.New("missing resident identity")
+		}
+		names[m.Name] = true
+	}
+	return names, nil
+}
+
 // Only the derived, per-attempt configuration gains normalized OCR capability.
 // Every original reservation, context policy, endpoint and routing weight stays.
 func scopedConfig(ctx context.Context, source []byte) ([]byte, []capability, map[string]bool, error) {
@@ -294,11 +333,23 @@ func (t *imageTransport) RoundTrip(r *http.Request) (out *http.Response, err err
 	}
 	options["num_predict"] = outputReserve
 	body["options"] = options
+	// This is a request-scoped keep-alive policy, not a global unload operation.
+	// Never shorten the lifetime of a model that was resident before our request.
+	resident, e := residentNames(r.Context(), c.Endpoint, c.Transport)
+	if e != nil {
+		return nil, e
+	}
+	residencyPolicy := "preserve_existing_residency"
+	if !resident[model] {
+		body["keep_alive"] = 0
+		residencyPolicy = "release_new_load_after_request"
+	}
 	wire, e := json.Marshal(body)
 	if e != nil {
 		return nil, e
 	}
 	row := map[string]any{"at": time.Now().UTC().Format(time.RFC3339Nano), "provider": c.ID, "model": model, "image_sha256": f.hash, "image_bytes": len(f.pixels), "wire_sha256": hashBytes(wire), "advertised": caps, "image_reserve_tokens": imageReserve, "max_output_tokens": outputReserve, "context_tokens": 32768, "stage": "dispatch"}
+	row["residency_policy"] = residencyPolicy
 	if e = f.appendAudit(row); e != nil {
 		return nil, e
 	}
