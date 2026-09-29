@@ -120,6 +120,12 @@ func scopedConfig(ctx context.Context, source []byte) ([]byte, []capability, map
 	providersByID := map[string]map[string]any{}
 	for _, p := range ps {
 		m := p.(map[string]any)
+		// Shared process admission deliberately rejects SDK-managed residency:
+		// that in-process controller cannot prove ownership of peer residents.
+		// Disable unloading in this private host config, never the coordinator.
+		if m["kind"] == "ollama" {
+			m["manage_residency"] = false
+		}
 		providersByID[fmt.Sprint(m["id"])] = m
 	}
 	ms, ok := cfg["models"].([]any)

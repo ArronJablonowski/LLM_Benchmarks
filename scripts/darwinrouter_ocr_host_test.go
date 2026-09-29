@@ -60,7 +60,7 @@ func TestSDKAutomaticRoutingExcludesTextModelAndDeliversImage(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	source := []byte("version: 1\nmode: local_only\nproviders:\n  - {id: local, kind: ollama, endpoint: " + server.URL + "}\nmodels:\n  - {id: a-text, model: text, provider: local, locality: local, capabilities: [chat, ocr], ram_bytes: 1, context_tokens: 32768, estimated_cost: 0}\n  - {id: z-image, model: seeing, provider: local, locality: local, capabilities: [chat], ram_bytes: 1, context_tokens: 32768, estimated_cost: 0}\n")
+	source := []byte("version: 1\nmode: local_only\nproviders:\n  - {id: local, kind: ollama, manage_residency: true, endpoint: " + server.URL + "}\nmodels:\n  - {id: a-text, model: text, provider: local, locality: local, capabilities: [chat, ocr], ram_bytes: 1, context_tokens: 32768, estimated_cost: 0}\n  - {id: z-image, model: seeing, provider: local, locality: local, capabilities: [chat], ram_bytes: 1, context_tokens: 32768, estimated_cost: 0}\n")
 	config, _, eligible, e := scopedConfig(context.Background(), source)
 	if e != nil {
 		t.Fatal(e)
@@ -99,7 +99,7 @@ func TestCapabilityScopeUsesAdvertisementsAndRetainsReservations(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	source := []byte("version: 1\nproviders:\n  - {id: local, kind: ollama, endpoint: " + server.URL + "}\nmodels:\n  - {id: capable, model: seeing, provider: local, locality: local, capabilities: [chat], ram_bytes: 123456, context_tokens: 32768}\n  - {id: liar, model: text, provider: local, locality: local, capabilities: [chat, ocr, vision], ram_bytes: 98765}\n  - {id: local-glm-ocr, model: seeing, provider: local, locality: local, capabilities: [ocr]}\n")
+	source := []byte("version: 1\nproviders:\n  - {id: local, kind: ollama, manage_residency: true, endpoint: " + server.URL + "}\nmodels:\n  - {id: capable, model: seeing, provider: local, locality: local, capabilities: [chat], ram_bytes: 123456, context_tokens: 32768}\n  - {id: liar, model: text, provider: local, locality: local, capabilities: [chat, ocr, vision], ram_bytes: 98765}\n  - {id: local-glm-ocr, model: seeing, provider: local, locality: local, capabilities: [ocr]}\n")
 	b, rows, eligible, e := scopedConfig(context.Background(), source)
 	if e != nil {
 		t.Fatal(e)
