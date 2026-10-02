@@ -1,0 +1,25 @@
+{
+  "id": "grid_image_generation_l6",
+  "category": "image_generation",
+  "domain": "image_generation",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 6,
+  "difficulty": "expert",
+  "name": "Multi-panel identity",
+  "challenge": "Cross-panel consistency, temporal order and typography",
+  "prompt": "Generate the requested image artifact. Return only bare JSON {\"artifact\":\"filename.png\"} referring to an actual generated file. Text descriptions, code, SVG and existing input copies are not outputs. One landscape triptych with panels labeled SEED, SPROUT, BLOOM in that order. The same distinctive cracked terracotta pot in each panel, consistent scale and lighting; bare soil, a two-leaf sprout, then one yellow flower. No additional labels or plants.",
+  "inputs": {
+    "brief": "One landscape triptych with panels labeled SEED, SPROUT, BLOOM in that order. The same distinctive cracked terracotta pot in each panel, consistent scale and lighting; bare soil, a two-leaf sprout, then one yellow flower. No additional labels or plants.",
+    "technical_requirements": {
+      "format": "png",
+      "min_width": 512,
+      "min_height": 512
+    }
+  },
+  "assets": [],
+  "required_capabilities": [
+    "image_generation"
+  ]
+}

@@ -904,7 +904,7 @@ class ExecutionGuardTests(unittest.TestCase):
         self.assertEqual(0, exit_code)
         self.assertEqual("262144", row["requested_num_ctx"])
         self.assertEqual("262144", row["model_context_length"])
-        self.assertEqual("behavioral-v1", row["grading_profile"])
+        self.assertEqual(grading.GRADING_PROFILE, row["grading_profile"])
         self.assertEqual("exact_text", row["grader_type"])
         self.assertEqual("pass", row["verdict"])
         self.assertTrue(row["runner_sha256"])
@@ -1669,6 +1669,12 @@ def count_unique_ips(lines):
         self.assertLess(result["tests_passed"], result["tests_total"])
         self.assertTrue(any("raised" in failure or "expected False" in failure for failure in result["failures"]))
 
+    def test_private_ipv4_accepts_standard_exception_tuple(self):
+        candidate = self.ROBUST_PRIVATE.replace("except ValueError:", "except (ValueError, AttributeError):")
+        result = grading.grade_python_function(candidate, grading.PRIVATE_IPV4_GRADER)
+        self.assertEqual("pass", result["verdict"], result)
+        self.assertEqual(result["tests_total"], result["tests_passed"])
+
     def test_private_ipv4_rejects_ipaddress_is_private_overbreadth(self):
         candidate = """\
 import ipaddress
@@ -1680,6 +1686,67 @@ def is_private_ipv4(ip):
 """
         result = grading.grade_python_function(candidate, grading.PRIVATE_IPV4_GRADER)
         self.assertEqual("content_mismatch", result["verdict"])
+
+    def test_private_ipv4_accepts_public_packed_address_octets(self):
+        candidate = """\
+import ipaddress
+def is_private_ipv4(ip):
+    try:
+        octets = ipaddress.IPv4Address(ip).packed
+        return (octets[0] == 10 or
+                (octets[0] == 172 and 16 <= octets[1] <= 31) or
+                (octets[0] == 192 and octets[1] == 168))
+    except ValueError:
+        return False
+"""
+        result = grading.grade_python_function(candidate, grading.PRIVATE_IPV4_GRADER)
+        self.assertEqual("pass", result["verdict"], result)
+        self.assertEqual(25, result["tests_passed"])
+
+        # Public address bytes must not enable reflective access to objects or
+        # modules. Retain the existing attribute and builtin restrictions.
+        for attribute in ("__class__", "__dict__", "real_import"):
+            with self.subTest(attribute=attribute):
+                unsafe = candidate.replace(".packed", f".{attribute}")
+                rejected = grading.grade_python_function(unsafe, grading.PRIVATE_IPV4_GRADER)
+                self.assertEqual("content_mismatch", rejected["verdict"])
+                self.assertIn("unsafe attribute", rejected["error"])
+
+    def test_private_ipv4_accepts_local_discard_unpack_without_weakening_behavior(self):
+        candidate = self.ROBUST_PRIVATE.replace("a, b = octets[:2]", "a, b, _, _ = octets")
+        result = grading.grade_python_function(candidate, grading.PRIVATE_IPV4_GRADER)
+        self.assertEqual("pass", result["verdict"], result)
+        self.assertEqual(25, result["tests_passed"])
+
+        # The local identifier may also be read like any ordinary Python local.
+        local_read = candidate.replace("a, b, _, _ = octets", "_ = octets\n    a, b = _[:2]")
+        result = grading.grade_python_function(local_read, grading.PRIVATE_IPV4_GRADER)
+        self.assertEqual("pass", result["verdict"], result)
+
+        # A discard variable cannot hide the same malformed-octet bug the
+        # behavioral grader already rejects.
+        bad = self.NAIVE_PRIVATE.replace("a, b, c, d", "a, b, _, _")
+        result = grading.grade_python_function(bad, grading.PRIVATE_IPV4_GRADER)
+        self.assertEqual("content_mismatch", result["verdict"])
+        self.assertLess(result["tests_passed"], result["tests_total"])
+
+    def test_local_discard_keeps_private_names_imports_and_attributes_blocked(self):
+        candidate = self.ROBUST_PRIVATE.replace("a, b = octets[:2]", "a, b, _, _ = octets")
+        variants = {
+            "private name": candidate.replace("_, _", "_private, _private"),
+            "dunder name": candidate.replace("_, _", "__builtins__, __builtins__"),
+            "top-level target": "_ = 1\n" + candidate,
+            "module import alias": "import ipaddress as _\n" + candidate,
+            "symbol import alias": "from ipaddress import IPv4Address as _\n" + candidate,
+            "private attribute": candidate.replace("a, b, _, _ = octets", "_ = octets.__class__\n    a, b = octets[:2]"),
+            "import escape": candidate.replace("a, b, _, _ = octets", "_ = __import__('os')\n    a, b = octets[:2]"),
+            "reflective escape": candidate.replace("a, b, _, _ = octets", "_ = getattr(octets, '__class__')\n    a, b = octets[:2]"),
+        }
+        for label, source in variants.items():
+            with self.subTest(label=label):
+                result = grading.grade_python_function(source, grading.PRIVATE_IPV4_GRADER)
+                self.assertEqual("content_mismatch", result["verdict"])
+                self.assertIn("candidate rejected", result["error"])
 
     def test_mbpp_behavioral_grader_accepts_real_logic_and_rejects_marker_code(self):
         good = grading.grade_python_function(self.GOOD_MBPP, grading.COUNT_UNIQUE_IPS_GRADER)

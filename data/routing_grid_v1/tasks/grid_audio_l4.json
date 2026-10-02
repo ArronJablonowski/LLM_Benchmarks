@@ -1,0 +1,25 @@
+{
+  "id": "grid_audio_l4",
+  "category": "audio",
+  "domain": "audio",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 4,
+  "difficulty": "constraints",
+  "name": "Noisy inventory note",
+  "challenge": "Moderate deterministic noise and spoken arithmetic",
+  "prompt": "Return {\"remaining_cartons\":integer}.",
+  "inputs": {},
+  "assets": [
+    {
+      "path": "assets/audio_l4.wav",
+      "sha256": "e6a5ff40e2090fd481f85ce6de754cd1e9f538d8aa4def12ba66451d8c70a21b",
+      "mime": "audio/wav"
+    }
+  ],
+  "required_capabilities": [
+    "audio_input"
+  ],
+  "subtask": "speech_understanding"
+}

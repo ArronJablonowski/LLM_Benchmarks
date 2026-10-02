@@ -1,0 +1,27 @@
+{
+  "id": "ocr_l1_01_memo",
+  "family": "Original progressive OCR / document understanding",
+  "category": "vision_ocr",
+  "name": "Level 1: memo (clean)",
+  "difficulty_level": 1,
+  "difficulty": "clean",
+  "benchmark_profile": "ocr-progressive-v1",
+  "requires_image": true,
+  "image_asset": "data/ocr_progressive_v1/images/ocr_l1_01_memo.png",
+  "image_sha256": "09e126bb91fe5acffa5e225351960754824b54dd9cc732a5b78dff9d4816ae47",
+  "image_width": 1200,
+  "image_height": 1550,
+  "transformations": [],
+  "prompt": "Transcribe only the main memorandum body, excluding masthead, title, sidebar and footnote. Also extract the room number and owner. Read only the attached image. Return only one JSON object with exactly these keys: body, room, owner. Every value must be a string. Do not use external tools or prior answers.",
+  "grading": {
+    "kind": "ocr",
+    "expected": {
+      "body": "Project BR-48 moves to Room 205. The review begins at 9:35 on October 11, 2026. Bring 4 signed copies. The owner is Morgan Vale.",
+      "room": "205",
+      "owner": "Morgan Vale"
+    },
+    "transcription_fields": [
+      "body"
+    ]
+  }
+}

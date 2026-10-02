@@ -1,0 +1,18 @@
+{
+  "id": "grid_creative_l6",
+  "category": "creative",
+  "domain": "creative",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 6,
+  "difficulty": "expert",
+  "name": "Interactive narrative",
+  "challenge": "Branch consequence and continuity",
+  "prompt": "Write a 300–420 word interactive story with labels START, LEFT, RIGHT, END-A, END-B. START offers LEFT or RIGHT; each branch reaches its own ending. A brass compass is introduced early and has a different consequential use in each branch. Maintain character identity, no dangling paths, no deus ex machina. Endings must reflect the choice rather than merely rename it.",
+  "inputs": {},
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

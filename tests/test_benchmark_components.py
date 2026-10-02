@@ -21,6 +21,17 @@ import openclaw_18_test_benchmarks as openclaw
 
 
 class BenchmarkComponentTests(unittest.TestCase):
+    def test_spark_and_studio_suites_coexist(self):
+        expected_counts = {"github": 208, "ocr": 30, "routing-grid": 60, "commandline": 20}
+        for suite, count in expected_counts.items():
+            with self.subTest(suite=suite):
+                self.assertIn(suite, registry.SUITE_CHOICES)
+                tasks = suite_task_catalog(suite)
+                self.assertEqual(count, len(tasks))
+                self.assertEqual(count, len({task["id"] for task in tasks}))
+                tasks[0]["prompt"] = "mutated"
+                self.assertNotEqual("mutated", suite_task_catalog(suite)[0]["prompt"])
+
     def test_standard_suite_is_the_existing_core_catalog(self):
         self.assertEqual(core_task_catalog(), suite_task_catalog("standard"))
         self.assertEqual(9, len(suite_task_catalog("coding")))

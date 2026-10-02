@@ -1,0 +1,8 @@
+{
+  "kind": "exact_json",
+  "expected": {
+    "Ada": 2,
+    "Bo": 1,
+    "Cy": 3
+  }
+}

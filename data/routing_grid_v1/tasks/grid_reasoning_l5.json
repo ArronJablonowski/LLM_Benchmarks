@@ -1,0 +1,18 @@
+{
+  "id": "grid_reasoning_l5",
+  "category": "reasoning",
+  "domain": "reasoning",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 5,
+  "difficulty": "adversarial",
+  "name": "Unsatisfiable schedule",
+  "challenge": "Detect infeasibility instead of inventing a schedule",
+  "prompt": "Jobs A and B each require 2 hours on a single non-overlapping machine. Both must finish within hours [0,3]. No preemption. Return {\"feasible\":boolean,\"minimum_makespan\":integer,\"shortfall_hours\":integer}.",
+  "inputs": {},
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

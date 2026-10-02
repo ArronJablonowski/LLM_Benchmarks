@@ -1,0 +1,15 @@
+{
+  "kind": "human_text",
+  "protected": [
+    "APPROVED"
+  ],
+  "word_range": [
+    1,
+    250
+  ],
+  "dimensions": {
+    "semantic_fidelity": "Every source claim, negation and uncertainty is preserved; nothing invented.",
+    "language_quality": "Natural, grammatical Spanish, with appropriate register.",
+    "task_constraints": "Translate the quoted sentence as content, keep APPROVED literal; preserve uncertainty and unknown identity without inventing gender or asserting arrival."
+  }
+}

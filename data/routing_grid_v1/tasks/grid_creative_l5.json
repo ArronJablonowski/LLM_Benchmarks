@@ -1,0 +1,18 @@
+{
+  "id": "grid_creative_l5",
+  "category": "creative",
+  "domain": "creative",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 5,
+  "difficulty": "adversarial",
+  "name": "Two perspectives",
+  "challenge": "Reconcile contradictory interpretations without changing facts",
+  "prompt": "Write two titled accounts, each 120–160 words, of one event: at noon a courier leaves a sealed blue envelope under a red bench; nobody opens it. One account is comic, the other ominous. Preserve those observable facts; neither may reveal envelope contents.",
+  "inputs": {},
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

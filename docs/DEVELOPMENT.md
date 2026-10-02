@@ -9,7 +9,7 @@ Install the optional local tools in an isolated environment, then run:
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install pytest ruff black mypy
+python -m pip install pytest ruff black mypy Pillow
 python -m pytest -q
 python -m ruff check scripts dashboard tests
 python -m mypy

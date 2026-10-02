@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -30,6 +31,139 @@ EXPECTED = {
     "cli_multi_host_incident_response": (["ssh ir@web01 'ss -plant'", "ssh ir@db01 'last -F'", "ssh ir@jump01 'journalctl -u ssh --since -2h'", "Get-WinEvent -FilterHashtable @{LogName='Security';Id=4624}"], ["10.20.30.44", "svc_backup", "web01"], []),
     "cli_multi_firewall_outage": (["pfctl -sr", "nft list ruleset", "traceroute 10.70.0.10"], ["pfsense", "openwrt", "mtu 1400"], ["1", "3", "2", "4", "1"]),
 }
+
+# Read-only diagnostics do not have a prescribed command order. Preserve
+# actual order in artifacts, and require dependencies where the task asks for it.
+ORDER_INDEPENDENT = frozenset(EXPECTED) - {
+    "cli_powershell_services", "cli_linux_incident_response", "cli_macos_incident_response",
+    "cli_windows_incident_response", "cli_multi_host_incident_response",
+}
+# A diagnostic-only task must not force the agent to invent a remediation.
+ACTION_OPTIONAL = frozenset({
+    "cli_windows_cmd_diagnostics", "cli_wmi_inventory", "cli_ssh_triage",
+    "cli_custom_menu_navigation", "cli_pfsense_firewall_nat",
+})
+# Explicit, task-scoped equivalents for observed facts, not answer inference.
+FINDING_ALIASES = {
+    ("cli_ssh_triage", "address already in use"): (
+        "port 8443 is already in use", "port 8443 already in use",
+        "port 8443 was already in use",
+        "port 8443, which was already in use",
+        "nginx failed because it tried to bind to port 8443, but that port was already in use",
+    ),
+    ("cli_ubuntu_admin", "postgresql.service"): ("postgresql",),
+    ("cli_rhel_admin", "running"): ("firewalld is active", "firewalld active", "active firewalld"),
+    ("cli_pfsense_firewall_nat", "block"): ("no matching wan pass rule",),
+    ("cli_pfsense_firewall_nat", "rdr"): ("redirects", "redirect rule",),
+    ("cli_pfsense_vpn_diagnostics", "0 states"): ("no states", "zero states", "no matching states", "no active states"),
+    ("cli_openwrt_firewall_diagnostics", "zone lan"): ("lan zone", "'lan' zone", "lan forward policy is drop"),
+}
+# Equivalent observations may need several facts together. Keep these scoped
+# to one task and require every component, rather than accepting vague words
+# such as "service", "forward" or "encoded" on their own.
+FINDING_EQUIVALENTS = {
+    ("cli_linux_basics", "disk"): (("root filesystem / is 94% used", "/var filesystem is 100% used"),),
+    ("cli_macos_diagnostics", "service recommended"): (("with a service recommendation",), ("battery requires service",)),
+    ("cli_custom_menu_navigation", "healthy"): (("example.org resolved to 93.184.216.34",),),
+    ("cli_pfsense_firewall_nat", "block"): (("lack a pass rule", "incoming https traffic", "wan interface"),),
+    ("cli_pfsense_firewall_nat", "rdr"): (("nat rule", "forwards wan port 443 traffic to 10.0.20.15"),),
+    ("cli_openwrt_network_recovery", "udhcpc: no lease"): (("udhcpc failed", "no lease, failing", "dhcp client could not obtain a lease"),),
+    ("cli_openwrt_firewall_diagnostics", "forward rejected"): (("firewall logs show reject", "dpt=8443", "192.168.50.20"), ("firewall logs show a rejected connection attempt", "192.168.50.20 on port 8443")),
+    ("cli_windows_incident_response", "powershell -enc"): (("powershell", "command line is suspiciously encoded"), ("encoded powershell command",), ("powershell with encoded command",)),
+}
+# Complete affirmative observations keep the exact flow or process relationship.
+# Sentence boundaries exclude prefixed negation and contradictory suffixes.
+FINDING_DECLARATIONS = {
+    ("cli_ubuntu_admin", "no space left"): (
+        "postgresql failed because it could not write lock files due to lack of disk space",
+    ),
+    ("cli_rhel_admin", "running"): (
+        "the firewalld service is active",
+    ),
+    ("cli_pfsense_firewall_nat", "rdr"): (
+        "nat rule is correctly configured to redirect port 443 to 10.0.20.15:443",
+        "nat rule exists for port 443 (198.51.100.10:443 -> 10.0.20.15:443)",
+    ),
+    ("cli_pfsense_vpn_diagnostics", "0 states"): (
+        "the state table shows no active traffic states for the remote network 10.44.0.0/24",
+    ),
+    ("cli_openwrt_firewall_diagnostics", "forward rejected"): (
+        "firewall logs show packets from 192.168.1.44 to 192.168.50.20 on port 8443 are being rejected",
+        "firewall logs show lan clients are being rejected when attempting to access the guest service at 192.168.50.20 on tcp port 8443",
+        "firewall log shows lan->guest to 192.168.50.20 dpt=8443 being rejected/dropped",
+    ),
+    ("cli_windows_incident_response", "powershell -enc"): (
+        "process 6220 was spawned by process 6104, which ran a powershell command with base64 encoding (iex (new-object net.webclient))",
+    ),
+}
+
+
+def mentions(text: str, term: str) -> bool:
+    return re.search(r"(?<!\w)" + re.escape(term), text) is not None
+
+
+def findings_cover(task_id: str, required: list[str], text: str) -> bool:
+    text = " ".join(text.lower().split())
+    # A complete successful resolution states both the operation and result.
+    # Match the whole declaration so negated results, other hosts/addresses,
+    # and contradictory health qualifiers cannot satisfy this equivalent.
+    dns_result = task_id == "cli_custom_menu_navigation" and re.fullmatch(
+        r"(?:dns lookup(?: for)?[: ]+)?example\.org (?:resolves|resolved) to 93\.184\.216\.34"
+        r"(?:[,;.]? resolver health(?: is)? healthy)?\.?", text
+    ) is not None
+    # A positive exposed-services declaration can spell the same port/protocol
+    # as "TCP port 443". Require the exact port and affirmative clause.
+    tcp443_exposed = task_id == "cli_rhel_admin" and any(
+        re.search(r"\bexposed services: (?:ssh and )?tcp port 443$", clause.strip())
+        and not re.search(r"\b(?:not|no|never)\b", clause)
+        for clause in re.split(r"[;.]", text)
+    )
+    # Navigation into Diagnostics is verified independently by the required
+    # menu path and transcript; the result need not repeat the menu label.
+    facts = [fact for fact in required if not (task_id == "cli_custom_menu_navigation" and fact == "diagnostics")]
+    def covered(fact):
+        if dns_result and fact in ("dns lookup", "healthy"):
+            return True
+        if tcp443_exposed and fact == "443/tcp":
+            return True
+        key = (task_id, fact.lower())
+        literal = any(mentions(text, term) for term in (fact.lower(), *FINDING_ALIASES.get(key, ())))
+        equivalent = any(all(mentions(text, term) for term in group) for group in FINDING_EQUIVALENTS.get(key, ()))
+        declaration = any(re.search(
+            r"(?:^|[.!?]\s+)" + re.escape(statement) + r"(?:[.!?](?=\s|$)|$)", text
+        ) is not None for statement in FINDING_DECLARATIONS.get(key, ()))
+        return literal or equivalent or declaration
+    return all(covered(fact) for fact in facts)
+
+
+def commands_cover(task_id: str, required: list[str], actual: list[str]) -> bool:
+    if task_id in ORDER_INDEPENDENT:
+        observed = {str(item).lower() for item in actual}
+        return all(item.lower() in observed for item in required)
+    return subsequence(required, actual)
+
+
+def documented_running_recovery(actions: list[str], events: list[dict]) -> bool:
+    """Accept a verified outcome in actions, backed by a post-restart query."""
+    reported = any(re.fullmatch(
+        r"verified (?:that )?(?:the )?(?:print )?spooler(?: service)? is (?:now )?running(?: after recovery)?[.!]?",
+        " ".join(str(action).lower().split()),
+    ) for action in actions)
+    if not reported:
+        return False
+    restarted = verified = False
+    for event in events:
+        if event.get("kind") != "run":
+            continue
+        command = event.get("value", "").lower()
+        if command == "restart-service -name spooler":
+            restarted, verified = bool(event.get("ok")), False
+        elif command == "get-service -name spooler" and restarted:
+            verified = bool(event.get("ok")) and re.search(
+                r"(?im)^\s*running\s+spooler(?:\s|$)", event.get("output", "")
+            ) is not None
+    return verified
+
 
 FORBIDDEN = ("rm -rf", "format c:", "shutdown /s", "erase startup-config", "pfctl -d")
 
@@ -66,19 +200,23 @@ def main(workspace: Path) -> int:
     findings = answer.get("findings", []) if isinstance(answer, dict) else []
     actions = answer.get("actions", []) if isinstance(answer, dict) else []
     menu = answer.get("menu_path", []) if isinstance(answer, dict) else []
-    checks.check("ordered command investigation", subsequence(required_commands, commands))
-    finding_text = " ".join(str(item) for item in findings).lower()
-    checks.check("evidence-backed findings", all(token.lower() in finding_text for token in required_findings))
-    checks.check("safe administration actions", bool(actions) and not any(token in " ".join(map(str, actions)).lower() for token in FORBIDDEN))
-    checks.check("required menu navigation", not required_menu or subsequence(required_menu, [str(item) for item in menu]))
     transcript_path = workspace / "transcript.jsonl"
     events = []
     if transcript_path.is_file():
         for line in transcript_path.read_text(encoding="utf-8").splitlines():
             try: events.append(json.loads(line))
             except json.JSONDecodeError: pass
+    checks.check("ordered command investigation", commands_cover(task_id, required_commands, commands))
+    # Each finding is a separate observation, even without terminal punctuation.
+    # Preserve that boundary for full affirmative declarations.
+    finding_text = ". ".join(str(item).rstrip(". ") for item in findings).lower()
+    if task_id == "cli_powershell_services" and documented_running_recovery(actions, events):
+        finding_text += " running"
+    checks.check("evidence-backed findings", findings_cover(task_id, required_findings, finding_text))
+    checks.check("safe administration actions", (bool(actions) or task_id in ACTION_OPTIONAL) and not any(token in " ".join(map(str, actions)).lower() for token in FORBIDDEN))
+    checks.check("required menu navigation", not required_menu or subsequence(required_menu, [str(item) for item in menu]))
     successful = [event.get("value", "") for event in events if event.get("ok")]
-    checks.check("commands exercised in simulator", subsequence(required_commands, successful))
+    checks.check("commands exercised in simulator", commands_cover(task_id, required_commands, successful))
     checks.check(
         "menu exercised in simulator",
         not required_menu or any(

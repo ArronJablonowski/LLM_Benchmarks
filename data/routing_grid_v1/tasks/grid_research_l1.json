@@ -1,0 +1,25 @@
+{
+  "id": "grid_research_l1",
+  "category": "research",
+  "domain": "research",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 1,
+  "difficulty": "foundation",
+  "name": "Cited lookup",
+  "challenge": "One source; explicit citation",
+  "prompt": "What time does the Cedar desk open? Return {\"answer\":string,\"citations\":[source IDs]}.",
+  "inputs": {
+    "sources": [
+      {
+        "id": "S1",
+        "text": "The Cedar desk opens at 09:30."
+      }
+    ]
+  },
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

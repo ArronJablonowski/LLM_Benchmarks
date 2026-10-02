@@ -1,0 +1,28 @@
+{
+  "id": "grid_video_generation_l5",
+  "category": "video_generation",
+  "domain": "video_generation",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 5,
+  "difficulty": "adversarial",
+  "name": "Coordinated action",
+  "challenge": "Two objects with distinct causal roles",
+  "prompt": "Generate the requested video artifact. Return only bare JSON {\"artifact\":\"filename.mp4\"} referring to an actual generated file. Text descriptions, code, SVG and existing input copies are not outputs. A small blue ball strikes a larger yellow ball. Blue slows while yellow starts moving in the same direction. Both remain visibly distinct throughout. Static camera, one shot, no unexplained motion.",
+  "inputs": {
+    "brief": "A small blue ball strikes a larger yellow ball. Blue slows while yellow starts moving in the same direction. Both remain visibly distinct throughout. Static camera, one shot, no unexplained motion.",
+    "technical_requirements": {
+      "format": "mp4",
+      "min_width": 512,
+      "min_height": 512,
+      "min_seconds": 4,
+      "max_seconds": 12,
+      "min_fps": 12
+    }
+  },
+  "assets": [],
+  "required_capabilities": [
+    "video_generation"
+  ]
+}

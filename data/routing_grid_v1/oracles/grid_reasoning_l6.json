@@ -1,0 +1,9 @@
+{
+  "kind": "exact_json",
+  "expected": {
+    "policy": "C",
+    "worst_net": 11,
+    "dry_net": 16,
+    "wet_net": 11
+  }
+}

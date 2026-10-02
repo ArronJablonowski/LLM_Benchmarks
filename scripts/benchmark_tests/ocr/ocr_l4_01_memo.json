@@ -1,0 +1,30 @@
+{
+  "id": "ocr_l4_01_memo",
+  "family": "Original progressive OCR / document understanding",
+  "category": "vision_ocr",
+  "name": "Level 4: memo (scan)",
+  "difficulty_level": 4,
+  "difficulty": "scan",
+  "benchmark_profile": "ocr-progressive-v1",
+  "requires_image": true,
+  "image_asset": "data/ocr_progressive_v1/images/ocr_l4_01_memo.png",
+  "image_sha256": "eeb2841f686e784dd1b0f7e4e40df16ea155b8fd9560afdfaa0b8cf16c82a5d5",
+  "image_width": 1200,
+  "image_height": 1550,
+  "transformations": [
+    "page skew +/-1.4 degrees",
+    "scan tint and reduced contrast"
+  ],
+  "prompt": "Transcribe only the main memorandum body, excluding masthead, title, sidebar and footnote. Also extract the room number and owner. Read only the attached image. Return only one JSON object with exactly these keys: body, room, owner. Every value must be a string. Do not use external tools or prior answers.",
+  "grading": {
+    "kind": "ocr",
+    "expected": {
+      "body": "Project Q8-190 moves to Room 208. The review begins at 12:35 on October 14, 2026. Bring 7 signed copies. The owner is Morgan Vale. Draft material stays in the blue folder. Do not distribute the unsigned version. The revised allowance is $1492.50, excluding delivery.",
+      "room": "208",
+      "owner": "Morgan Vale"
+    },
+    "transcription_fields": [
+      "body"
+    ]
+  }
+}

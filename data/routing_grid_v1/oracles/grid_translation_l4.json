@@ -1,0 +1,16 @@
+{
+  "kind": "human_text",
+  "protected": [
+    "Resume",
+    "Reset"
+  ],
+  "word_range": [
+    1,
+    250
+  ],
+  "dimensions": {
+    "semantic_fidelity": "Every source claim, negation and uncertainty is preserved; nothing invented.",
+    "language_quality": "Natural, grammatical Japanese, with appropriate register.",
+    "task_constraints": "Polite support register; retain literal English button labels; do not invert paused/deleted or instructions."
+  }
+}

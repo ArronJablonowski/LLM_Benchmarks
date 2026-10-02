@@ -1,0 +1,4 @@
+{
+  "kind": "sql",
+  "reference_sql": "WITH ranked AS (SELECT c.region,o.id,o.cents,DENSE_RANK() OVER(PARTITION BY c.region ORDER BY o.cents DESC) rank FROM orders o JOIN customers c ON c.id=o.customer_id WHERE o.status='paid') SELECT region,id,cents FROM ranked WHERE rank=1 ORDER BY region,id"
+}

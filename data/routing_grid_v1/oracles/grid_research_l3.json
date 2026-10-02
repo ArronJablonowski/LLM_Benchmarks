@@ -1,0 +1,11 @@
+{
+  "kind": "exact_json",
+  "expected": {
+    "team": "Larch",
+    "weekday": "Thursday",
+    "citations": [
+      "S1",
+      "S2"
+    ]
+  }
+}

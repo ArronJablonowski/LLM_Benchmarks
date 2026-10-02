@@ -98,6 +98,28 @@ class CommandLineSuiteTests(unittest.TestCase):
                 self.assertEqual(0, project_runner.main(args))
             self.assertEqual([], list(root.iterdir()))
 
+    def test_service_recovery_persists_without_changing_initial_fixture(self):
+        task = next(t for t in suite_task_catalog("commandline") if t["id"] == "cli_powershell_services")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = project_runner.prepare_workspace(root, "fixture", "first", task)
+            initial = (workspace / "scenario.json").read_bytes()
+            def run(command):
+                return subprocess.run([sys.executable, str(workspace / "terminal_lab.py"), "run", command], cwd=workspace, capture_output=True, text=True)
+            self.assertIn("Stopped", run("Get-Service -Name Spooler").stdout)
+            self.assertEqual(1, run("unknown-restart").returncode)
+            self.assertIn("Stopped", run("Get-Service -Name Spooler").stdout)
+            for _ in range(2):
+                self.assertIn("Running", run("Restart-Service -Name Spooler").stdout)
+                self.assertIn("Running", run("Get-Service -Name Spooler").stdout)
+            self.assertEqual(initial, (workspace / "scenario.json").read_bytes())
+            events = [json.loads(line) for line in (workspace / "transcript.jsonl").read_text().splitlines()]
+            self.assertIn("Stopped", events[0]["output"])
+            self.assertIn("Running", events[-1]["output"])
+            other = project_runner.prepare_workspace(root, "fixture", "second", task)
+            check = subprocess.run([sys.executable, str(other / "terminal_lab.py"), "run", "Get-Service -Name Spooler"], cwd=other, capture_output=True, text=True)
+            self.assertIn("Stopped", check.stdout)
+
     def test_three_path_wrapper_routes_commandline_runner(self):
         wrapper = (ROOT / "ops/run_ollama_project_three_path_campaign.sh").read_text()
         self.assertIn("commandline", wrapper)

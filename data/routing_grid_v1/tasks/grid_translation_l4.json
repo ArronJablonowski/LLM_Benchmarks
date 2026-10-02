@@ -1,0 +1,26 @@
+{
+  "id": "grid_translation_l4",
+  "category": "translation",
+  "domain": "translation",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 4,
+  "difficulty": "constraints",
+  "name": "Japanese product support",
+  "challenge": "Politeness and terminology",
+  "prompt": "Translate the supplied source into Japanese. Return only the translation. Preserve the listed literals exactly.",
+  "inputs": {
+    "source": "The backup is paused, not deleted. Select Resume to continue. Do not select Reset.",
+    "target_language": "Japanese",
+    "protected_literals": [
+      "Resume",
+      "Reset"
+    ],
+    "instructions": "Polite support register; retain literal English button labels; do not invert paused/deleted or instructions."
+  },
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

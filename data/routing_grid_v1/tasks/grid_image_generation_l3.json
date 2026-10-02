@@ -1,0 +1,25 @@
+{
+  "id": "grid_image_generation_l3",
+  "category": "image_generation",
+  "domain": "image_generation",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 3,
+  "difficulty": "multi-source",
+  "name": "Poster typography",
+  "challenge": "Layout and exact readable text",
+  "prompt": "Generate the requested image artifact. Return only bare JSON {\"artifact\":\"filename.png\"} referring to an actual generated file. Text descriptions, code, SVG and existing input copies are not outputs. A portrait botanical poster. Exact headline: NIGHT GARDEN. Exactly two white flowers beneath the headline. Small footer: OPEN 8 PM. No other lettering.",
+  "inputs": {
+    "brief": "A portrait botanical poster. Exact headline: NIGHT GARDEN. Exactly two white flowers beneath the headline. Small footer: OPEN 8 PM. No other lettering.",
+    "technical_requirements": {
+      "format": "png",
+      "min_width": 512,
+      "min_height": 512
+    }
+  },
+  "assets": [],
+  "required_capabilities": [
+    "image_generation"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "grid_creative_l2",
+  "category": "creative",
+  "domain": "creative",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 2,
+  "difficulty": "structured",
+  "name": "Character voice",
+  "challenge": "Distinct point of view and restricted diction",
+  "prompt": "Write a 90–140 word monologue by a retired lighthouse keeper addressing the sea. Warm but unsentimental. Avoid the words destiny, journey and whisper.",
+  "inputs": {},
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

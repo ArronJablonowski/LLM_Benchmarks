@@ -1,0 +1,23 @@
+{
+  "id": "grid_translation_l1",
+  "category": "translation",
+  "domain": "translation",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 1,
+  "difficulty": "foundation",
+  "name": "Spanish service notice",
+  "challenge": "Literal short notice",
+  "prompt": "Translate the supplied source into Spanish. Return only the translation. Preserve the listed literals exactly.",
+  "inputs": {
+    "source": "The museum opens at 09:00. Admission is free.",
+    "target_language": "Spanish",
+    "protected_literals": [],
+    "instructions": "Preserve opening time and free admission."
+  },
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

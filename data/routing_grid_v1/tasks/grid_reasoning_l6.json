@@ -1,0 +1,45 @@
+{
+  "id": "grid_reasoning_l6",
+  "category": "reasoning",
+  "domain": "reasoning",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 6,
+  "difficulty": "expert",
+  "name": "Robust contingent plan",
+  "challenge": "Optimize worst-case outcomes rather than average or headline payoff",
+  "prompt": "Choose a policy maximizing its minimum net payoff over dry/wet conditions. Net payoff subtracts premium in both states. Tie-break by lower premium then alphabetic ID. Return {\"policy\":string,\"worst_net\":integer,\"dry_net\":integer,\"wet_net\":integer}.",
+  "inputs": {
+    "policies": [
+      {
+        "id": "A",
+        "dry": 30,
+        "wet": 3,
+        "premium": 0
+      },
+      {
+        "id": "B",
+        "dry": 20,
+        "wet": 14,
+        "premium": 3
+      },
+      {
+        "id": "C",
+        "dry": 18,
+        "wet": 13,
+        "premium": 2
+      },
+      {
+        "id": "D",
+        "dry": 99,
+        "wet": 1,
+        "premium": 0
+      }
+    ]
+  },
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

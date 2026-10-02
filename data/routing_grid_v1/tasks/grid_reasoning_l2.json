@@ -1,0 +1,18 @@
+{
+  "id": "grid_reasoning_l2",
+  "category": "reasoning",
+  "domain": "reasoning",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 2,
+  "difficulty": "structured",
+  "name": "Precedence ordering",
+  "challenge": "Resolve chained and partial precedence",
+  "prompt": "Return {\"order\":[task names]}. Tasks A,B,C,D each occur once. A before C, C before B, D after B.",
+  "inputs": {},
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

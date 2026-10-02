@@ -1,0 +1,33 @@
+{
+  "id": "grid_research_l4",
+  "category": "research",
+  "domain": "research",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 4,
+  "difficulty": "constraints",
+  "name": "Conflicting source authority",
+  "challenge": "Reconcile forecast, rumor and signed outcome",
+  "prompt": "Use actual records, not plans. Return {\"net_units\":integer,\"citations\":[IDs],\"excluded_sources\":[IDs in sorted order]}.",
+  "inputs": {
+    "sources": [
+      {
+        "id": "S1",
+        "text": "Draft plan: ship 120 units."
+      },
+      {
+        "id": "S2",
+        "text": "Signed dispatch ledger: 96 units shipped; 4 returned. This is the authoritative actual record."
+      },
+      {
+        "id": "S3",
+        "text": "Unverified chat rumor: 150 units shipped."
+      }
+    ]
+  },
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 
@@ -17,6 +18,13 @@ import ollama_standardized_local_benchmarks as direct
 
 
 class CodingSuiteTests(unittest.TestCase):
+    def test_grader_timeout_is_infrastructure_failure_not_model_quality(self):
+        task = suite_task_catalog("coding")[0]
+        with patch.object(coding.subprocess, "run", side_effect=subprocess.TimeoutExpired("grader", 180)):
+            grade, error = coding.grade_workspace(task, Path("/tmp/isolated-test-workspace"))
+        self.assertEqual({"verdict": "grader_error", "passed": 0, "total": 0}, grade)
+        self.assertIn("timed out", error)
+
     def test_coding_suite_is_separate_and_complete(self):
         standard = suite_task_catalog("standard")
         tasks = suite_task_catalog("coding")

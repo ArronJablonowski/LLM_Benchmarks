@@ -1,0 +1,25 @@
+{
+  "id": "grid_image_generation_l1",
+  "category": "image_generation",
+  "domain": "image_generation",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 1,
+  "difficulty": "foundation",
+  "name": "Single subject",
+  "challenge": "Object recognition and color",
+  "prompt": "Generate the requested image artifact. Return only bare JSON {\"artifact\":\"filename.png\"} referring to an actual generated file. Text descriptions, code, SVG and existing input copies are not outputs. A single red ceramic mug on a plain cream background; no letters or logos.",
+  "inputs": {
+    "brief": "A single red ceramic mug on a plain cream background; no letters or logos.",
+    "technical_requirements": {
+      "format": "png",
+      "min_width": 512,
+      "min_height": 512
+    }
+  },
+  "assets": [],
+  "required_capabilities": [
+    "image_generation"
+  ]
+}

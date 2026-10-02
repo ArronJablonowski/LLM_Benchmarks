@@ -1,0 +1,35 @@
+{
+  "id": "ocr_l6_01_memo",
+  "family": "Original progressive OCR / document understanding",
+  "category": "vision_ocr",
+  "name": "Level 6: memo (expert)",
+  "difficulty_level": 6,
+  "difficulty": "expert",
+  "benchmark_profile": "ocr-progressive-v1",
+  "requires_image": true,
+  "image_asset": "data/ocr_progressive_v1/images/ocr_l6_01_memo.png",
+  "image_sha256": "901f09da1bbda8e14b1cec9c35bf66bc62ba5030c96919db010b068208332ae4",
+  "image_width": 1200,
+  "image_height": 1550,
+  "transformations": [
+    "page skew +/-1.4 degrees",
+    "scan tint and reduced contrast",
+    "downsample and upsample",
+    "mild blur",
+    "JPEG artifacts",
+    "seeded speckle",
+    "footer stamp"
+  ],
+  "prompt": "Transcribe only the main memorandum body, excluding masthead, title, sidebar and footnote. Also extract the room number and owner. Read only the attached image. Return only one JSON object with exactly these keys: body, room, owner. Every value must be a string. Do not use external tools or prior answers.",
+  "grading": {
+    "kind": "ocr",
+    "expected": {
+      "body": "Project l1-O0-905 moves to Room 210. The review begins at 14:35 on October 16, 2026. Bring 9 signed copies. The owner is Morgan Vale. Draft material stays in the blue folder. Do not distribute the unsigned version. The revised allowance is $1638.50, excluding delivery. A dash in the register means not recorded; it does not mean zero.",
+      "room": "210",
+      "owner": "Morgan Vale"
+    },
+    "transcription_fields": [
+      "body"
+    ]
+  }
+}

@@ -41,3 +41,47 @@ def materialize_ocr_asset(task: dict, encoded_png: str, output_dir: Path) -> dic
         "bytes": len(raw),
         "base64": encoded_png,
     }
+
+
+def task_image_base64(task: dict) -> str:
+    """Return this task's verified pixels, never a text substitute or another task's image."""
+    if not task.get("requires_image"):
+        raise ValueError("task does not require an image")
+    if "image_asset" not in task:
+        if task.get("benchmark_profile") == "ocr-progressive-v1":
+            raise ValueError("progressive OCR task is missing its frozen image")
+        # Lazy import keeps the existing tiny core fixture byte-compatible.
+        from ollama_standardized_local_benchmarks import make_text_png_base64
+        return make_text_png_base64(task.get("image_text", "LOCAL OCR 42"))
+    root = Path(__file__).resolve().parents[1]
+    relative = Path(task["image_asset"])
+    path = (root / relative).resolve()
+    allowed = (root / "data/ocr_progressive_v1/images").resolve()
+    if relative.is_absolute() or not path.is_relative_to(allowed):
+        raise ValueError("OCR image must remain inside the frozen fixture directory")
+    raw = path.read_bytes()
+    if (not raw.startswith(b"\x89PNG\r\n\x1a\n")
+            or hashlib.sha256(raw).hexdigest() != task.get("image_sha256")):
+        raise ValueError("OCR image hash or PNG signature mismatch")
+    return base64.b64encode(raw).decode("ascii")
+
+
+def prepare_ocr_assets(tasks: list[dict], output_dir: Path) -> dict:
+    """Preserve one distinct, hash-bound image per task in run evidence."""
+    return {task["id"]: materialize_ocr_asset(task, task_image_base64(task), output_dir)
+            for task in tasks if task.get("requires_image")}
+
+
+def ocr_provenance(tasks: list[dict]) -> dict:
+    """Pin grading implementation and selected image/task identities in each run."""
+    selected = [task for task in tasks if task.get("benchmark_profile") == "ocr-progressive-v1"]
+    if not selected:
+        return {}
+    import json
+    root = Path(__file__).resolve().parent
+    return {
+        "ocr_profile": "ocr-progressive-v1",
+        "ocr_grader_sha256": hashlib.sha256((root / "ocr_grading.py").read_bytes()).hexdigest(),
+        "ocr_manifest_sha256": hashlib.sha256((root.parent / "data/ocr_progressive_v1/manifest.json").read_bytes()).hexdigest(),
+        "ocr_selected_tasks_sha256": hashlib.sha256(json.dumps(selected, sort_keys=True).encode()).hexdigest(),
+    }

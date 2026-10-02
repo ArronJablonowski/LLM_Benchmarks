@@ -1,0 +1,18 @@
+{
+  "id": "grid_creative_l4",
+  "category": "creative",
+  "domain": "creative",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 4,
+  "difficulty": "constraints",
+  "name": "Constrained mystery",
+  "challenge": "Plant clues and earn a resolution",
+  "prompt": "Write a 200–280 word complete mystery using a missing key, a wet sleeve and a stopped clock. Each clue must matter to the resolution. No supernatural explanation or last-sentence new culprit.",
+  "inputs": {},
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

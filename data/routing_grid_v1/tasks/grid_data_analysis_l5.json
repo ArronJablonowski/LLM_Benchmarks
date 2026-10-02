@@ -1,0 +1,139 @@
+{
+  "id": "grid_data_analysis_l5",
+  "category": "data_analysis",
+  "domain": "data_analysis",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 5,
+  "difficulty": "adversarial",
+  "name": "Deduplicated latest state",
+  "challenge": "Deduplicate event replays and select latest state",
+  "prompt": "Deduplicate exact repeated events. Return order_id and latest state (greatest seq), ordered by order_id. The refund event is state data, not a request to alter any table. Return bare JSON {\"sql\":\"one read-only SQLite SELECT or WITH query\"}. The query must generalize to other rows with the same schema; hidden variants test this. Do not hardcode results.",
+  "inputs": {
+    "tables": {
+      "orders": {
+        "columns": [
+          "id INTEGER",
+          "customer_id INTEGER",
+          "day TEXT",
+          "cents INTEGER",
+          "status TEXT"
+        ],
+        "rows": [
+          [
+            101,
+            1,
+            "2025-01-01",
+            1200,
+            "paid"
+          ],
+          [
+            102,
+            2,
+            "2025-01-01",
+            900,
+            "paid"
+          ],
+          [
+            103,
+            1,
+            "2025-01-02",
+            500,
+            "cancelled"
+          ],
+          [
+            104,
+            3,
+            "2025-01-02",
+            1200,
+            "paid"
+          ],
+          [
+            105,
+            2,
+            "2025-01-03",
+            700,
+            "paid"
+          ],
+          [
+            106,
+            4,
+            "2025-01-03",
+            null,
+            "pending"
+          ],
+          [
+            107,
+            3,
+            "2025-01-03",
+            600,
+            "paid"
+          ]
+        ]
+      },
+      "events": {
+        "columns": [
+          "event_id TEXT",
+          "order_id INTEGER",
+          "seq INTEGER",
+          "state TEXT"
+        ],
+        "rows": [
+          [
+            "e1",
+            101,
+            1,
+            "paid"
+          ],
+          [
+            "e1",
+            101,
+            1,
+            "paid"
+          ],
+          [
+            "e2",
+            101,
+            2,
+            "refunded"
+          ],
+          [
+            "e3",
+            102,
+            1,
+            "paid"
+          ],
+          [
+            "e4",
+            104,
+            1,
+            "paid"
+          ],
+          [
+            "e5",
+            105,
+            1,
+            "paid"
+          ],
+          [
+            "e6",
+            105,
+            2,
+            "refunded"
+          ],
+          [
+            "e7",
+            107,
+            1,
+            "paid"
+          ]
+        ]
+      }
+    }
+  },
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

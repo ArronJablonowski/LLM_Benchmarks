@@ -1,0 +1,18 @@
+{
+  "id": "grid_creative_l1",
+  "category": "creative",
+  "domain": "creative",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 1,
+  "difficulty": "foundation",
+  "name": "Sensory vignette",
+  "challenge": "Original imagery and concrete constraint",
+  "prompt": "Write a 50–90 word vignette about an empty train station at dawn, using sound and touch. No character names and no dialogue.",
+  "inputs": {},
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

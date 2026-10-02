@@ -67,10 +67,13 @@ def main(workspace: Path) -> int:
             assert wsgi_request(app, "GET", "/../SPEC.md")[0] in {400, 403, 404}
 
     checks.call("WSGI JSON, ETag, and safe-static contract", http_contract)
-    sources = "\n".join(path.read_text(encoding="utf-8") for path in (workspace / "webboard").glob("*.py"))
-    tree = ast.parse(sources)
-    unsafe_sql = [node for node in ast.walk(tree) if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in {"execute", "executemany"} and node.args and isinstance(node.args[0], (ast.JoinedStr, ast.BinOp))]
-    checks.check("SQL statements are parameterized", not unsafe_sql)
+    def sql_safety():
+        sources = "\n".join(path.read_text(encoding="utf-8") for path in (workspace / "webboard").glob("*.py"))
+        tree = ast.parse(sources)
+        unsafe_sql = [node for node in ast.walk(tree) if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in {"execute", "executemany"} and node.args and isinstance(node.args[0], (ast.JoinedStr, ast.BinOp))]
+        assert not unsafe_sql
+
+    checks.call("SQL statements are parameterized", sql_safety)
     static = workspace / "webboard" / "static"; index = (static / "index.html").read_text(encoding="utf-8"); css = (static / "styles.css").read_text(encoding="utf-8").lower(); js = (static / "app.mjs").read_text(encoding="utf-8")
     markup = Markup(); markup.feed(index)
     checks.check("accessible responsive frontend", any(tag == "html" and row.get("lang") for tag, row in markup.attrs) and "main" in markup.tags and any(row.get("aria-live") for _tag, row in markup.attrs) and "@media" in css and ":focus-visible" in css)

@@ -1,0 +1,81 @@
+{
+  "id": "grid_data_analysis_l1",
+  "category": "data_analysis",
+  "domain": "data_analysis",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 1,
+  "difficulty": "foundation",
+  "name": "Paid order filter",
+  "challenge": "Filter without counting cancelled or NULL rows",
+  "prompt": "List paid order IDs sorted ascending. Return bare JSON {\"sql\":\"one read-only SQLite SELECT or WITH query\"}. The query must generalize to other rows with the same schema; hidden variants test this. Do not hardcode results.",
+  "inputs": {
+    "tables": {
+      "orders": {
+        "columns": [
+          "id INTEGER",
+          "customer_id INTEGER",
+          "day TEXT",
+          "cents INTEGER",
+          "status TEXT"
+        ],
+        "rows": [
+          [
+            101,
+            1,
+            "2025-01-01",
+            1200,
+            "paid"
+          ],
+          [
+            102,
+            2,
+            "2025-01-01",
+            900,
+            "paid"
+          ],
+          [
+            103,
+            1,
+            "2025-01-02",
+            500,
+            "cancelled"
+          ],
+          [
+            104,
+            3,
+            "2025-01-02",
+            1200,
+            "paid"
+          ],
+          [
+            105,
+            2,
+            "2025-01-03",
+            700,
+            "paid"
+          ],
+          [
+            106,
+            4,
+            "2025-01-03",
+            null,
+            "pending"
+          ],
+          [
+            107,
+            3,
+            "2025-01-03",
+            600,
+            "paid"
+          ]
+        ]
+      }
+    }
+  },
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

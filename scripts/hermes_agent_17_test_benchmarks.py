@@ -24,7 +24,6 @@ from ollama_standardized_local_benchmarks import (
     avg_field,
     finish_paired_task_resource_guard,
     load_models,
-    make_text_png_base64,
     max_field,
     read_linux_resource_snapshot,
     start_paired_task_resource_guard,
@@ -35,7 +34,7 @@ from ollama_standardized_local_benchmarks import (
 )
 from platform_support import create_sampler, run_metadata
 from output_safety import redact_sensitive_text
-from vision_benchmark_support import materialize_ocr_asset, model_supports_vision
+from vision_benchmark_support import prepare_ocr_assets, model_supports_vision, ocr_provenance
 
 SUITE_VERSION = "0.2.0"
 BENCHMARK_PROFILE = "hermes-agent-accuracy-first-v2"
@@ -270,7 +269,7 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--dry-run", action="store_true")
     parser.add_argument("--list-tasks", "--list-tests", dest="list_tasks", action="store_true", help="List selected task IDs without contacting Hermes or Ollama.")
     args = parser.parse_args(argv)
-    if args.suite != DEFAULT_SUITE:
+    if args.suite not in (DEFAULT_SUITE, "ocr"):
         parser.error(f"--suite {args.suite} requires its isolated tool-capable agent runner; this Hermes runner is prompt/response only")
     if not 1 <= args.timeout <= 1800:
         parser.error("--timeout must be between 1 and 1800 seconds")
@@ -353,8 +352,8 @@ def main(argv: list[str] | None = None) -> int:
     metadata.update({
         "run_id": time.strftime("%Y%m%d_%H%M%S"),
         "suite_version": SUITE_VERSION,
-        "benchmark_profile": BENCHMARK_PROFILE,
-        "grading_profile": GRADING_PROFILE,
+        "benchmark_profile": "ocr-progressive-v1" if args.suite == "ocr" else BENCHMARK_PROFILE,
+        "grading_profile": "ocr-progressive-v1" if args.suite == "ocr" else GRADING_PROFILE,
         "runner_sha256": current_runner_sha256,
         "recovery_runner_sha256": "",
         "hermes_version": version.stdout.splitlines()[0].strip(),
@@ -363,11 +362,8 @@ def main(argv: list[str] | None = None) -> int:
         "provider": args.provider if args.external_models else "custom",
     })
     out_dir = args.output_dir.expanduser(); out_dir.mkdir(parents=True, exist_ok=True)
-    ocr_task = next((task for task in tasks if task.get("requires_image")), None)
-    ocr_asset = (
-        materialize_ocr_asset(ocr_task, make_text_png_base64(ocr_task.get("image_text", "LOCAL OCR 42")), out_dir)
-        if ocr_task else None
-    )
+    metadata.update(ocr_provenance(tasks))
+    ocr_assets = prepare_ocr_assets(tasks, out_dir)
     prefix = (
         args.resume_prefix.expanduser()
         if args.resume_prefix else out_dir / f"hermes_agent_text_benchmark_{metadata['run_id']}"
@@ -425,6 +421,7 @@ def main(argv: list[str] | None = None) -> int:
                     _set_context(hermes_python, int(model["requested_num_ctx"]))
                 for treatment in _treatments(model):
                     for task in tasks:
+                        ocr_asset = ocr_assets.get(task["id"])
                         call_index += 1
                         if (model["name"], treatment["treatment_key"], task["id"]) in completed:
                             continue

@@ -1,0 +1,4 @@
+{
+  "kind": "sql",
+  "reference_sql": "SELECT id FROM orders WHERE status='paid' ORDER BY id"
+}

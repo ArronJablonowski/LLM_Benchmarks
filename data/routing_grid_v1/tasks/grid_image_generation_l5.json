@@ -1,0 +1,25 @@
+{
+  "id": "grid_image_generation_l5",
+  "category": "image_generation",
+  "domain": "image_generation",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 5,
+  "difficulty": "adversarial",
+  "name": "Dense relational scene",
+  "challenge": "Negative constraints and distributed object relationships",
+  "prompt": "Generate the requested image artifact. Return only bare JSON {\"artifact\":\"filename.png\"} referring to an actual generated file. Text descriptions, code, SVG and existing input copies are not outputs. An isometric reading room: two green chairs face one low round table; a closed blue book on the table; one tall lamp behind the left chair. No people, windows, text or extra chairs. All objects fully visible.",
+  "inputs": {
+    "brief": "An isometric reading room: two green chairs face one low round table; a closed blue book on the table; one tall lamp behind the left chair. No people, windows, text or extra chairs. All objects fully visible.",
+    "technical_requirements": {
+      "format": "png",
+      "min_width": 512,
+      "min_height": 512
+    }
+  },
+  "assets": [],
+  "required_capabilities": [
+    "image_generation"
+  ]
+}

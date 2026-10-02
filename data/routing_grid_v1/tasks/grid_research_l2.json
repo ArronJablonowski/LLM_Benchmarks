@@ -1,0 +1,29 @@
+{
+  "id": "grid_research_l2",
+  "category": "research",
+  "domain": "research",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 2,
+  "difficulty": "structured",
+  "name": "Policy version",
+  "challenge": "Resolve dated supersession",
+  "prompt": "As of 2025-05-01, how many days must logs be retained? Return {\"days\":integer,\"citations\":[IDs]}.",
+  "inputs": {
+    "sources": [
+      {
+        "id": "S1",
+        "text": "Policy effective 2025-01-01: retain logs for 30 days."
+      },
+      {
+        "id": "S2",
+        "text": "Policy effective 2025-04-01 replaces S1: retain logs for 45 days."
+      }
+    ]
+  },
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

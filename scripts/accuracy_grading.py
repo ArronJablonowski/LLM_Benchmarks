@@ -19,7 +19,7 @@ import tempfile
 from pathlib import Path
 
 
-GRADING_PROFILE = "behavioral-v1"
+GRADING_PROFILE = "behavioral-v1.3"
 DEFAULT_PYTHON_GRADER_TIMEOUT_SECONDS = 5.0
 MAX_GRADER_DETAIL_CHARS = 2000
 
@@ -144,6 +144,10 @@ def grade_task(task, status, text, skipped=False):
         return _base_result("skip", "capability")
     if status != "ok":
         return _base_result("fail", "transport", f"generation status was {status!r}")
+
+    if task.get("ocr_grader"):
+        from ocr_grading import grade_ocr
+        return grade_ocr(task, text)
 
     if task.get("python_grader"):
         return grade_python_function(text, task["python_grader"])
@@ -386,7 +390,9 @@ ALLOWED_ATTRIBUTES = {
     "IPv4Address", "IPv4Network", "add", "append", "compile", "count",
     "discard", "endswith", "extend", "find", "findall", "finditer", "fullmatch",
     "group", "groups", "ip_address", "ip_network", "is_private", "isdigit", "join",
-    "lower", "match", "replace", "search", "split", "splitlines", "startswith",
+    # IPv4Address.packed is the public, immutable byte representation of an
+    # address; candidates may inspect its octets without bypassing validation.
+    "lower", "match", "packed", "replace", "search", "split", "splitlines", "startswith",
     "strip", "update", "upper", "version",
 }
 
@@ -396,7 +402,7 @@ ALLOWED_IMPORT_SYMBOLS = {
 }
 
 SAFE_BUILTIN_NAMES = (
-    "Exception", "IndexError", "KeyError", "OverflowError", "TypeError", "ValueError",
+    "AttributeError", "Exception", "IndexError", "KeyError", "OverflowError", "TypeError", "ValueError",
     "abs", "all", "any", "bool", "dict", "enumerate", "filter", "float", "int",
     "isinstance", "len", "list", "map", "max", "min", "range", "reversed", "round",
     "set", "sorted", "str", "sum", "tuple", "zip",
@@ -411,6 +417,18 @@ def _validate_candidate(tree, allowed_imports):
 
     def safe_name(name):
         return bool(name) and not name.startswith("_") and name not in FORBIDDEN_NAMES
+
+    # A single underscore is a normal local identifier, commonly used when
+    # discarding unpacked values. Permit it only inside function bodies; keep
+    # module targets, import aliases, private attributes and other underscored
+    # names subject to the existing restrictions.
+    local_discard_names = {
+        id(child)
+        for function in ast.walk(tree) if isinstance(function, ast.FunctionDef)
+        for statement in function.body
+        for child in ast.walk(statement)
+        if isinstance(child, ast.Name) and child.id == "_"
+    }
 
     def safe_constant_expression(node):
         if isinstance(node, ast.Constant):
@@ -457,7 +475,10 @@ def _validate_candidate(tree, allowed_imports):
     for node in ast.walk(tree):
         if isinstance(node, FORBIDDEN_AST_NODES):
             raise ValueError(f"unsupported Python construct: {type(node).__name__}")
-        if isinstance(node, ast.Name) and (node.id.startswith("_") or node.id in FORBIDDEN_NAMES):
+        if isinstance(node, ast.Name) and (
+            (node.id.startswith("_") and id(node) not in local_discard_names)
+            or node.id in FORBIDDEN_NAMES
+        ):
             raise ValueError(f"unsafe name: {node.id}")
         if isinstance(node, ast.Attribute) and node.attr not in ALLOWED_ATTRIBUTES:
             raise ValueError(f"unsafe attribute: {node.attr}")

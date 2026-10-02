@@ -1,0 +1,16 @@
+{
+  "kind": "human_text",
+  "protected": [
+    "18:00",
+    "Weber"
+  ],
+  "word_range": [
+    1,
+    250
+  ],
+  "dimensions": {
+    "semantic_fidelity": "Every source claim, negation and uncertainty is preserved; nothing invented.",
+    "language_quality": "Natural, grammatical German, with appropriate register.",
+    "task_constraints": "Use formal Sie; preserve prohibition, condition and amber, not red."
+  }
+}

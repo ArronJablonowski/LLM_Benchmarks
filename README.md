@@ -3,8 +3,9 @@
 ## About
 
 Local LLM Benchmark Suite is a reproducible evaluation toolkit for comparing
-local and cloud-connected models on your own hardware. It contains five
-isolated suites—Standard, Coding, Creative, Cybersecurity, and Command Line—plus an offline GitHub CLI suite and guarded,
+local and cloud-connected models on your own hardware. It contains isolated
+suites for Standard, Coding, Creative, Cybersecurity, Command Line, GitHub CLI and OCR,
+plus the progressive Routing Grid pack and guarded,
 opt-in published profiles. Each campaign preserves the evidence needed to
 explain a result: model and runtime provenance, agent harness, task outcome,
 response timing, temperature, and peak-memory telemetry. Scores compare the
@@ -44,6 +45,8 @@ results from unlike evaluations from being merged.
 | `cybersecurity` | 24 original tasks across 8 security tracks | Deterministic hidden checks on isolated local fixtures | `cybersecurity_agent_report.html` |
 | `commandline` | 20 escalating shell, administration, menu, firewall, and incident-response labs by default; 120 with `--full-suite` | Hidden sequence/evidence checks against safe simulated systems | Dedicated CSV and canonical JSONL evidence |
 | `github` | 198 frozen GitHub CLI leaf-command tasks and 10 multi-step workflows | Offline command/evidence and workflow-order grading; no GitHub account or live writes | Dedicated CSV and canonical JSONL evidence |
+| `ocr` | 30 real-image tasks, six levels across five document/visual families | Strict structured extraction and transcription checks | Separate OCR evidence and reports |
+| `routing-grid` | 60 tasks: six levels for each of ten previously unmeasured routing cards | Deterministic JSON/SQL/workflow checks plus required human language/media review | Offline input export and scoped assessment JSON; no model dispatch |
 | `aime2026`, `gpqa-diamond`, `standard-local` | 30, 198, or 228 official offline items | Exact-answer local grading | Standard evidence files, labeled by profile |
 | ExploitGym `sample` / `v1` | 20 / 869 published exploit-development instances | Upstream flag and on-target scoring | Separate section in `cybersecurity_agent_report.html` |
 
@@ -52,6 +55,10 @@ Start with `standard` below. The [Coding](#coding-agent-suite),
 link to their complete task maps and execution guides.
 The Command Line suite is documented in [`docs/COMMANDLINE_SUITE.md`](docs/COMMANDLINE_SUITE.md).
 The offline GitHub CLI suite is documented in [`docs/GITHUB_SUITE.md`](docs/GITHUB_SUITE.md).
+See [Progressive OCR](docs/ocr-progressive-v1.md) and the
+[Routing Grid task pack](docs/ROUTING_GRID_BENCHMARKS.md) for their separate contracts.
+To inspect the new pack offline, run
+`python3 scripts/routing_grid_benchmarks.py --list-tasks`.
 
 ## Completed DGX Spark campaigns through September 29, 2026
 
@@ -237,6 +244,29 @@ toolsets. OpenClaw uses unique benchmark sessions and an explicit per-run
 
 The runners use the same core task registry. Run each path separately so
 their scores remain attributable to their actual transport and agent behavior.
+
+### Progressive OCR and document images
+
+The separate `ocr` suite adds 30 image-only tests across six ascending difficulty levels: Word-style memo transcription, forms/checkboxes, table extraction and arithmetic, bar-chart analysis, and diagram reading. Harder fixtures add layout distractors, scan degradation, redaction and untrusted document instructions. Each task has its own hash-bound PNG and strict deterministic grading, with field accuracy and transcription CER/WER diagnostics.
+
+See [suite design, supported runners and limitations](docs/ocr-progressive-v1.md) and the [30-image gallery](data/ocr_progressive_v1/gallery.html). List without inference with `python3 scripts/ollama_standardized_local_benchmarks.py --suite ocr --list-tasks`. The separate DarwinRouter OCR SDK host checks native image capabilities and preserves image-dispatch evidence; its support does not extend the legacy Standard adapter's text-only API or imply completed OCR results.
+
+### DarwinRouter Standard path
+
+DarwinRouter has a native Standard-suite adapter that submits each text task
+through the authenticated durable task API with `model_id: auto`. It preserves
+the Darwin task ID, deterministic grade, route estimate, response digest, and
+macOS/NVIDIA telemetry. When the route reports an observed attempt cost, the
+adapter records the deterministic pass/fail result through DarwinRouter's
+feedback API so later automatic routes can use the benchmark evidence.
+
+```bash
+DARWIN_API_TOKEN=... python3 scripts/darwinrouter_standard_benchmarks.py \
+  --output-dir reports/darwinrouter-standard --run
+```
+
+The adapter is resumable from its JSONL evidence and excludes the core image
+task until DarwinRouter exposes a qualified multimodal request contract.
 
 ### COH Ollama
 
@@ -608,6 +638,7 @@ Useful project references:
 | [`docs/PROVENANCE.md`](docs/PROVENANCE.md) | Source, model, runtime, and artifact provenance |
 | [`docs/BENCHMARK_COMPONENTS.md`](docs/BENCHMARK_COMPONENTS.md) | Standard task-component structure and extension workflow |
 | [`docs/CODING_SUITE.md`](docs/CODING_SUITE.md) | Coding and web-development projects, hidden checks, and execution |
+| [`docs/ROUTING_GRID_BENCHMARKS.md`](docs/ROUTING_GRID_BENCHMARKS.md) | Ten routing-card categories, progressive tasks, offline graders and human review |
 | [`docs/CREATIVE_SUITE.md`](docs/CREATIVE_SUITE.md) | Creative briefs and human-review protocol |
 | [`docs/CYBERSECURITY_SUITE.md`](docs/CYBERSECURITY_SUITE.md) | Security tracks, standards, safety, and ExploitGym |
 | [`docs/DGX_SPARK.md`](docs/DGX_SPARK.md) | Spark preflight, telemetry, context, and resource safeguards |
@@ -620,3 +651,4 @@ each hardware result remains attributable to its originating machine.
 For Spark-specific preflight and telemetry details, see
 [`docs/DGX_SPARK.md`](docs/DGX_SPARK.md). The canonical remote is
 [ArronJablonowski/LLM_Benchmarks](https://github.com/ArronJablonowski/LLM_Benchmarks).
+DarwinRouter can compare configured local models independently and then run a held-out automatic-routing validation with `scripts/darwinrouter_learning_campaign.py`. Each model writes to its own resumable evidence directory, and the standard adapter records deterministic accepted/rejected feedback in DarwinRouter after every completed task.

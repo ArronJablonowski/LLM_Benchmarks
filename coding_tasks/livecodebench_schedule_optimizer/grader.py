@@ -12,9 +12,8 @@ from grader_support import Checks, import_path, python_files_parse, run_project_
 
 def main(workspace: Path) -> int:
     checks = Checks()
-    module = import_path(workspace / "scheduler" / "optimizer.py", "graded_optimizer")
-
     def correctness():
+        module = import_path(workspace / "scheduler" / "optimizer.py", "graded_optimizer")
         jobs = [
             {"id": "z", "start": 0, "end": 5, "value": 9},
             {"id": "a", "start": 0, "end": 2, "value": 5},
@@ -28,6 +27,7 @@ def main(workspace: Path) -> int:
     checks.call("hidden correctness and tie breaking", correctness)
 
     def validation():
+        module = import_path(workspace / "scheduler" / "optimizer.py", "graded_optimizer")
         for bad in ([{"id": "x", "start": 2, "end": 1, "value": 3}], [{"id": "x", "start": 1, "end": 1, "value": 3}], [{"start": 0, "end": 1, "value": 1}]):
             try:
                 module.optimize(bad)
@@ -38,6 +38,7 @@ def main(workspace: Path) -> int:
     checks.call("input validation", validation)
 
     def scale():
+        module = import_path(workspace / "scheduler" / "optimizer.py", "graded_optimizer")
         jobs = [{"id": f"j{i:05d}", "start": i, "end": i + 1, "value": 1} for i in range(10_000)]
         started = time.monotonic(); result = module.optimize(jobs); elapsed = time.monotonic() - started
         assert result["total_value"] == 10_000 and len(result["jobs"]) == 10_000

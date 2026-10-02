@@ -126,6 +126,39 @@ server process for the bounded campaign. All paths preserve interrupted
 workspaces, use memory/swap/OOM/exclusivity guards, and resume only completed
 model-task keys. Default coding timeout is two hours; the hard maximum is four.
 
+## DarwinRouter learning and tool recovery
+
+The native DarwinRouter coding host enables workspace tools. A response that
+prints the tool protocol as ordinary text gets at most two durable continuation
+attempts to use the native interface; the host never executes that text. These
+continuations preserve the requested model and report their task IDs and token
+usage. Execution failures are not retried by this protocol-repair helper.
+
+The macOS command tool requires `sandbox-exec` and has no unsandboxed fallback.
+Commands can read system runtimes and the assigned workspace, write only in that
+workspace and its private temporary home, and cannot use the network. Shell
+startup files and inherited credentials are excluded. File tools use an opened
+directory root so symlinks cannot reach other benchmark solutions. The built-in
+read tool is scoped to the same workspace. This prevents previous campaign
+workspaces from contaminating the current result.
+
+The runner defaults to one whole-host attempt. `--max-attempts 2` through `5`
+explicitly allows additional attempts in the preserved workspace; evidence
+records `host_attempts`, and elapsed time includes every attempt. Do not compare
+different attempt budgets without disclosing them.
+
+Supply `--database /absolute/path/to/darwin.db` to
+`scripts/darwinrouter_coding_benchmarks.py` when coding feedback should train the
+same router used by the live daemon. Without this option, the runner retains its
+isolated output-directory database. Use the same configuration as that daemon.
+Graded feedback is attached to the evaluated task, never to a synthetic
+acknowledgement task; a failed feedback write remains visible in the evidence.
+
+New records distinguish `context_window_tokens` (the allocated context tier)
+from `input_tokens` (cumulative usage), and include `darwin_task_id`,
+`previous_task_ids`, `resolved_model`, and `learning_database`. The historical
+`context_tokens` column is retained as an alias for input usage for compatibility.
+
 ## Report isolation
 
 Generate or regenerate only the coding report:

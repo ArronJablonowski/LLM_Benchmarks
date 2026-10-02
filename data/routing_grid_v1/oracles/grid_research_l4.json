@@ -1,0 +1,13 @@
+{
+  "kind": "exact_json",
+  "expected": {
+    "net_units": 92,
+    "citations": [
+      "S2"
+    ],
+    "excluded_sources": [
+      "S1",
+      "S3"
+    ]
+  }
+}

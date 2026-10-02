@@ -1,0 +1,13 @@
+{
+  "kind": "exact_json",
+  "expected": {
+    "time": "09:30",
+    "room": 12
+  },
+  "transcript": [
+    [
+      "Samantha",
+      "The meeting starts at nine thirty in room twelve."
+    ]
+  ]
+}

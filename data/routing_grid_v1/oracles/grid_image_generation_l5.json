@@ -1,0 +1,14 @@
+{
+  "kind": "human_media",
+  "media_kind": "image",
+  "spec": {
+    "format": "png",
+    "min_width": 512,
+    "min_height": 512
+  },
+  "dimensions": {
+    "brief_adherence": "All specified counts, colors, spatial/temporal relationships and text are correct.",
+    "coherence": "Consistent geometry, lighting, identity and (for video) movement across frames.",
+    "visual_craft": "Legible, composed artifact without distracting rendering defects."
+  }
+}

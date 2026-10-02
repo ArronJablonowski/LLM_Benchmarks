@@ -31,6 +31,20 @@ def record(kind: str, value: str, ok: bool, output: str) -> None:
         stream.write(json.dumps(event, sort_keys=True) + "\n")
 
 
+def command_outputs(scenario: dict) -> dict:
+    """Replay successful simulated effects across separate CLI invocations."""
+    commands = dict(scenario["commands"])
+    effects = scenario.get("command_effects", {})
+    if TRANSCRIPT.is_file():
+        for line in TRANSCRIPT.read_text(encoding="utf-8").splitlines():
+            event = json.loads(line)
+            if event.get("kind") == "run" and event.get("ok"):
+                for command, output in effects.get(event.get("value"), {}).items():
+                    if command in commands:
+                        commands[command] = output
+    return commands
+
+
 def main(argv: list[str]) -> int:
     scenario = load()
     if not argv or argv[0] == "help":
@@ -44,7 +58,7 @@ def main(argv: list[str]) -> int:
         print("invalid simulator invocation", file=sys.stderr)
         return 2
     value = " ".join(argv[1:]).strip()
-    table = scenario["commands"] if argv[0] == "run" else scenario.get("menus", {})
+    table = command_outputs(scenario) if argv[0] == "run" else scenario.get("menus", {})
     output = table.get(value)
     ok = output is not None
     if not ok:

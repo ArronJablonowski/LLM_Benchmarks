@@ -1,0 +1,18 @@
+{
+  "id": "grid_writing_l3",
+  "category": "writing",
+  "domain": "writing",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 3,
+  "difficulty": "multi-source",
+  "name": "Balanced synthesis",
+  "challenge": "Combine evidence and avoid unsupported conclusion",
+  "prompt": "Write a 100–150 word management brief. Pilot: 40 participants; median processing time fell from 12 to 9 minutes; error rate rose from 2% to 3%; no control group. Explain the tradeoff and avoid claiming causation or proven company-wide savings.",
+  "inputs": {},
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

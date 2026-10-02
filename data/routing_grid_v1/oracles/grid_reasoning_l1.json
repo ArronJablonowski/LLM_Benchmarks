@@ -1,0 +1,6 @@
+{
+  "kind": "exact_json",
+  "expected": {
+    "boxes": 34
+  }
+}

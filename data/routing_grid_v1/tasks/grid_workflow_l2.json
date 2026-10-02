@@ -1,0 +1,23 @@
+{
+  "id": "grid_workflow_l2",
+  "category": "workflow",
+  "domain": "workflow",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 2,
+  "difficulty": "structured",
+  "name": "Read version before update",
+  "challenge": "Read version before update",
+  "prompt": "Execute a simulated workflow by returning bare JSON {\"calls\":[{\"op\":string, ...arguments}]}. The grader executes this bounded call sequence, retaining errors and effects. Use only the documented API; no network or real accounts exist. All desired final states must be reached, with no extra writes. Read ticket T2 at version 4 before setting status closed, using that version. Preserve its title.",
+  "inputs": {
+    "api": [
+      "read_ticket(id)",
+      "close_ticket(id,version)"
+    ]
+  },
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

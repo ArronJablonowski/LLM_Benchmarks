@@ -1,0 +1,17 @@
+{
+  "kind": "workflow",
+  "reference_calls": [
+    {
+      "op": "list_items",
+      "page": 1
+    },
+    {
+      "op": "list_items",
+      "page": 2
+    },
+    {
+      "op": "save_total",
+      "total": 32
+    }
+  ]
+}

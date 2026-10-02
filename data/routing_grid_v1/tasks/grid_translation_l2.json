@@ -1,0 +1,27 @@
+{
+  "id": "grid_translation_l2",
+  "category": "translation",
+  "domain": "translation",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 2,
+  "difficulty": "structured",
+  "name": "French placeholders",
+  "challenge": "Variables and product names",
+  "prompt": "Translate the supplied source into French. Return only the translation. Preserve the listed literals exactly.",
+  "inputs": {
+    "source": "Hello {name}, your Cedar order {order_id} arrives on 12 May 2027.",
+    "target_language": "French",
+    "protected_literals": [
+      "{name}",
+      "{order_id}",
+      "Cedar"
+    ],
+    "instructions": "Preserve date, placeholders and brand; natural French, no invented facts."
+  },
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

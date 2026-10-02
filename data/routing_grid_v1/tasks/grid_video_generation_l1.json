@@ -1,0 +1,28 @@
+{
+  "id": "grid_video_generation_l1",
+  "category": "video_generation",
+  "domain": "video_generation",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 1,
+  "difficulty": "foundation",
+  "name": "Simple motion",
+  "challenge": "Single subject continuity",
+  "prompt": "Generate the requested video artifact. Return only bare JSON {\"artifact\":\"filename.mp4\"} referring to an actual generated file. Text descriptions, code, SVG and existing input copies are not outputs. A red ball rolls smoothly left to right on a cream floor. Static camera, no cuts, no text.",
+  "inputs": {
+    "brief": "A red ball rolls smoothly left to right on a cream floor. Static camera, no cuts, no text.",
+    "technical_requirements": {
+      "format": "mp4",
+      "min_width": 512,
+      "min_height": 512,
+      "min_seconds": 4,
+      "max_seconds": 12,
+      "min_fps": 12
+    }
+  },
+  "assets": [],
+  "required_capabilities": [
+    "video_generation"
+  ]
+}

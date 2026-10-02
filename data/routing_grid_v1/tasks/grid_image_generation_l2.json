@@ -1,0 +1,25 @@
+{
+  "id": "grid_image_generation_l2",
+  "category": "image_generation",
+  "domain": "image_generation",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 2,
+  "difficulty": "structured",
+  "name": "Spatial composition",
+  "challenge": "Counts and relationships",
+  "prompt": "Generate the requested image artifact. Return only bare JSON {\"artifact\":\"filename.png\"} referring to an actual generated file. Text descriptions, code, SVG and existing input copies are not outputs. Exactly three blue spheres in a row, with one yellow cube above the middle sphere; plain gray background.",
+  "inputs": {
+    "brief": "Exactly three blue spheres in a row, with one yellow cube above the middle sphere; plain gray background.",
+    "technical_requirements": {
+      "format": "png",
+      "min_width": 512,
+      "min_height": 512
+    }
+  },
+  "assets": [],
+  "required_capabilities": [
+    "image_generation"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "grid_audio_l2",
+  "category": "audio",
+  "domain": "audio",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 2,
+  "difficulty": "structured",
+  "name": "Corrected reservation",
+  "challenge": "Spoken correction overrides earlier number",
+  "prompt": "Return the final request as {\"seats\":integer,\"day\":string}.",
+  "inputs": {},
+  "assets": [
+    {
+      "path": "assets/audio_l2.wav",
+      "sha256": "6551189e871efd8593c4d144aa95884191ffa3dce794dbbd6be4f2489e5da23f",
+      "mime": "audio/wav"
+    }
+  ],
+  "required_capabilities": [
+    "audio_input"
+  ],
+  "subtask": "speech_understanding"
+}

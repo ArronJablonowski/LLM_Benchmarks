@@ -1,0 +1,25 @@
+{
+  "id": "grid_audio_l5",
+  "category": "audio",
+  "domain": "audio",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 5,
+  "difficulty": "adversarial",
+  "name": "Interrupted change notice",
+  "challenge": "Noise, speaker change and correction chain",
+  "prompt": "Return the final pickup as {\"day\":string,\"time\":\"HH:MM\",\"location\":string}.",
+  "inputs": {},
+  "assets": [
+    {
+      "path": "assets/audio_l5.wav",
+      "sha256": "96c0bd70cd5db45c0b67ea3c0e104eb47170ee0b766d93f42019896d29445245",
+      "mime": "audio/wav"
+    }
+  ],
+  "required_capabilities": [
+    "audio_input"
+  ],
+  "subtask": "speech_understanding"
+}

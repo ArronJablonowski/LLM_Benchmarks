@@ -1,0 +1,13 @@
+{
+  "kind": "exact_json",
+  "expected": {
+    "seats": 6,
+    "day": "Friday"
+  },
+  "transcript": [
+    [
+      "Samantha",
+      "Reserve four seats for Friday. Correction, reserve six seats for Friday, not four."
+    ]
+  ]
+}

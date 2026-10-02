@@ -25,13 +25,12 @@ from benchmark_tests import DEFAULT_SUITE, SUITE_CHOICES, core_task_catalog, sui
 from benchmark_settings import SETTINGS
 from platform_support import create_sampler, run_metadata
 from ollama_standardized_local_benchmarks import (
-    make_text_png_base64,
     stop_model,
     verify_empty_paired_residency,
     verify_paired_live_residency,
 )
 from output_safety import redact_sensitive_text
-from vision_benchmark_support import materialize_ocr_asset, model_supports_vision
+from vision_benchmark_support import prepare_ocr_assets, model_supports_vision, ocr_provenance
 
 HOME = SETTINGS.home
 DEFAULT_OUT_DIR = SETTINGS.report_dir('openclaw_benchmarks')
@@ -443,7 +442,7 @@ def main(argv=None):
     ap.add_argument('--list-tasks', '--list-tests', dest='list_tasks', action='store_true', help='List selected task IDs without contacting Ollama or OpenClaw.')
     args = ap.parse_args(argv)
 
-    if args.suite != DEFAULT_SUITE:
+    if args.suite not in (DEFAULT_SUITE, "ocr"):
         ap.error(f'--suite {args.suite} requires its isolated tool-capable agent runner; this OpenClaw runner is prompt/response only')
 
     unknown_external_vision = set(args.external_vision_models) - set(args.external_models)
@@ -490,8 +489,8 @@ def main(argv=None):
     resolved_thinking = sorted({plan[2] for plan in thinking_plan.values()})
     metadata.update({
         'suite_version': SUITE_VERSION,
-        'benchmark_profile': BENCHMARK_PROFILE,
-        'grading_profile': GRADING_PROFILE,
+        'benchmark_profile': 'ocr-progressive-v1' if args.suite == 'ocr' else BENCHMARK_PROFILE,
+        'grading_profile': 'ocr-progressive-v1' if args.suite == 'ocr' else GRADING_PROFILE,
         'runner_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         'grader_sha256': hashlib.sha256(Path(grade_task.__code__.co_filename).read_bytes()).hexdigest(),
         'output_token_policy': OUTPUT_TOKEN_POLICY,
@@ -549,11 +548,8 @@ def main(argv=None):
     restore_model = args.restore_model or original_state['model']
     out_dir = args.output_dir.expanduser()
     out_dir.mkdir(parents=True, exist_ok=True)
-    ocr_task = next((task for task in tasks if task.get('requires_image')), None)
-    ocr_asset = (
-        materialize_ocr_asset(ocr_task, make_text_png_base64(ocr_task.get('image_text', 'LOCAL OCR 42')), out_dir)
-        if ocr_task else None
-    )
+    metadata.update(ocr_provenance(tasks))
+    ocr_assets = prepare_ocr_assets(tasks, out_dir)
     stamp = time.strftime('%Y%m%d_%H%M%S')
     metadata['run_id'] = stamp
     csv_path = out_dir / f'openclaw_local_model_benchmark_telemetry_{stamp}.csv'
@@ -602,6 +598,7 @@ def main(argv=None):
                 vision_capable = model_supports_vision(model)
                 _, thinking_cli_value, thinking_resolved = thinking_plan[model['name']]
                 for ti, task in enumerate(tasks, 1):
+                    ocr_asset = ocr_assets.get(task["id"])
                     skipped = bool(task.get('requires_image') and not vision_capable)
                     skip_error = 'model metadata does not advertise image/vision/OCR capability' if skipped else ''
                     session = f'agent:main:oc18-{safe_model_id(model["name"])}-{task["id"]}-{time.strftime("%Y%m%d%H%M%S")}'
@@ -687,7 +684,7 @@ def main(argv=None):
                         termination_reason = 'error'
                     row = {
                         **{key:metadata.get(key,'') for key in ('run_id','suite_version','host','host_label','platform','os_version','architecture','telemetry_backend','ollama_version')},
-                        'benchmark_profile':BENCHMARK_PROFILE,'grading_profile':GRADING_PROFILE,
+                        'benchmark_profile':metadata['benchmark_profile'],'grading_profile':metadata['grading_profile'],
                         'runner_sha256':metadata['runner_sha256'],'grader_sha256':metadata['grader_sha256'],
                         'output_token_policy':OUTPUT_TOKEN_POLICY,'output_token_limit':'',
                         'response_timeout_seconds':args.timeout,'outer_timeout_seconds':args.subprocess_timeout,

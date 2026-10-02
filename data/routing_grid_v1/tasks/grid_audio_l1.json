@@ -1,0 +1,25 @@
+{
+  "id": "grid_audio_l1",
+  "category": "audio",
+  "domain": "audio",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 1,
+  "difficulty": "foundation",
+  "name": "Clean announcement",
+  "challenge": "One speaker, clean short speech",
+  "prompt": "Listen and return {\"time\":\"HH:MM\",\"room\":integer}.",
+  "inputs": {},
+  "assets": [
+    {
+      "path": "assets/audio_l1.wav",
+      "sha256": "72d08ddd064060f1d5d80d204eaff10c38b444cde6b6eca9ed4007d67f88608a",
+      "mime": "audio/wav"
+    }
+  ],
+  "required_capabilities": [
+    "audio_input"
+  ],
+  "subtask": "speech_understanding"
+}

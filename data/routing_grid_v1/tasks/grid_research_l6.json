@@ -1,0 +1,37 @@
+{
+  "id": "grid_research_l6",
+  "category": "research",
+  "domain": "research",
+  "evidence_profile": "benchmark-v1",
+  "suite": "routing-grid",
+  "suite_version": "routing-grid-v1",
+  "level": 6,
+  "difficulty": "expert",
+  "name": "Unknown outcome with conflicting scope",
+  "challenge": "Do not extrapolate scoped preliminary evidence",
+  "prompt": "Return {\"final_total_kwh\":integer or null,\"known_final_kwh\":integer,\"missing\":[site names],\"citations\":[minimal supporting IDs, sorted]}. Never infer a final reading from a preliminary estimate.",
+  "inputs": {
+    "sources": [
+      {
+        "id": "S1",
+        "text": "Site A final meter: 71 kWh on Monday."
+      },
+      {
+        "id": "S2",
+        "text": "Site B preliminary Monday estimate: 29 kWh. Final meter unavailable."
+      },
+      {
+        "id": "S3",
+        "text": "Site A Tuesday meter: 64 kWh."
+      },
+      {
+        "id": "S4",
+        "text": "Board asks for the exact final Monday total for A and B; estimates cannot be substituted."
+      }
+    ]
+  },
+  "assets": [],
+  "required_capabilities": [
+    "chat"
+  ]
+}

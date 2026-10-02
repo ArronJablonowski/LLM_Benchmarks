@@ -1,0 +1,14 @@
+{
+  "kind": "exact_json",
+  "expected": {
+    "final_total_kwh": null,
+    "known_final_kwh": 71,
+    "missing": [
+      "B"
+    ],
+    "citations": [
+      "S1",
+      "S2"
+    ]
+  }
+}
