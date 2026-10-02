@@ -1,0 +1,41 @@
+{
+  "id": "gh_workflow_security_configuration",
+  "family": "GitHub action workflows",
+  "category": "workflow_scenario",
+  "name": "Security Configuration",
+  "prompt": "In the offline GitHub lab, Inspect rules and configure fictional automation settings without a real secret. Use `python3 github_lab.py help` and `python3 github_lab.py context` to inspect the fixture, then use the lab to perform the workflow. Do not run real gh commands or contact GitHub. Write answer.json with the ordered commands, evidence-backed findings, and a safe action summary.",
+  "fixture": "github_tasks/common/workspace",
+  "grader": "github_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "GitHub CLI reference (frozen offline snapshot)",
+  "command_path": "workflow:security_configuration",
+  "action_type": "multi_step_simulated",
+  "lab": {
+    "context": "Inspect rules and configure fictional automation settings without a real secret. All resources are fictional and offline.",
+    "commands": {
+      "gh ruleset list": "SIMULATED step 1/4: gh ruleset list; evidence=step_1_complete",
+      "gh secret set BENCHMARK_FIXTURE --body dummy-offline-value": "SIMULATED step 2/4: gh secret set BENCHMARK_FIXTURE --body dummy-offline-value; evidence=step_2_complete",
+      "gh variable set BENCHMARK_MODE --body offline": "SIMULATED step 3/4: gh variable set BENCHMARK_MODE --body offline; evidence=step_3_complete",
+      "gh variable get BENCHMARK_MODE": "SIMULATED step 4/4: gh variable get BENCHMARK_MODE; evidence=step_4_complete"
+    },
+    "steps": [
+      "gh ruleset list",
+      "gh secret set BENCHMARK_FIXTURE --body dummy-offline-value",
+      "gh variable set BENCHMARK_MODE --body offline",
+      "gh variable get BENCHMARK_MODE"
+    ]
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "gh ruleset list",
+      "gh secret set BENCHMARK_FIXTURE --body dummy-offline-value",
+      "gh variable set BENCHMARK_MODE --body offline",
+      "gh variable get BENCHMARK_MODE"
+    ],
+    "required_findings": [
+      "step_1_complete",
+      "step_4_complete"
+    ]
+  }
+}

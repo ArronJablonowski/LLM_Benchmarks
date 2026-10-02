@@ -1,0 +1,28 @@
+{
+  "id": "gh_pr_revert",
+  "family": "GitHub CLI",
+  "category": "pr",
+  "name": "gh pr revert offline action",
+  "prompt": "Use the offline GitHub lab to investigate and perform the simulated `gh pr revert` action. Do not run a real gh command or contact GitHub. Use `python3 github_lab.py help`, then `python3 github_lab.py run '<command>'`. Record the commands used and evidence-backed findings in answer.json, plus a safe action summary.",
+  "fixture": "github_tasks/common/workspace",
+  "grader": "github_tasks/grader.py",
+  "time_class": "short",
+  "benchmark_origin": "GitHub CLI reference (frozen offline snapshot)",
+  "command_path": "gh pr revert",
+  "action_type": "operation_simulated",
+  "lab": {
+    "context": "A fictional GitHub fixture for gh pr revert. No account, network, or real repository is used.",
+    "commands": {
+      "gh pr revert 42": "SIMULATED gh pr revert: action accepted in demo/project; evidence=observed_gh_pr_revert"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "gh pr revert 42"
+    ],
+    "required_findings": [
+      "observed_gh_pr_revert"
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "id": "gh_discussion_create",
+  "family": "GitHub CLI",
+  "category": "discussion",
+  "name": "gh discussion create offline action",
+  "prompt": "Use the offline GitHub lab to investigate and perform the simulated `gh discussion create` action. Do not run a real gh command or contact GitHub. Use `python3 github_lab.py help`, then `python3 github_lab.py run '<command>'`. Record the commands used and evidence-backed findings in answer.json, plus a safe action summary.",
+  "fixture": "github_tasks/common/workspace",
+  "grader": "github_tasks/grader.py",
+  "time_class": "short",
+  "benchmark_origin": "GitHub CLI reference (frozen offline snapshot)",
+  "command_path": "gh discussion create",
+  "action_type": "write_simulated",
+  "lab": {
+    "context": "A fictional GitHub fixture for gh discussion create. No account, network, or real repository is used.",
+    "commands": {
+      "gh discussion create": "SIMULATED gh discussion create: action accepted in demo/project; evidence=observed_gh_discussion_create"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "gh discussion create"
+    ],
+    "required_findings": [
+      "observed_gh_discussion_create"
+    ]
+  }
+}

@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>DGX Spark Benchmark Assessment · September 2026</title>
+  <style>
+    :root{--ink:#172b40;--muted:#52677a;--navy:#10283e;--teal:#087d75;--blue:#08669d;--line:#d9e3e9;--paper:#f4f7f9;--white:#fff;--soft:#eaf3f7;--gold:#e8aa38}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    a{color:var(--blue)}.wrap{width:min(1160px,calc(100% - 36px));margin:auto}
+    header{background:linear-gradient(125deg,#10283e,#16566a 80%,#087d75);color:#fff;padding:55px 0 42px}
+    .eyebrow{margin:0 0 12px;color:#bce3e7;text-transform:uppercase;letter-spacing:.13em;font-size:.78rem;font-weight:800}
+    h1{font-size:clamp(2rem,4.7vw,3.4rem);line-height:1.1;letter-spacing:-.035em;margin:0;max-width:850px}
+    .lead{max-width:850px;font-size:1.08rem;color:#e4f0f3;margin:18px 0 0}
+    .meta{display:flex;gap:9px;flex-wrap:wrap;margin-top:22px}.meta span{border:1px solid #ffffff55;border-radius:100px;padding:5px 11px;font-size:.83rem}
+    main{padding:26px 0 55px}nav{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 25px}nav a{background:#fff;border:1px solid var(--line);border-radius:100px;padding:7px 12px;text-decoration:none;font-size:.87rem;font-weight:700}
+    section{background:var(--white);border:1px solid var(--line);border-radius:15px;padding:26px 28px;margin:25px 0 0;box-shadow:0 4px 16px #17364b09}
+    h2{font-size:1.45rem;line-height:1.25;letter-spacing:-.02em;margin:0 0 11px}h3{font-size:1.05rem;margin:21px 0 7px}p{margin:10px 0}.subtle{color:var(--muted)}.small{font-size:.9rem}
+    .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:17px}.card span{display:block;color:var(--muted);font-size:.76rem;letter-spacing:.07em;text-transform:uppercase;font-weight:800}.card strong{display:block;font-size:1.45rem;margin-top:3px;line-height:1.2}.card small{color:var(--muted)}
+    .callout{border-left:4px solid var(--teal);background:#eaf7f4;border-radius:0 9px 9px 0;padding:13px 17px;margin-top:16px}
+    .warning{border-left-color:var(--gold);background:#fff8e9}
+    .table-wrap{overflow-x:auto;margin-top:17px}table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{padding:10px 11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:var(--soft);color:#345369;font-size:.76rem;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}tbody tr:nth-child(even){background:#f9fbfc}tbody tr:last-child td{border-bottom:0}.num{text-align:right;white-space:nowrap}.model{min-width:260px;overflow-wrap:anywhere;font-weight:650}.winner td{background:#fff8e7}.score{font-weight:800;color:#08635c}
+    .tag{display:inline-block;border-radius:100px;background:#e9f2f5;color:#244b63;padding:2px 8px;font-size:.77rem;font-weight:750;white-space:nowrap}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:26px}ul{padding-left:22px;margin:8px 0}li{margin:7px 0}code{font:.86em ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}
+    details{border:1px solid var(--line);border-radius:10px;padding:12px 15px;margin-top:13px}summary{cursor:pointer;font-weight:750}footer{color:var(--muted);font-size:.85rem;padding:16px 0 28px}
+    @media(max-width:780px){.cards{grid-template-columns:repeat(2,1fr)}.two-col{grid-template-columns:1fr;gap:0}section{padding:20px 17px}th,td{padding:9px 8px}}
+    @media(max-width:450px){.wrap{width:calc(100% - 24px)}.card strong{font-size:1.23rem}}
+    @media print{body{background:#fff;font-size:10pt}header{background:#fff;color:var(--ink);padding:0 0 14px;border-bottom:2px solid var(--ink)}.lead,.eyebrow,.meta span{color:var(--ink)!important}.meta span{border-color:var(--line)}nav{display:none}section,.card{box-shadow:none;break-inside:avoid}section{padding:14px;margin-top:14px}.table-wrap{overflow:visible}table{font-size:9pt}th,td{padding:6px}a{color:var(--ink);text-decoration:none}}
+  </style>
+</head>
+<body>
+<header><div class="wrap">
+  <p class="eyebrow">Local model evaluation · DGX Spark</p>
+  <h1>Which models and harnesses did best?</h1>
+  <p class="lead">A cross-suite assessment of the completed Spark benchmark campaigns: standardized text, OCR, coding, creative submissions, cybersecurity, and command-line operations.</p>
+  <div class="meta"><span>Prepared September 30, 2026</span><span>Six benchmark families</span><span>Top five combinations in each</span><span>Self-contained report</span></div>
+</div></header>
+<main class="wrap">
+  <nav aria-label="Report sections"><a href="#summary">Summary</a><a href="#text">Text</a><a href="#ocr">OCR</a><a href="#coding">Coding</a><a href="#cyber">Cybersecurity</a><a href="#commandline">Command line</a><a href="#creative">Creative</a><a href="#method">Method &amp; scope</a></nav>
+  <div class="cards" aria-label="Report at a glance">
+    <div class="card"><span>Scored families</span><strong>5</strong><small>Text, OCR, coding, cyber, command line</small></div>
+    <div class="card"><span>Review-only family</span><strong>1</strong><small>Creative quality not yet scored</small></div>
+    <div class="card"><span>Largest campaign</span><strong>4,080</strong><small>Command-line observations</small></div>
+    <div class="card"><span>Recurring leaders</span><strong>Qwen3.8 + Muse</strong><small>Across the hardest agent suites</small></div>
+  </div>
+
+  <section id="summary">
+    <h2>Executive assessment</h2>
+    <p><strong>There is no defensible single “best” pairing across every benchmark.</strong> The tasks, model panels, harnesses, and scoring systems differ. The clearest general pattern is that <strong>Qwen3.8 27B variants</strong> recur at the top of standardized text, cybersecurity, and command-line work, while <strong>Muse Glimmer 30B</strong> is especially competitive on coding and command-line tasks.</p>
+    <p><strong>Best pairing by scored suite:</strong> Qwen3.8 27B + OpenClaw for standardized text (16/17); Qwen3.8 27B MTP Q8 + Pi for coding (4/9, best check-count tie-break); Qwen3.8 27B MTP BF16 + OpenHands for cybersecurity (13/24); and Qwen3.8 27B + Ollama-direct for command line (19/20). OCR's one-task leaders are all tied on correctness; the table orders successful runs by speed.</p>
+    <div class="callout"><strong>Practical choice:</strong> For text-heavy and command-line work, start with Qwen3.8 27B on OpenClaw or Ollama-direct respectively. For coding, shortlist Qwen3.8 MTP Q8 + Pi and Muse Glimmer + Pi/Hermes/OpenClaw. For cybersecurity, shortlist Qwen3.8 MTP BF16 + OpenHands and MTP Q8 + Pi. Validate on your own workload before treating a few-point lead as durable.</div>
+    <h3>Recurring top-five model variants</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Model variant</th><th>Top-five appearances in scored suites</th><th>Takeaway</th></tr></thead>
+      <tbody>
+        <tr><td class="model">qwen3.8:27b</td><td>Text, OCR, coding, command line</td><td>Broadest showing; first in text and command line with different harnesses.</td></tr>
+        <tr><td class="model">qwen3.8:27b-mtp-q8_0</td><td>Text, coding, cybersecurity</td><td>First in coding and prominent throughout cybersecurity.</td></tr>
+        <tr><td class="model">qwen3.8:27b-mtp-bf16</td><td>Text, cybersecurity, command line</td><td>First in cybersecurity with OpenHands.</td></tr>
+        <tr><td class="model">muse-glimmer:30b-q4_K_M-dflash</td><td>OCR, coding, command line</td><td>Multiple high-ranking agent pairings, especially coding.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small subtle">These are appearances, not points on a unified scoreboard; a model may appear more than once within one suite because different harness pairings qualified.</p>
+    <h3>What the harnesses contributed</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Harness</th><th>Where it stood out</th><th>Important limit</th></tr></thead>
+      <tbody>
+        <tr><td>Ollama-direct</td><td>Fast and strong on text; best command-line pairing and highest pooled command-line pass rate (219/680).</td><td>Not a full interactive agent; coding task failures were common.</td></tr>
+        <tr><td>Pi</td><td>Best coding pairing; cybersecurity runner-up; two command-line top-five pairings.</td><td>Coding Pi used a 15-model follow-up panel, not the original 27–28-model panel.</td></tr>
+        <tr><td>OpenHands</td><td>Best cybersecurity pairing; second-best command-line pairing.</td><td>Not tested in the text, OCR, coding, or creative campaigns summarized here.</td></tr>
+        <tr><td>OpenClaw</td><td>Best text pairing; tied for the most whole coding-task passes (4/9).</td><td>Its coding winner was much slower than the fastest 4/9 pairing.</td></tr>
+        <tr><td>Hermes</td><td>A 4/9 coding pairing; a top-five cybersecurity pairing; strongest creative submission reliability (152/162).</td><td>No Hermes pairing reached the command-line top ten; submission reliability is not creative quality.</td></tr>
+        <tr><td>Goose</td><td>Top-five cybersecurity pairing.</td><td>Weakest pooled command-line pass rate (32/680).</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="text">
+    <h2>1. Standardized text and reasoning</h2>
+    <p>Seventeen non-OCR core tasks, including instruction following, math, reasoning, coding microtasks, security questions, RAG, and tool-use mini-tests. The August 22 three-path campaign covered Ollama-direct, Hermes, and OpenClaw. Ranking requires all 17 tasks recorded: clean passes first, then lower mean task time.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th class="num">Rank</th><th>Model</th><th>Harness</th><th class="num">Clean passes</th><th class="num">Mean sec/task</th></tr></thead>
+      <tbody>
+        <tr class="winner"><td class="num">1</td><td class="model">qwen3.8:27b</td><td>OpenClaw</td><td class="num score">16 / 17</td><td class="num">30.5</td></tr>
+        <tr><td class="num">2</td><td class="model">qwen3.8:27b-mtp-q8_0</td><td>Ollama-direct</td><td class="num score">16 / 17</td><td class="num">43.0</td></tr>
+        <tr><td class="num">3</td><td class="model">qwen3.8:27b-mtp-bf16</td><td>Ollama-direct</td><td class="num score">16 / 17</td><td class="num">120.9</td></tr>
+        <tr><td class="num">4</td><td class="model">ornith:35b</td><td>Ollama-direct</td><td class="num score">15 / 17</td><td class="num">14.1</td></tr>
+        <tr><td class="num">5</td><td class="model">qwen3.6:35b</td><td>OpenClaw</td><td class="num score">15 / 17</td><td class="num">17.3</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small subtle">Eighty-five of 87 observed pairings had complete 17-task coverage. Pooled clean passes were 366/510 for Ollama-direct, 311/470 for Hermes, and 297/476 for OpenClaw; the model panels and coverage differ, so these are descriptive, not a controlled harness comparison. Three pairings tied at 16/17; speed broke that tie.</p>
+  </section>
+
+  <section id="ocr">
+    <h2>2. OCR mini-test</h2>
+    <p>This is a <strong>single-task</strong> OCR check, not a broad vision benchmark. Forty-nine of 87 observed pairings were skipped (typically unavailable vision capability); 38 were actually run, and 35 passed. All five below passed the same one task, so the ordering is <strong>fastest successful run</strong>, not higher OCR accuracy.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th class="num">Rank</th><th>Model</th><th>Harness</th><th class="num">Passes</th><th class="num">Seconds</th></tr></thead>
+      <tbody>
+        <tr class="winner"><td class="num">1</td><td class="model">qwen3.6:35b</td><td>Ollama-direct</td><td class="num score">1 / 1</td><td class="num">9.2</td></tr>
+        <tr><td class="num">2</td><td class="model">devstral-small-2:24b</td><td>Ollama-direct</td><td class="num score">1 / 1</td><td class="num">10.4</td></tr>
+        <tr><td class="num">3</td><td class="model">qwen3.8:27b</td><td>Ollama-direct</td><td class="num score">1 / 1</td><td class="num">11.4</td></tr>
+        <tr><td class="num">4</td><td class="model">qwen3.6:35b</td><td>OpenClaw</td><td class="num score">1 / 1</td><td class="num">12.4</td></tr>
+        <tr><td class="num">5</td><td class="model">muse-glimmer:30b-q4_K_M-dflash</td><td>Ollama-direct</td><td class="num score">1 / 1</td><td class="num">12.7</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small subtle">The OCR task also appears in the standard text run; it is excluded from that 17-task ranking to avoid double-counting. OCR observations here come from the dedicated three-path OCR campaign.</p>
+  </section>
+
+  <section id="coding">
+    <h2>3. Coding agent</h2>
+    <p>Nine software-engineering tasks per pairing. The original August 28 campaign tested Ollama-direct, Hermes, and OpenClaw; a September 9 follow-up added Pi on a selected 15-model panel. The same coding profile was used. Complete nine-task pairings are ranked by clean whole-task passes, then checks passed, then lower mean time.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th class="num">Rank</th><th>Model</th><th>Harness</th><th class="num">Tasks passed</th><th class="num">Checks passed</th><th class="num">Mean sec/task</th></tr></thead>
+      <tbody>
+        <tr class="winner"><td class="num">1</td><td class="model">qwen3.8:27b-mtp-q8_0</td><td>Pi</td><td class="num score">4 / 9</td><td class="num">45 / 50</td><td class="num">1,585</td></tr>
+        <tr><td class="num">2</td><td class="model">muse-glimmer:30b-q4_K_M-dflash</td><td>OpenClaw</td><td class="num score">4 / 9</td><td class="num">44 / 56</td><td class="num">2,522</td></tr>
+        <tr><td class="num">3</td><td class="model">muse-glimmer:30b-q4_K_M-dflash</td><td>Pi</td><td class="num score">4 / 9</td><td class="num">42 / 50</td><td class="num">580</td></tr>
+        <tr><td class="num">4</td><td class="model">muse-glimmer:30b-q4_K_M-dflash</td><td>Hermes</td><td class="num score">4 / 9</td><td class="num">38 / 50</td><td class="num">740</td></tr>
+        <tr><td class="num">5</td><td class="model">qwen3.8:27b</td><td>Pi</td><td class="num score">3 / 9</td><td class="num">43 / 50</td><td class="num">1,516</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout warning"><strong>Interpretation:</strong> Four pairings tied at 4/9 whole tasks. The check totals are secondary diagnostics, and the recorded number of checks varies by run; do not interpret 45/50 versus 44/56 as a clean percentage-point win. If speed matters, Muse Glimmer + Pi reached the same 4/9 in about 580 seconds per task—far quicker than the first two rows.</div>
+    <p class="small subtle">Ninety-six of 97 observed pairings had full nine-task coverage. Pooled passes: Ollama-direct 27/244, Hermes 33/243, OpenClaw 29/243, and Pi 28/135. Pi's model subset was selected later, so its pooled rate is not directly comparable to the original three.</p>
+  </section>
+
+  <section id="cyber">
+    <h2>4. Cybersecurity agent</h2>
+    <p>Twenty-four defensive cybersecurity tasks per pairing. September 12 covered Pi, OpenHands, and Goose; September 16 added Hermes and OpenClaw using the same <code>cybersecurity-agent-v1</code> profile. The top five require all 24 tasks recorded, ranked by clean passes, checks, then mean task time.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th class="num">Rank</th><th>Model</th><th>Harness</th><th class="num">Tasks passed</th><th class="num">Checks passed</th><th class="num">Mean sec/task</th></tr></thead>
+      <tbody>
+        <tr class="winner"><td class="num">1</td><td class="model">qwen3.8:27b-mtp-bf16</td><td>OpenHands</td><td class="num score">13 / 24</td><td class="num">163 / 186</td><td class="num">238</td></tr>
+        <tr><td class="num">2</td><td class="model">qwen3.8:27b-mtp-q8_0</td><td>Pi</td><td class="num score">13 / 24</td><td class="num">161 / 186</td><td class="num">134</td></tr>
+        <tr><td class="num">3</td><td class="model">qwen3.8:27b-mtp-q8_0</td><td>OpenHands</td><td class="num score">13 / 24</td><td class="num">152 / 174</td><td class="num">434</td></tr>
+        <tr><td class="num">4</td><td class="model">qwen3.8:27b-mtp-q8_0</td><td>Hermes</td><td class="num score">12 / 24</td><td class="num">162 / 186</td><td class="num">195</td></tr>
+        <tr><td class="num">5</td><td class="model">qwen3.8:27b-mtp-q8_0</td><td>Goose</td><td class="num score">12 / 24</td><td class="num">162 / 186</td><td class="num">273</td></tr>
+      </tbody>
+    </table></div>
+    <p>The top three all passed 13/24; the check-count tie-break put the BF16/OpenHands pairing first. The Pi/Q8 pairing did the same number of whole tasks in substantially less time. Hermes and Goose reached the top five here despite very different command-line results.</p>
+    <p class="small subtle">Of 134 observed pairings, 132 had complete 24-task coverage. Pooled passes were Pi 162/648, OpenHands 155/648, Goose 152/648, Hermes 132/628, and OpenClaw 138/619. The last two campaigns had incomplete coverage for some pairings; only full pairings enter the top five.</p>
+  </section>
+
+  <section id="commandline">
+    <h2>5. Standard 20-task command-line agent</h2>
+    <p>The September 20–29 all-local campaign is the broadest and most complete head-to-head: 34 models × six harnesses × 20 tasks = 4,080 accounted observations. All 204 model–harness pairings have full coverage. Rank uses clean whole-task passes, then checks passed out of 160, then lower mean task time.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th class="num">Rank</th><th>Model</th><th>Harness</th><th class="num">Tasks passed</th><th class="num">Checks passed</th><th class="num">Mean sec/task</th></tr></thead>
+      <tbody>
+        <tr class="winner"><td class="num">1</td><td class="model">qwen3.8:27b</td><td>Ollama-direct</td><td class="num score">19 / 20</td><td class="num">159 / 160</td><td class="num">87</td></tr>
+        <tr><td class="num">2</td><td class="model">qwen3.8:27b</td><td>OpenHands</td><td class="num score">19 / 20</td><td class="num">158 / 160</td><td class="num">130</td></tr>
+        <tr><td class="num">3</td><td class="model">muse-glimmer:30b-q4_K_M-dflash</td><td>Pi</td><td class="num score">18 / 20</td><td class="num">158 / 160</td><td class="num">170</td></tr>
+        <tr><td class="num">4</td><td class="model">qwen3.8:27b-mtp-bf16</td><td>Pi</td><td class="num score">18 / 20</td><td class="num">158 / 160</td><td class="num">215</td></tr>
+        <tr><td class="num">5</td><td class="model">muse-glimmer:30b-q4_K_M-dflash</td><td>OpenHands</td><td class="num score">18 / 20</td><td class="num">158 / 160</td><td class="num">264</td></tr>
+      </tbody>
+    </table></div>
+    <p>Ollama-direct had the highest pooled clean-pass rate, 219/680 (32.2%), followed by OpenHands 199/680 (29.3%), Pi 176/680 (25.9%), OpenClaw 175/680 (25.7%), Hermes 125/680 (18.4%), and Goose 32/680 (4.7%). That is a <em>harness-wide</em> ordering, distinct from the top-five pairings above. The winner passed 19 whole tasks and 159 of 160 checks while averaging 87 seconds per task.</p>
+    <p class="small subtle">A clean pass requires <code>status=ok</code> and <code>verdict=pass</code>. Resource-incompatible, timeout, run-error, and grader-failure observations count in the denominator but not as passes. A separate command-line deep-dive report contains all 204 pairings and their failed high-level tests; this report does not depend on that file.</p>
+  </section>
+
+  <section id="creative">
+    <h2>6. Creative agent: delivery reliability only</h2>
+    <p>Six creative tasks across 27 models and three harnesses produced artifacts for human review. Every row still says <code>awaiting_human_review</code>; there is <strong>no objective creative-quality winner</strong> in the available records. The required top-five table therefore ranks only <em>successful submissions</em> out of six, then lower mean runtime. It is an operational ranking, not a recommendation of the work's quality.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th class="num">Rank</th><th>Model</th><th>Harness</th><th class="num">Submitted</th><th class="num">Mean sec/task</th></tr></thead>
+      <tbody>
+        <tr class="winner"><td class="num">1</td><td class="model">llama4:16x17b</td><td>OpenClaw</td><td class="num score">6 / 6</td><td class="num">41</td></tr>
+        <tr><td class="num">2</td><td class="model">llama4:16x17b</td><td>Ollama-direct</td><td class="num score">6 / 6</td><td class="num">69</td></tr>
+        <tr><td class="num">3</td><td class="model">devstral:24b</td><td>Hermes</td><td class="num score">6 / 6</td><td class="num">82</td></tr>
+        <tr><td class="num">4</td><td class="model">devstral:24b</td><td>Ollama-direct</td><td class="num score">6 / 6</td><td class="num">84</td></tr>
+        <tr><td class="num">5</td><td class="model">llama4:16x17b</td><td>Hermes</td><td class="num score">6 / 6</td><td class="num">89</td></tr>
+      </tbody>
+    </table></div>
+    <p>Across all 27 models, Hermes submitted 152/162 tasks (93.8%), Ollama-direct 143/162 (88.3%), and OpenClaw 139/162 (85.8%). That suggests Hermes was most reliable at producing a reviewable artifact in this campaign. It does <strong>not</strong> establish that Hermes produced the best creative artifacts.</p>
+  </section>
+
+  <section id="method">
+    <h2>Method, comparability, and source scope</h2>
+    <div class="two-col">
+      <div>
+        <h3>How the tables were built</h3>
+        <ul>
+          <li>Read the campaign JSONL result rows on the DGX Spark. The authoritative key is model + task within a harness; for duplicate standard-text retries, the latest observed row was used.</li>
+          <li>Include only pairings with the complete expected task set in each scored top-five table: 17 text, 1 OCR, 9 coding, 24 cybersecurity, or 20 command-line tasks.</li>
+          <li>Define a clean pass as <code>status=ok</code> and <code>verdict=pass</code>. Rank by clean passes, then check count where available, then lower mean task runtime. OCR uses speed to order one-task pass ties.</li>
+          <li>Creative tasks are ungraded; rank those by <code>status=submitted</code>, then time, with a prominent non-quality label.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>What not to infer</h3>
+        <ul>
+          <li>Cross-suite scores are not a common scale. Nineteen of 20 command-line tasks is not equivalent to 13 of 24 cybersecurity tasks.</li>
+          <li>Some harnesses were added in later campaigns with smaller or different model panels. Pooled harness rates are descriptive, not causal estimates of harness quality.</li>
+          <li>One OCR task and six ungraded creative tasks cannot support broad claims about vision or creative quality.</li>
+          <li>Recorded check totals differ in some coding and cybersecurity rows, especially when runs error. Whole-task passes are the primary result.</li>
+          <li>Model tags are treated as distinct variants. No hardware-normalized or power-normalized throughput comparison was attempted.</li>
+        </ul>
+      </div>
+    </div>
+    <h3>Campaigns included</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Benchmark</th><th>Campaign directory under <code>~/.hermes/reports/campaigns/</code></th><th>Observed pairings</th><th>Full-coverage pairings</th></tr></thead>
+      <tbody>
+        <tr><td>Standardized text</td><td><code>standard_three_path_20260822_spark</code></td><td class="num">87</td><td class="num">85</td></tr>
+        <tr><td>OCR mini</td><td><code>ocr_three_path_20260822_spark</code></td><td class="num">87</td><td class="num">38 non-skipped</td></tr>
+        <tr><td>Coding agent</td><td><code>coding_creative_ollama_three_path_20260828</code> + <code>coding_pi_top15_20260909</code></td><td class="num">97</td><td class="num">96</td></tr>
+        <tr><td>Cybersecurity agent</td><td><code>cybersecurity_agent_all_models_20260912</code> + <code>cybersecurity_agent_hermes_openclaw_20260916</code></td><td class="num">134</td><td class="num">132</td></tr>
+        <tr><td>Command-line agent</td><td><code>commandline-standard20-all-local-20260920</code></td><td class="num">204</td><td class="num">204</td></tr>
+        <tr><td>Creative agent</td><td><code>coding_creative_ollama_three_path_20260828</code></td><td class="num">81</td><td class="num">81</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small subtle">Scope: completed, coherent multi-model benchmark families available in the Spark report tree as of September 30, 2026. Earlier development runs, partial retries, duplicate campaign directories, the preflight-only FlashNext campaign, and the stopped ExploitGym qualifier are excluded from leaderboards. Their results should not be silently merged with these campaigns.</p>
+  </section>
+</main>
+<footer class="wrap">DGX Spark · Local campaign assessment · Prepared from campaign result files on September 30, 2026. This HTML has no external scripts, fonts, or network dependencies.</footer>
+</body>
+</html>

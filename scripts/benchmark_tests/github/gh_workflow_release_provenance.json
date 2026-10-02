@@ -1,0 +1,41 @@
+{
+  "id": "gh_workflow_release_provenance",
+  "family": "GitHub action workflows",
+  "category": "workflow_scenario",
+  "name": "Release Provenance",
+  "prompt": "In the offline GitHub lab, Create a release, upload an asset, and verify its provenance. Use `python3 github_lab.py help` and `python3 github_lab.py context` to inspect the fixture, then use the lab to perform the workflow. Do not run real gh commands or contact GitHub. Write answer.json with the ordered commands, evidence-backed findings, and a safe action summary.",
+  "fixture": "github_tasks/common/workspace",
+  "grader": "github_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "GitHub CLI reference (frozen offline snapshot)",
+  "command_path": "workflow:release_provenance",
+  "action_type": "multi_step_simulated",
+  "lab": {
+    "context": "Create a release, upload an asset, and verify its provenance. All resources are fictional and offline.",
+    "commands": {
+      "gh release create v1.0.0": "SIMULATED step 1/4: gh release create v1.0.0; evidence=step_1_complete",
+      "gh release upload v1.0.0 artifact.zip": "SIMULATED step 2/4: gh release upload v1.0.0 artifact.zip; evidence=step_2_complete",
+      "gh release verify v1.0.0": "SIMULATED step 3/4: gh release verify v1.0.0; evidence=step_3_complete",
+      "gh release verify-asset v1.0.0 artifact.zip": "SIMULATED step 4/4: gh release verify-asset v1.0.0 artifact.zip; evidence=step_4_complete"
+    },
+    "steps": [
+      "gh release create v1.0.0",
+      "gh release upload v1.0.0 artifact.zip",
+      "gh release verify v1.0.0",
+      "gh release verify-asset v1.0.0 artifact.zip"
+    ]
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "gh release create v1.0.0",
+      "gh release upload v1.0.0 artifact.zip",
+      "gh release verify v1.0.0",
+      "gh release verify-asset v1.0.0 artifact.zip"
+    ],
+    "required_findings": [
+      "step_1_complete",
+      "step_4_complete"
+    ]
+  }
+}

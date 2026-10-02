@@ -1,0 +1,41 @@
+{
+  "id": "gh_workflow_pull_request_review",
+  "family": "GitHub action workflows",
+  "category": "workflow_scenario",
+  "name": "Pull Request Review",
+  "prompt": "In the offline GitHub lab, Open a pull request, check CI, approve, and merge it. Use `python3 github_lab.py help` and `python3 github_lab.py context` to inspect the fixture, then use the lab to perform the workflow. Do not run real gh commands or contact GitHub. Write answer.json with the ordered commands, evidence-backed findings, and a safe action summary.",
+  "fixture": "github_tasks/common/workspace",
+  "grader": "github_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "GitHub CLI reference (frozen offline snapshot)",
+  "command_path": "workflow:pull_request_review",
+  "action_type": "multi_step_simulated",
+  "lab": {
+    "context": "Open a pull request, check CI, approve, and merge it. All resources are fictional and offline.",
+    "commands": {
+      "gh pr create --title 'Fixture change' --body 'Offline test'": "SIMULATED step 1/4: gh pr create --title 'Fixture change' --body 'Offline test'; evidence=step_1_complete",
+      "gh pr checks 42": "SIMULATED step 2/4: gh pr checks 42; evidence=step_2_complete",
+      "gh pr review 42 --approve": "SIMULATED step 3/4: gh pr review 42 --approve; evidence=step_3_complete",
+      "gh pr merge 42 --squash": "SIMULATED step 4/4: gh pr merge 42 --squash; evidence=step_4_complete"
+    },
+    "steps": [
+      "gh pr create --title 'Fixture change' --body 'Offline test'",
+      "gh pr checks 42",
+      "gh pr review 42 --approve",
+      "gh pr merge 42 --squash"
+    ]
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "gh pr create --title 'Fixture change' --body 'Offline test'",
+      "gh pr checks 42",
+      "gh pr review 42 --approve",
+      "gh pr merge 42 --squash"
+    ],
+    "required_findings": [
+      "step_1_complete",
+      "step_4_complete"
+    ]
+  }
+}

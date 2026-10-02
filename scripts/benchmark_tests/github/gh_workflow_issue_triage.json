@@ -1,0 +1,44 @@
+{
+  "id": "gh_workflow_issue_triage",
+  "family": "GitHub action workflows",
+  "category": "workflow_scenario",
+  "name": "Issue Triage",
+  "prompt": "In the offline GitHub lab, Create an issue, apply a label, inspect it, and close it after triage. Use `python3 github_lab.py help` and `python3 github_lab.py context` to inspect the fixture, then use the lab to perform the workflow. Do not run real gh commands or contact GitHub. Write answer.json with the ordered commands, evidence-backed findings, and a safe action summary.",
+  "fixture": "github_tasks/common/workspace",
+  "grader": "github_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "GitHub CLI reference (frozen offline snapshot)",
+  "command_path": "workflow:issue_triage",
+  "action_type": "multi_step_simulated",
+  "lab": {
+    "context": "Create an issue, apply a label, inspect it, and close it after triage. All resources are fictional and offline.",
+    "commands": {
+      "gh issue create --title 'Fixture bug' --body 'Offline test'": "SIMULATED step 1/5: gh issue create --title 'Fixture bug' --body 'Offline test'; evidence=step_1_complete",
+      "gh label create bug": "SIMULATED step 2/5: gh label create bug; evidence=step_2_complete",
+      "gh issue edit 42 --add-label bug": "SIMULATED step 3/5: gh issue edit 42 --add-label bug; evidence=step_3_complete",
+      "gh issue view 42": "SIMULATED step 4/5: gh issue view 42; evidence=step_4_complete",
+      "gh issue close 42": "SIMULATED step 5/5: gh issue close 42; evidence=step_5_complete"
+    },
+    "steps": [
+      "gh issue create --title 'Fixture bug' --body 'Offline test'",
+      "gh label create bug",
+      "gh issue edit 42 --add-label bug",
+      "gh issue view 42",
+      "gh issue close 42"
+    ]
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "gh issue create --title 'Fixture bug' --body 'Offline test'",
+      "gh label create bug",
+      "gh issue edit 42 --add-label bug",
+      "gh issue view 42",
+      "gh issue close 42"
+    ],
+    "required_findings": [
+      "step_1_complete",
+      "step_5_complete"
+    ]
+  }
+}

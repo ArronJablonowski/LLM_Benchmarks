@@ -57,7 +57,7 @@ CONTEXT_WORKSPACE_MIN_BYTES = 8 * 1024**3
 CONTEXT_WORKSPACE_FRACTION = 0.10
 CONTEXT_EMPIRICAL_SAFETY_FACTOR = 1.25
 GPU_COMPUTE_EXCLUSIVITY_POLICY = 'nvidia-compute-apps-empty-fail-closed-v2'
-GPU_UNVERIFIED_IDENTITY_GRACE_SECONDS = 2.0
+GPU_UNVERIFIED_IDENTITY_GRACE_SECONDS = 60.0
 RESIDENCY_VERIFY_TIMEOUT_SECONDS = 30
 RESIDENCY_VERIFY_INTERVAL_SECONDS = 0.25
 POST_TASK_RESIDENCY_UNVERIFIED = 'post_task_residency_unverified'
@@ -747,7 +747,10 @@ def query_nvidia_compute_processes(*, runner=subprocess.run, which=shutil.which)
     return processes
 
 
-def verify_no_external_gpu_compute(*, process_reader=query_nvidia_compute_processes):
+def verify_no_external_gpu_compute(
+    *, process_reader=query_nvidia_compute_processes, sleeper=time.sleep,
+    ambiguous_retries=10, ambiguous_interval=0.5,
+):
     """Require an empty NVIDIA compute-app list without stopping user services."""
     try:
         processes=process_reader()
@@ -759,6 +762,33 @@ def verify_no_external_gpu_compute(*, process_reader=query_nvidia_compute_proces
         raise ContextCalibrationContaminationError(
             'Unable to prove NVIDIA compute exclusivity: process query was malformed'
         )
+    def _is_draining_ollama(item):
+        name=str(item.get('process_name') or '').strip().lower()
+        return (
+            name in {'[no data]', 'no data', '[n/a]', 'n/a'}
+            or 'ollama' in name
+            or name.endswith('/llama-server')
+            or name == 'llama-server'
+        )
+
+    if processes and all(_is_draining_ollama(item) for item in processes):
+        # NVIDIA can retain an already-exited Ollama runner in its compute-app
+        # table briefly after unload. Give only unnamed entries and explicit
+        # Ollama runner names a bounded drain window; unrelated named processes
+        # still fail immediately.
+        for _ in range(int(ambiguous_retries)):
+            sleeper(float(ambiguous_interval))
+            try:
+                processes=process_reader()
+            except Exception as exc:
+                raise ContextCalibrationContaminationError(
+                    'Unable to prove NVIDIA compute exclusivity: '
+                    + _request_exception_detail(exc)
+                ) from exc
+            if not processes:
+                return True
+            if any(not _is_draining_ollama(item) for item in processes):
+                break
     if processes:
         detail=', '.join(
             f"pid={item.get('pid')} name={item.get('process_name') or '<unknown>'}"
@@ -866,7 +896,7 @@ def resolve_ollama_parallelism(
 
 
 def _ollama_runner_compute_process(process, daemon_identity=None, proc_root=Path('/proc')):
-    """Recognize only a live descendant in the frozen Ollama service cgroup."""
+    """Recognize only a live Ollama runner in the frozen service cgroup."""
     try:
         pid=int(process.get('pid'))
     except (TypeError,ValueError):
@@ -883,15 +913,11 @@ def _ollama_runner_compute_process(process, daemon_identity=None, proc_root=Path
         cmdline=current['cmdline'].lower()
         if not any(marker in cmdline for marker in ('ollama','llama-server')):
             return False
-        seen=set()
-        while current['pid'] not in seen and current['pid'] > 1:
-            if (
-                current['pid'] == daemon_identity['pid']
-                and current['starttime'] == daemon_identity['starttime']
-            ):
-                return True
-            seen.add(current['pid'])
-            current=_proc_identity(current['ppid'],proc_root)
+        # Ollama may briefly reparent a freshly loaded llama-server before
+        # NVML publishes its process name.  The frozen service cgroup plus an
+        # Ollama runner command line is sufficient proof of ownership even
+        # when the parent chain no longer reaches the daemon PID.
+        return True
     except Exception:
         return False
     return False

@@ -1,0 +1,28 @@
+{
+  "id": "gh_extension_remove",
+  "family": "GitHub CLI",
+  "category": "extension",
+  "name": "gh extension remove offline action",
+  "prompt": "Use the offline GitHub lab to investigate and perform the simulated `gh extension remove` action. Do not run a real gh command or contact GitHub. Use `python3 github_lab.py help`, then `python3 github_lab.py run '<command>'`. Record the commands used and evidence-backed findings in answer.json, plus a safe action summary.",
+  "fixture": "github_tasks/common/workspace",
+  "grader": "github_tasks/grader.py",
+  "time_class": "short",
+  "benchmark_origin": "GitHub CLI reference (frozen offline snapshot)",
+  "command_path": "gh extension remove",
+  "action_type": "destructive_simulated",
+  "lab": {
+    "context": "A fictional GitHub fixture for gh extension remove. No account, network, or real repository is used.",
+    "commands": {
+      "gh extension remove": "SIMULATED gh extension remove: action accepted in demo/project; evidence=observed_gh_extension_remove"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "gh extension remove"
+    ],
+    "required_findings": [
+      "observed_gh_extension_remove"
+    ]
+  }
+}

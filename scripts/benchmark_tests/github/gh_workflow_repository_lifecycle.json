@@ -1,0 +1,41 @@
+{
+  "id": "gh_workflow_repository_lifecycle",
+  "family": "GitHub action workflows",
+  "category": "workflow_scenario",
+  "name": "Repository Lifecycle",
+  "prompt": "In the offline GitHub lab, Create, configure, inspect, and archive a fictional repository. Use `python3 github_lab.py help` and `python3 github_lab.py context` to inspect the fixture, then use the lab to perform the workflow. Do not run real gh commands or contact GitHub. Write answer.json with the ordered commands, evidence-backed findings, and a safe action summary.",
+  "fixture": "github_tasks/common/workspace",
+  "grader": "github_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "GitHub CLI reference (frozen offline snapshot)",
+  "command_path": "workflow:repository_lifecycle",
+  "action_type": "multi_step_simulated",
+  "lab": {
+    "context": "Create, configure, inspect, and archive a fictional repository. All resources are fictional and offline.",
+    "commands": {
+      "gh repo create demo/project --private": "SIMULATED step 1/4: gh repo create demo/project --private; evidence=step_1_complete",
+      "gh repo edit demo/project --enable-issues": "SIMULATED step 2/4: gh repo edit demo/project --enable-issues; evidence=step_2_complete",
+      "gh repo view demo/project": "SIMULATED step 3/4: gh repo view demo/project; evidence=step_3_complete",
+      "gh repo archive demo/project": "SIMULATED step 4/4: gh repo archive demo/project; evidence=step_4_complete"
+    },
+    "steps": [
+      "gh repo create demo/project --private",
+      "gh repo edit demo/project --enable-issues",
+      "gh repo view demo/project",
+      "gh repo archive demo/project"
+    ]
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "gh repo create demo/project --private",
+      "gh repo edit demo/project --enable-issues",
+      "gh repo view demo/project",
+      "gh repo archive demo/project"
+    ],
+    "required_findings": [
+      "step_1_complete",
+      "step_4_complete"
+    ]
+  }
+}

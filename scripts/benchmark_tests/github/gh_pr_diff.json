@@ -1,0 +1,28 @@
+{
+  "id": "gh_pr_diff",
+  "family": "GitHub CLI",
+  "category": "pr",
+  "name": "gh pr diff offline action",
+  "prompt": "Use the offline GitHub lab to investigate and perform the simulated `gh pr diff` action. Do not run a real gh command or contact GitHub. Use `python3 github_lab.py help`, then `python3 github_lab.py run '<command>'`. Record the commands used and evidence-backed findings in answer.json, plus a safe action summary.",
+  "fixture": "github_tasks/common/workspace",
+  "grader": "github_tasks/grader.py",
+  "time_class": "short",
+  "benchmark_origin": "GitHub CLI reference (frozen offline snapshot)",
+  "command_path": "gh pr diff",
+  "action_type": "read",
+  "lab": {
+    "context": "A fictional GitHub fixture for gh pr diff. No account, network, or real repository is used.",
+    "commands": {
+      "gh pr diff 42": "SIMULATED gh pr diff: action accepted in demo/project; evidence=observed_gh_pr_diff"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "gh pr diff 42"
+    ],
+    "required_findings": [
+      "observed_gh_pr_diff"
+    ]
+  }
+}

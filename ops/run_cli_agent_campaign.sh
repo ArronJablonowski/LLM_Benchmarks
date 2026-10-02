@@ -22,7 +22,7 @@ if [[ ! -s "$models_file" ]]; then
   exit 1
 fi
 max_timeout=1800
-[[ "$suite" == "coding" || "$suite" == "creative" || "$suite" == "cybersecurity" || "$suite" == "commandline" ]] && max_timeout=14400
+[[ "$suite" == "coding" || "$suite" == "creative" || "$suite" == "cybersecurity" || "$suite" == "commandline" || "$suite" == "github" ]] && max_timeout=14400
 if (( timeout < 1 || timeout > max_timeout )); then
   echo "BENCH_TASK_TIMEOUT must be between 1 and $max_timeout for suite $suite" >&2
   exit 1
@@ -60,6 +60,7 @@ systemctl --user stop hermes-gateway.service openclaw-gateway.service comfyui.se
 
 runner="$repo_dir/scripts/cli_agent_benchmarks.py"
 [[ "$suite" == "commandline" ]] && runner="$repo_dir/scripts/commandline_agent_benchmarks.py"
+[[ "$suite" == "github" ]] && runner="$repo_dir/scripts/github_agent_benchmarks.py"
 for harness in ${BENCH_CLI_HARNESSES:-pi goose}; do
   runner_args=(
     --suite "$suite" \

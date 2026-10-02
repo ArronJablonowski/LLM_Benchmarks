@@ -21,5 +21,9 @@ logs/
 # Curated consolidated inputs for the reproducible cross-system HTML report.
 !data/top_models_report/
 !data/top_models_report/*.csv
+# Sanitized result snapshots accompanying the completed Spark campaign reports.
+!data/spark_campaigns_20260929/*.csv
+!docs/reports/
+!docs/reports/*.html
 Local LLM Benchmark Dashboard.html
 Local LLM Model Research/

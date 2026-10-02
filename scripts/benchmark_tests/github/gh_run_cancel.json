@@ -1,0 +1,28 @@
+{
+  "id": "gh_run_cancel",
+  "family": "GitHub CLI",
+  "category": "run",
+  "name": "gh run cancel offline action",
+  "prompt": "Use the offline GitHub lab to investigate and perform the simulated `gh run cancel` action. Do not run a real gh command or contact GitHub. Use `python3 github_lab.py help`, then `python3 github_lab.py run '<command>'`. Record the commands used and evidence-backed findings in answer.json, plus a safe action summary.",
+  "fixture": "github_tasks/common/workspace",
+  "grader": "github_tasks/grader.py",
+  "time_class": "short",
+  "benchmark_origin": "GitHub CLI reference (frozen offline snapshot)",
+  "command_path": "gh run cancel",
+  "action_type": "destructive_simulated",
+  "lab": {
+    "context": "A fictional GitHub fixture for gh run cancel. No account, network, or real repository is used.",
+    "commands": {
+      "gh run cancel 42": "SIMULATED gh run cancel: action accepted in demo/project; evidence=observed_gh_run_cancel"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "gh run cancel 42"
+    ],
+    "required_findings": [
+      "observed_gh_run_cancel"
+    ]
+  }
+}

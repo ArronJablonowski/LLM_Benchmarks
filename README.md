@@ -4,7 +4,7 @@
 
 Local LLM Benchmark Suite is a reproducible evaluation toolkit for comparing
 local and cloud-connected models on your own hardware. It contains five
-isolated suites—Standard, Coding, Creative, Cybersecurity, and Command Line—plus guarded,
+isolated suites—Standard, Coding, Creative, Cybersecurity, and Command Line—plus an offline GitHub CLI suite and guarded,
 opt-in published profiles. Each campaign preserves the evidence needed to
 explain a result: model and runtime provenance, agent harness, task outcome,
 response timing, temperature, and peak-memory telemetry. Scores compare the
@@ -43,6 +43,7 @@ results from unlike evaluations from being merged.
 | `creative` | 6 design briefs, including Three.js and animated Next.js | Subjective human review; no automated aesthetic score | `creative_human_review.html` |
 | `cybersecurity` | 24 original tasks across 8 security tracks | Deterministic hidden checks on isolated local fixtures | `cybersecurity_agent_report.html` |
 | `commandline` | 20 escalating shell, administration, menu, firewall, and incident-response labs by default; 120 with `--full-suite` | Hidden sequence/evidence checks against safe simulated systems | Dedicated CSV and canonical JSONL evidence |
+| `github` | 198 frozen GitHub CLI leaf-command tasks and 10 multi-step workflows | Offline command/evidence and workflow-order grading; no GitHub account or live writes | Dedicated CSV and canonical JSONL evidence |
 | `aime2026`, `gpqa-diamond`, `standard-local` | 30, 198, or 228 official offline items | Exact-answer local grading | Standard evidence files, labeled by profile |
 | ExploitGym `sample` / `v1` | 20 / 869 published exploit-development instances | Upstream flag and on-target scoring | Separate section in `cybersecurity_agent_report.html` |
 
@@ -50,6 +51,25 @@ Start with `standard` below. The [Coding](#coding-agent-suite),
 [Creative](#creative-suite), and [Cybersecurity](#cybersecurity-suite) sections
 link to their complete task maps and execution guides.
 The Command Line suite is documented in [`docs/COMMANDLINE_SUITE.md`](docs/COMMANDLINE_SUITE.md).
+The offline GitHub CLI suite is documented in [`docs/GITHUB_SUITE.md`](docs/GITHUB_SUITE.md).
+
+## Completed DGX Spark campaigns through September 29, 2026
+
+The [cross-suite assessment](docs/reports/dgx-spark-benchmarks-20260929.html)
+lists the top five model–harness combinations in each completed benchmark
+family. The [standard 20-task command-line report](docs/reports/commandline-standard20-20260929.html)
+includes all 204 model–harness pairings and their failed high-level tasks.
+Both reports are standalone HTML files; download them to view locally.
+
+The command-line campaign accounted for all 4,080 observations across 34 models
+and six harnesses, with 926 clean passes. Qwen3.8 27B with Ollama-direct led
+with 19/20 whole-task passes and 159/160 checks. These results measure this
+specific local task set and configuration, not universal model quality.
+
+[Sanitized per-task result summaries](data/spark_campaigns_20260929/README.md)
+cover the completed text, OCR, coding, creative, cybersecurity, and command-line
+campaigns. Full response logs and canonical evidence remain on the Spark.
+Creative submissions await human review; their delivery rates are not quality scores.
 
 ## Quick start
 

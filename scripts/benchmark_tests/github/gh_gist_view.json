@@ -1,0 +1,28 @@
+{
+  "id": "gh_gist_view",
+  "family": "GitHub CLI",
+  "category": "gist",
+  "name": "gh gist view offline action",
+  "prompt": "Use the offline GitHub lab to investigate and perform the simulated `gh gist view` action. Do not run a real gh command or contact GitHub. Use `python3 github_lab.py help`, then `python3 github_lab.py run '<command>'`. Record the commands used and evidence-backed findings in answer.json, plus a safe action summary.",
+  "fixture": "github_tasks/common/workspace",
+  "grader": "github_tasks/grader.py",
+  "time_class": "short",
+  "benchmark_origin": "GitHub CLI reference (frozen offline snapshot)",
+  "command_path": "gh gist view",
+  "action_type": "read",
+  "lab": {
+    "context": "A fictional GitHub fixture for gh gist view. No account, network, or real repository is used.",
+    "commands": {
+      "gh gist view demo": "SIMULATED gh gist view: action accepted in demo/project; evidence=observed_gh_gist_view"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "gh gist view demo"
+    ],
+    "required_findings": [
+      "observed_gh_gist_view"
+    ]
+  }
+}

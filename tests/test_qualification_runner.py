@@ -851,7 +851,7 @@ class ResourceGuardV2Tests(unittest.TestCase):
 
     def test_persistent_unverified_gpu_pid_fails_closed_after_grace(self):
         process={"pid":321,"process_name":"[No data]","used_gpu_memory_bytes":""}
-        clock_values=iter((0.0,0.0,1.1,2.2,2.2,2.2,2.2,2.2))
+        clock_values=iter((0.0,0.0,30.0,61.0,61.0,61.0,61.0,61.0))
         stop_target=mock.Mock(return_value=True)
         watchdog=runner.ContextResourceWatchdog(
             "fixture",self.resource(),resource_reader=lambda:self.resource(),
@@ -2324,6 +2324,51 @@ class AdaptiveContextExecutionIntegrationTests(unittest.TestCase):
         self.assertIn("## Context calibration", markdown)
         self.assertIn("| `qwen-thinking:fixture` | 8192 | no-fit | `no-fit` |", markdown)
         self.assertIn("runner connection failed", markdown)
+
+
+class SparkGpuDrainTests(unittest.TestCase):
+    def test_draining_ollama_entry_can_clear_within_bounded_window(self):
+        reader = mock.Mock(side_effect=[
+            [{"pid": 123, "process_name": "[No data]"}],
+            [{"pid": 123, "process_name": "/usr/local/bin/ollama"}],
+            [],
+        ])
+        sleeper = mock.Mock()
+        self.assertTrue(runner.verify_no_external_gpu_compute(
+            process_reader=reader, sleeper=sleeper, ambiguous_retries=2,
+        ))
+        self.assertEqual(3, reader.call_count)
+        self.assertEqual(2, sleeper.call_count)
+
+    def test_unrelated_gpu_process_fails_without_drain_wait(self):
+        sleeper = mock.Mock()
+        with self.assertRaises(runner.ContextCalibrationContaminationError):
+            runner.verify_no_external_gpu_compute(
+                process_reader=lambda: [{"pid": 123, "process_name": "ComfyUI/python"}],
+                sleeper=sleeper,
+            )
+        sleeper.assert_not_called()
+
+    def test_persistent_draining_entry_still_fails_closed(self):
+        reader = mock.Mock(return_value=[{"pid": 123, "process_name": "[No data]"}])
+        with self.assertRaises(runner.ContextCalibrationContaminationError):
+            runner.verify_no_external_gpu_compute(
+                process_reader=reader, sleeper=mock.Mock(), ambiguous_retries=2,
+            )
+        self.assertEqual(3, reader.call_count)
+
+    def test_reparented_runner_requires_frozen_daemon_and_service_cgroup(self):
+        daemon = {"pid": 10, "starttime": 100, "cgroup": "ollama.service"}
+        child = {"pid": 20, "ppid": 1, "starttime": 200,
+                 "cgroup": "ollama.service", "cmdline": "/usr/local/bin/ollama runner"}
+        with mock.patch.object(runner, "_proc_identity", side_effect=[daemon, child]):
+            self.assertTrue(runner._ollama_runner_compute_process({"pid": 20}, daemon, ROOT))
+        foreign = {**child, "cgroup": "comfyui.service"}
+        with mock.patch.object(runner, "_proc_identity", side_effect=[daemon, foreign]):
+            self.assertFalse(runner._ollama_runner_compute_process({"pid": 20}, daemon, ROOT))
+        drifted = {**daemon, "starttime": 999}
+        with mock.patch.object(runner, "_proc_identity", return_value=drifted):
+            self.assertFalse(runner._ollama_runner_compute_process({"pid": 20}, daemon, ROOT))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,28 @@
+{
+  "id": "gh_extension_search",
+  "family": "GitHub CLI",
+  "category": "extension",
+  "name": "gh extension search offline action",
+  "prompt": "Use the offline GitHub lab to investigate and perform the simulated `gh extension search` action. Do not run a real gh command or contact GitHub. Use `python3 github_lab.py help`, then `python3 github_lab.py run '<command>'`. Record the commands used and evidence-backed findings in answer.json, plus a safe action summary.",
+  "fixture": "github_tasks/common/workspace",
+  "grader": "github_tasks/grader.py",
+  "time_class": "short",
+  "benchmark_origin": "GitHub CLI reference (frozen offline snapshot)",
+  "command_path": "gh extension search",
+  "action_type": "read",
+  "lab": {
+    "context": "A fictional GitHub fixture for gh extension search. No account, network, or real repository is used.",
+    "commands": {
+      "gh extension search": "SIMULATED gh extension search: action accepted in demo/project; evidence=observed_gh_extension_search"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "gh extension search"
+    ],
+    "required_findings": [
+      "observed_gh_extension_search"
+    ]
+  }
+}

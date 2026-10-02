@@ -21,8 +21,9 @@ CODING_COMPONENT_DIRECTORY = Path(__file__).with_name("coding")
 CREATIVE_COMPONENT_DIRECTORY = Path(__file__).with_name("creative")
 CYBERSECURITY_COMPONENT_DIRECTORY = Path(__file__).with_name("cybersecurity")
 COMMANDLINE_COMPONENT_DIRECTORY = Path(__file__).with_name("commandline")
+GITHUB_COMPONENT_DIRECTORY = Path(__file__).with_name("github")
 DEFAULT_SUITE = "standard"
-SUITE_CHOICES = (DEFAULT_SUITE, "coding", "creative", "cybersecurity", "commandline")
+SUITE_CHOICES = (DEFAULT_SUITE, "coding", "creative", "cybersecurity", "commandline", "github")
 REQUIRED_FIELDS = {"id", "family", "category", "name", "prompt", "grading"}
 CORE_TASK_ORDER = (
     "exact_reply", "simple_reasoning", "coding_micro", "ifeval_exact",
@@ -224,9 +225,9 @@ def _coding_tasks() -> tuple[dict[str, Any], ...]:
     actual_ids = set(task_ids)
     expected_ids = set(CODING_TASK_ORDER)
     if actual_ids != expected_ids:
-        missing = sorted(expected_ids - actual_ids)
+        missing_ids = sorted(expected_ids - actual_ids)
         extra = sorted(actual_ids - expected_ids)
-        details = (["missing " + ", ".join(missing)] if missing else []) + (["unlisted " + ", ".join(extra)] if extra else [])
+        details = (["missing " + ", ".join(missing_ids)] if missing_ids else []) + (["unlisted " + ", ".join(extra)] if extra else [])
         raise BenchmarkComponentError("coding task order is out of sync: " + "; ".join(details))
     by_id = {task["id"]: task for task in tasks}
     return tuple(by_id[task_id] for task_id in CODING_TASK_ORDER)
@@ -394,6 +395,64 @@ def _commandline_tasks() -> tuple[dict[str, Any], ...]:
     ))
 
 
+@lru_cache(maxsize=1)
+def _github_tasks() -> tuple[dict[str, Any], ...]:
+    """Load the pinned, offline GitHub CLI command/action coverage."""
+    manifest_path = GITHUB_COMPONENT_DIRECTORY / "coverage.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    commands = manifest.get("commands")
+    workflows = manifest.get("workflows")
+    if not isinstance(commands, list) or not commands:
+        raise _fail(manifest_path, "commands must be a non-empty list")
+    if len(commands) != len(set(commands)):
+        raise _fail(manifest_path, "duplicate command paths")
+    if not isinstance(workflows, list) or not workflows or len(workflows) != len(set(workflows)):
+        raise _fail(manifest_path, "workflows must be a non-empty unique list")
+    paths = sorted(GITHUB_COMPONENT_DIRECTORY.glob("gh_*.json"))
+    tasks = [_load_descriptor(path) for path in paths]
+    ids = [task["id"] for task in tasks]
+    if len(ids) != len(set(ids)):
+        raise BenchmarkComponentError("duplicate GitHub task ids")
+    covered = []
+    for path, task in zip(paths, tasks):
+        if task["grading"].get("kind") != "workspace":
+            raise _fail(path, "grading.kind must be workspace")
+        if task.get("fixture") != "github_tasks/common/workspace":
+            raise _fail(path, "unexpected fixture")
+        if task.get("grader") != "github_tasks/grader.py":
+            raise _fail(path, "unexpected grader")
+        for field in ("benchmark_origin", "time_class", "command_path", "action_type"):
+            if not isinstance(task.get(field), str) or not task[field]:
+                raise _fail(path, f"{field} must be a non-empty string")
+        lab = task.get("lab")
+        if not isinstance(lab, dict) or not isinstance(lab.get("commands"), dict) or not lab["commands"]:
+            raise _fail(path, "lab.commands must be a non-empty object")
+        if "steps" in lab and lab["steps"] != list(lab["commands"]):
+            raise _fail(path, "lab.steps must enumerate commands in workflow order")
+        required = task["grading"].get("required_commands")
+        if not isinstance(required, list) or not required or not all(
+            isinstance(command, str) and command in lab["commands"] for command in required
+        ):
+            raise _fail(path, "grading.required_commands must reference simulated commands")
+        findings = task["grading"].get("required_findings")
+        if not isinstance(findings, list) or not findings or not all(
+            isinstance(item, str) and item for item in findings
+        ):
+            raise _fail(path, "grading.required_findings must be non-empty strings")
+        covered.append(task["command_path"])
+    expected_paths = commands + ["workflow:" + name for name in workflows]
+    if set(covered) != set(expected_paths) or len(covered) != len(expected_paths):
+        raise BenchmarkComponentError("GitHub task descriptors are out of sync with coverage.json")
+    all_existing = (
+        set(CORE_TASK_ORDER) | set(CODING_TASK_ORDER) | set(CREATIVE_TASK_ORDER)
+        | set(CYBERSECURITY_TASK_ORDER) | set(COMMANDLINE_TASK_ORDER)
+    )
+    if set(ids) & all_existing:
+        raise BenchmarkComponentError("GitHub task IDs overlap another suite")
+    by_command = {task["command_path"]: task for task in tasks}
+    return tuple(by_command[command] for command in expected_paths)
+
+
 def core_task_catalog() -> list[dict[str, Any]]:
     """Return fresh task mappings so callers cannot mutate the registry."""
     return copy.deepcopy(list(_core_tasks()))
@@ -421,6 +480,8 @@ def suite_task_catalog(
             return copy.deepcopy(tasks)
         by_id = {task["id"]: task for task in tasks}
         return copy.deepcopy([by_id[task_id] for task_id in COMMANDLINE_TASK_ORDER])
+    if suite == "github":
+        return copy.deepcopy(list(_github_tasks()))
     choices = ", ".join(SUITE_CHOICES)
     raise BenchmarkComponentError(
         f"unknown benchmark suite: {suite}; choose from: {choices}"

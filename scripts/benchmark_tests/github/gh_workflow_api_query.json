@@ -1,0 +1,38 @@
+{
+  "id": "gh_workflow_api_query",
+  "family": "GitHub action workflows",
+  "category": "workflow_scenario",
+  "name": "Api Query",
+  "prompt": "In the offline GitHub lab, Check fictional authentication and query REST and GraphQL API fixtures. Use `python3 github_lab.py help` and `python3 github_lab.py context` to inspect the fixture, then use the lab to perform the workflow. Do not run real gh commands or contact GitHub. Write answer.json with the ordered commands, evidence-backed findings, and a safe action summary.",
+  "fixture": "github_tasks/common/workspace",
+  "grader": "github_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "GitHub CLI reference (frozen offline snapshot)",
+  "command_path": "workflow:api_query",
+  "action_type": "multi_step_simulated",
+  "lab": {
+    "context": "Check fictional authentication and query REST and GraphQL API fixtures. All resources are fictional and offline.",
+    "commands": {
+      "gh auth status": "SIMULATED step 1/3: gh auth status; evidence=step_1_complete",
+      "gh api repos/demo/project": "SIMULATED step 2/3: gh api repos/demo/project; evidence=step_2_complete",
+      "gh api graphql -f query='{ viewer { login } }'": "SIMULATED step 3/3: gh api graphql -f query='{ viewer { login } }'; evidence=step_3_complete"
+    },
+    "steps": [
+      "gh auth status",
+      "gh api repos/demo/project",
+      "gh api graphql -f query='{ viewer { login } }'"
+    ]
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "gh auth status",
+      "gh api repos/demo/project",
+      "gh api graphql -f query='{ viewer { login } }'"
+    ],
+    "required_findings": [
+      "step_1_complete",
+      "step_3_complete"
+    ]
+  }
+}

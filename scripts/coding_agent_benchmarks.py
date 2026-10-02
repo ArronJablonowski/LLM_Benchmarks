@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PROFILES = {
     "coding": "coding-agent-v2-web",
     "commandline": "commandline-agent-v2-standard-20",
+    "github": "github-agent-v1-gh-reference-offline",
 }
 PROFILE = PROFILES["coding"]
 FIELDS = [
@@ -342,6 +343,11 @@ def main(argv=None) -> int:
                     args.base_url, args.api_key, args.timeout,
                 )
                 env = {**os.environ, "PI_CODING_AGENT_DIR": str(config_dir), "PI_TELEMETRY": "0", "GOOSE_PROVIDER": provider, "GOOSE_MODEL": model["name"], "GOOSE_TELEMETRY_ENABLED": "false", "GOOSE_PROVIDER__HOST": args.base_url, "GOOSE_PROVIDER__API_KEY": args.api_key, "OPENAI_HOST": args.base_url, "OPENAI_API_KEY": args.api_key, "XDG_CONFIG_HOME": str(config_dir / "xdg-config"), "XDG_DATA_HOME": str(config_dir / "xdg-data")}
+                if args.suite == "github":
+                    # Offline GitHub fixtures must not inherit host GitHub credentials.
+                    for key in ("GH_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_TOKEN", "GITHUB_ENTERPRISE_TOKEN", "GIT_ASKPASS", "SSH_ASKPASS"):
+                        env.pop(key, None)
+                    env.update({"GH_HOST": "github.invalid", "GH_PROMPT_DISABLED": "1", "GIT_TERMINAL_PROMPT": "0"})
                 if args.harness == "hermes":
                     env["HERMES_HOME"] = str(config_dir / "hermes-home")
                 sample_start = sampler.snapshot_len(); started = time.monotonic()
@@ -352,6 +358,9 @@ def main(argv=None) -> int:
                 exit_code, stdout, stderr, timed_out, pressure_error = result
                 timed_out = timed_out or exit_code == 124
                 wall = round(time.monotonic() - started, 3)
+                if args.harness == "openclaw":
+                    from openclaw_18_test_benchmarks import restart_openclaw_gateway
+                    restart_openclaw_gateway(["systemctl", "--user", "restart", "openclaw-gateway.service"])
                 if args.model_runner == "ollama": stop_model(model["name"])
                 samples = sampler.get_since(sample_start)
                 grading, grader_error = grade_workspace(task, workspace)
@@ -365,7 +374,58 @@ def main(argv=None) -> int:
                 record = {"row": row, "assistant_text": stdout, "stderr": stderr, "grading": grading, "changed_files": changed, "telemetry_samples": samples, "command": command}
                 with jsonl_path.open("a", encoding="utf-8") as stream: stream.write(json.dumps(record, ensure_ascii=False) + "\n")
                 records.append(record); completed.add(key); write_csv(csv_path, records)
-                if pressure_error: raise RuntimeError("Resource safety guard: " + pressure_error)
+                if pressure_error:
+                    reason = "resource_incompatible_after_guard: " + pressure_error
+                    skipped = 0
+                    for pending_task in tasks:
+                        pending_key = (model["name"], pending_task["id"])
+                        if pending_key in completed:
+                            continue
+                        pending_row = {
+                            **row,
+                            "task_id": pending_task["id"],
+                            "task_name": pending_task["name"],
+                            "category": pending_task["category"],
+                            "benchmark_origin": pending_task["benchmark_origin"],
+                            "time_class": pending_task["time_class"],
+                            "status": "error",
+                            "verdict": "resource_incompatible",
+                            "checks_passed": 0,
+                            "checks_total": 0,
+                            "wall_seconds": 0,
+                            "exit_code": 1,
+                            "timed_out": "false",
+                            "files_changed": 0,
+                            "student_test_files": 0,
+                            "response_chars": 0,
+                            "response_sha256": hashlib.sha256(b"").hexdigest(),
+                            "max_gpu_temp_c": "",
+                            "max_host_temp_c": "",
+                            "max_host_memory_used_bytes": "",
+                            "max_host_memory_pct": "",
+                            "max_gpu_usage_pct": "",
+                            "sample_count": 0,
+                            "error": reason[-2000:],
+                        }
+                        pending_record = {
+                            "row": pending_row,
+                            "assistant_text": "",
+                            "stderr": reason,
+                            "grading": {"verdict": "resource_incompatible", "passed": 0, "total": 0},
+                            "changed_files": [],
+                            "telemetry_samples": [],
+                            "command": [],
+                        }
+                        with jsonl_path.open("a", encoding="utf-8") as stream:
+                            stream.write(json.dumps(pending_record, ensure_ascii=False) + "\n")
+                        records.append(pending_record); completed.add(pending_key); skipped += 1
+                    write_csv(csv_path, records)
+                    print(
+                        f"Marked {skipped} remaining {args.harness}/{model['name']} tasks "
+                        "failed after resource guard; continuing with next model.",
+                        flush=True,
+                    )
+                    break
     finally:
         sampler.stop()
         if args.model_runner == "ollama":

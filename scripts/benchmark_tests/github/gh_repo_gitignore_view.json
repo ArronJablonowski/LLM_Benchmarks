@@ -1,0 +1,28 @@
+{
+  "id": "gh_repo_gitignore_view",
+  "family": "GitHub CLI",
+  "category": "repo",
+  "name": "gh repo gitignore view offline action",
+  "prompt": "Use the offline GitHub lab to investigate and perform the simulated `gh repo gitignore view` action. Do not run a real gh command or contact GitHub. Use `python3 github_lab.py help`, then `python3 github_lab.py run '<command>'`. Record the commands used and evidence-backed findings in answer.json, plus a safe action summary.",
+  "fixture": "github_tasks/common/workspace",
+  "grader": "github_tasks/grader.py",
+  "time_class": "short",
+  "benchmark_origin": "GitHub CLI reference (frozen offline snapshot)",
+  "command_path": "gh repo gitignore view",
+  "action_type": "read",
+  "lab": {
+    "context": "A fictional GitHub fixture for gh repo gitignore view. No account, network, or real repository is used.",
+    "commands": {
+      "gh repo gitignore view demo/project": "SIMULATED gh repo gitignore view: action accepted in demo/project; evidence=observed_gh_repo_gitignore_view"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "gh repo gitignore view demo/project"
+    ],
+    "required_findings": [
+      "observed_gh_repo_gitignore_view"
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "id": "gh_agent_task_list",
+  "family": "GitHub CLI",
+  "category": "agent-task",
+  "name": "gh agent-task list offline action",
+  "prompt": "Use the offline GitHub lab to investigate and perform the simulated `gh agent-task list` action. Do not run a real gh command or contact GitHub. Use `python3 github_lab.py help`, then `python3 github_lab.py run '<command>'`. Record the commands used and evidence-backed findings in answer.json, plus a safe action summary.",
+  "fixture": "github_tasks/common/workspace",
+  "grader": "github_tasks/grader.py",
+  "time_class": "short",
+  "benchmark_origin": "GitHub CLI reference (frozen offline snapshot)",
+  "command_path": "gh agent-task list",
+  "action_type": "read",
+  "lab": {
+    "context": "A fictional GitHub fixture for gh agent-task list. No account, network, or real repository is used.",
+    "commands": {
+      "gh agent-task list": "SIMULATED gh agent-task list: action accepted in demo/project; evidence=observed_gh_agent_task_list"
+    }
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "gh agent-task list"
+    ],
+    "required_findings": [
+      "observed_gh_agent_task_list"
+    ]
+  }
+}

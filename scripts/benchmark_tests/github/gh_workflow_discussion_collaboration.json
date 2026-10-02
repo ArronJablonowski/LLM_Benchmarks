@@ -1,0 +1,38 @@
+{
+  "id": "gh_workflow_discussion_collaboration",
+  "family": "GitHub action workflows",
+  "category": "workflow_scenario",
+  "name": "Discussion Collaboration",
+  "prompt": "In the offline GitHub lab, Create a discussion, comment, and inspect the result. Use `python3 github_lab.py help` and `python3 github_lab.py context` to inspect the fixture, then use the lab to perform the workflow. Do not run real gh commands or contact GitHub. Write answer.json with the ordered commands, evidence-backed findings, and a safe action summary.",
+  "fixture": "github_tasks/common/workspace",
+  "grader": "github_tasks/grader.py",
+  "time_class": "medium",
+  "benchmark_origin": "GitHub CLI reference (frozen offline snapshot)",
+  "command_path": "workflow:discussion_collaboration",
+  "action_type": "multi_step_simulated",
+  "lab": {
+    "context": "Create a discussion, comment, and inspect the result. All resources are fictional and offline.",
+    "commands": {
+      "gh discussion create": "SIMULATED step 1/3: gh discussion create; evidence=step_1_complete",
+      "gh discussion comment 42 --body 'Offline reply'": "SIMULATED step 2/3: gh discussion comment 42 --body 'Offline reply'; evidence=step_2_complete",
+      "gh discussion view 42": "SIMULATED step 3/3: gh discussion view 42; evidence=step_3_complete"
+    },
+    "steps": [
+      "gh discussion create",
+      "gh discussion comment 42 --body 'Offline reply'",
+      "gh discussion view 42"
+    ]
+  },
+  "grading": {
+    "kind": "workspace",
+    "required_commands": [
+      "gh discussion create",
+      "gh discussion comment 42 --body 'Offline reply'",
+      "gh discussion view 42"
+    ],
+    "required_findings": [
+      "step_1_complete",
+      "step_3_complete"
+    ]
+  }
+}
