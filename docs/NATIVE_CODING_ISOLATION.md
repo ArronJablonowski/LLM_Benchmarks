@@ -125,9 +125,61 @@ Changed files:
 - `docs/NATIVE_CODING_ISOLATION.md`: platform contract, limits and actual verification.
 - `docs/DEVELOPMENT.md`: link to platform documentation.
 
-GitHub push is blocked by existing credentials: Spark has no HTTPS credential,
-and the available local deploy key lacks write permission to `LLM_Benchmarks`.
-No credentials were changed or copied. The committed changes are backed up in a
-Git bundle in both hosts' private verification directories. No branch was merged
-and no production/campaign executable was replaced. The source is a reviewable,
-fail-closed candidate; Linux execution and the model-edit smoke remain blocked.
+At the initial checkpoint, publication from Spark was blocked by its available
+GitHub credentials. The committed changes were backed up in a Git bundle in both
+hosts' private verification directories. No production/campaign executable was
+replaced. The subsequent VM verification below does not qualify direct execution
+under the physical Spark host's unchanged security policy.
+
+## Subsequent isolated-VM qualification (2026-10-15)
+
+The same candidate binary, SHA-256
+`00e9fda4853012eede6ef6d6ef95c605e88a32c6bae25045a5b15dd601d0a59e`,
+was tested in a Debian 13 ARM64 VM on Spark. QEMU TCG software emulation ran
+inside a non-root Docker container with its default seccomp/AppArmor protection,
+all capabilities dropped, no-new-privileges, a read-only container root and no
+device/KVM passthrough. The guest had four virtual CPUs and 20 GiB RAM; the
+container was capped at four CPUs and 24 GiB RAM with no additional swap.
+The Debian cloud image was verified against its published SHA-512 checksum.
+
+No host directories were shared inside the guest. QEMU restricted guest egress;
+management used authenticated SSH through the container. The only model-service
+connection was a temporary SSH reverse tunnel from guest loopback to Spark's
+Ollama loopback port. The test account had no sudo privileges. No host sysctl,
+AppArmor, capability or other security safeguard was relaxed.
+
+Verification results:
+
+- The actual isolation preflight succeeded in the guest.
+- The race-enabled ARM64 qualification test binary passed. Linux SQLite,
+  heredoc, runtime/environment, adversarial escape/network/socket/symlink/FD and
+  background-cleanup tests executed successfully; only the two macOS-specific
+  confinement/directory tests skipped. These were executions, not capability skips.
+- A fresh synthetic arithmetic fixture initially failed all three behavioral
+  tests. Through the native coding host, local `qwen3:8b` changed `add(a, b)`
+  from subtraction to addition and invoked the isolated command tool. Its durable
+  confirmed tool event records three tests run, all passing, with exit code zero.
+  The test-file SHA-256 was unchanged, and an independent rerun also passed all
+  three tests. The model did not create the requested optional output log; the
+  durable tool result, not its final prose, is the execution evidence.
+- The smoke was limited to eight turns, a 150-second host task deadline and a
+  240-second outer deadline. A physical-host memory monitor enforced the 4-GiB
+  reserve. The model service ran on Spark, not inside the guest; guest admission
+  measurements alone do not represent the physical inference host's resources.
+- No full campaign started, no existing grades/evidence changed and no production
+  harness executable was replaced. Original command-line evidence checksums
+  remained unchanged. The test model was released and the VM retained stopped
+  with no automatic restart.
+
+Scope: this qualifies the tested Python/SQLite command runtime **inside this
+particular VM**, not direct physical-host execution, a universal sandbox-security
+claim, a model-performance comparison or the full nine-task coding campaign.
+Node/npm, Go and third-party package workflows remain unqualified. The ordinary
+host runner is not automatically redirected into the VM.
+
+Private operational evidence on Spark is retained under
+`~/.local/share/llm-benchmark-native/qualification-vm/`, including
+`qualification-receipt.json`, `guest-qualification.log`,
+`independent-behavioral-tests.log` and `guest-smoke-evidence.tar.gz`.
+VM disks, private keys, databases, raw session evidence and the separate
+NexusRouter application/SDK are not part of this benchmark-suite publication.
