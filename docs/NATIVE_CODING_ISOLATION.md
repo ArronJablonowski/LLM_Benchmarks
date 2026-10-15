@@ -104,3 +104,30 @@ The candidate executable is `verification/coding-linux-candidate`, not installed
 over an existing campaign host. Do not enable a campaign until real Linux success,
 escape, host-socket/network, symlink/FD, and background cleanup tests all execute
 and the synthetic model performs a verified edit and nonzero behavioral tests.
+
+## Source checkpoint and changed files
+
+Tested code checkpoint: `201f59b7833b9da72bd74dfd4f902becc4826a1f`, on branch
+`codex/linux-native-coding-isolation` in the Spark benchmark repository. The SDK
+checkout remains at its pinned commit with no local modifications. The candidate
+Linux executable SHA-256 is
+`00e9fda4853012eede6ef6d6ef95c605e88a32c6bae25045a5b15dd601d0a59e`.
+
+Changed files:
+
+- `scripts/nexusrouter_coding_host.go`: OS dispatch, existing macOS sandbox,
+  Linux runtime mount plan, mandatory real preflight, bounded output and cleanup.
+- `scripts/nexusrouter_coding_host_test.go`: Linux policy/static-plan/adversarial/
+  background tests and explicit unavailable-execution skips; macOS regressions retained.
+- `scripts/nexusrouter_coding_benchmarks.py`: pre-inference preflight and timeout failure.
+- `scripts/test_nexusrouter_coding_ownership.py`: verifies preflight failure cannot
+  prepare workspaces/evidence, sample, unload models or dispatch model work.
+- `docs/NATIVE_CODING_ISOLATION.md`: platform contract, limits and actual verification.
+- `docs/DEVELOPMENT.md`: link to platform documentation.
+
+GitHub push is blocked by existing credentials: Spark has no HTTPS credential,
+and the available local deploy key lacks write permission to `LLM_Benchmarks`.
+No credentials were changed or copied. The committed changes are backed up in a
+Git bundle in both hosts' private verification directories. No branch was merged
+and no production/campaign executable was replaced. The source is a reviewable,
+fail-closed candidate; Linux execution and the model-edit smoke remain blocked.
