@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
-from darwinrouter_commandline_campaign import Campaign, CapacityDeferred, append, now
+from nexusrouter_commandline_campaign import Campaign, CapacityDeferred, append, now
 
 
 class Simulated(Campaign):
@@ -16,7 +16,7 @@ class Simulated(Campaign):
     def launch(self, model, task, path, attempt):
         self.launches.append((task, attempt, path))
         path.mkdir(parents=True, exist_ok=True)
-        append(path/'darwinrouter_commandline.jsonl', {'row': {'task_id':task, 'verdict':next(self.verdicts), 'darwin_task_id':f'{task}-{attempt}'}})
+        append(path/'nexusrouter_commandline.jsonl', {'row': {'task_id':task, 'verdict':next(self.verdicts), 'darwin_task_id':f'{task}-{attempt}'}})
     def verify_feedback(self, path, row):
         self.feedback.append(row['darwin_task_id'])
 
@@ -36,8 +36,8 @@ class CampaignTests(unittest.TestCase):
         (self.root/'manifest.json').write_text(json.dumps(self.manifest))
     def prior(self, verdict='infrastructure_error'):
         path=self.root/'model';path.mkdir()
-        append(path/'darwinrouter_commandline.jsonl', {'row':{'task_id':'first','verdict':verdict,'darwin_task_id':'first-original'}})
-        return path/'darwinrouter_commandline.jsonl'
+        append(path/'nexusrouter_commandline.jsonl', {'row':{'task_id':'first','verdict':verdict,'darwin_task_id':'first-original'}})
+        return path/'nexusrouter_commandline.jsonl'
     def test_recovery_preserves_original_and_resume_never_repeats_inference(self):
         original=self.prior(); before=original.read_bytes()
         c=Simulated(self.root,['pass','pass']);c.run()
@@ -167,7 +167,7 @@ class CampaignTests(unittest.TestCase):
 
     def test_hold_does_not_hide_later_feedback_failure(self):
         self.prior('pass')
-        path=self.root/'model/darwinrouter_commandline.jsonl'
+        path=self.root/'model/nexusrouter_commandline.jsonl'
         record=json.loads(path.read_text());record['row']['task_id']='second';path.write_text(json.dumps(record)+'\n')
         self.hold_model();c=Simulated(self.root)
         with patch.object(c,'verify_feedback',side_effect=RuntimeError('feedback mismatch')):
@@ -289,14 +289,14 @@ class CampaignTests(unittest.TestCase):
             for attempt,path in [(1,self.root/'model'),(2,self.root/'retries/model'/task/'attempt-2')]:
                 path.mkdir(parents=True,exist_ok=True)
                 record={'row':dict(task_id=task,darwin_task_id='',verdict='infrastructure_error')}
-                append(path/'darwinrouter_commandline.jsonl',record)
+                append(path/'nexusrouter_commandline.jsonl',record)
                 hashes.append(hashlib.sha256(json.dumps(record,sort_keys=True,separators=(',',':')).encode()).hexdigest())
             append(self.root/'infrastructure-dispositions.jsonl',dict(model='model',task=task,status='resolved_excluded',reason='Reviewed admission failures without inference or feedback',canonical_sha256s=hashes))
         c=Simulated(self.root,['pass']);c.run()
         self.assertEqual([(t,a) for t,a,_ in c.launches],[('d',1)])
         self.assertEqual(c.counts['attempts'],7)
         self.assertEqual(json.loads((self.root/'state.json').read_text())['status'],'complete')
-        path=self.root/'retries/model/a/attempt-2/darwinrouter_commandline.jsonl'
+        path=self.root/'retries/model/a/attempt-2/nexusrouter_commandline.jsonl'
         row=json.loads(path.read_text());row['row']['error']='changed';path.write_text(json.dumps(row)+'\n')
         with self.assertRaisesRegex(RuntimeError,'disposition does not match'):Simulated(self.root).run()
 

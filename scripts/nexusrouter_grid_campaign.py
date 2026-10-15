@@ -18,7 +18,7 @@ import subprocess
 import urllib.request
 
 from routing_grid_suite import FIXTURES, assess, load_catalog, model_payload
-from darwinrouter_ocr_campaign import (
+from nexusrouter_ocr_campaign import (
     append,
     current_feedback,
     database,
@@ -29,17 +29,17 @@ from darwinrouter_ocr_campaign import (
     sha,
     verify_zero_feedback,
 )
-from darwinrouter_coding_benchmarks import record_feedback
+from nexusrouter_coding_benchmarks import record_feedback
 
 ROOT = Path(__file__).resolve().parents[1]
 OBJECTIVE = {"research", "data_analysis", "reasoning", "workflow", "audio"}
 HUMAN = {"translation", "writing", "creative"}
 SOURCES = [
-    "darwinrouter_grid_campaign.py",
-    "darwinrouter_grid_host.go",
+    "nexusrouter_grid_campaign.py",
+    "nexusrouter_grid_host.go",
     "routing_grid_suite.py",
-    "darwinrouter_ocr_campaign.py",
-    "darwinrouter_coding_benchmarks.py",
+    "nexusrouter_ocr_campaign.py",
+    "nexusrouter_coding_benchmarks.py",
 ]
 
 
@@ -508,7 +508,7 @@ def snapshot(campaign):
     )
     save(campaign / "latest.json", result)
     text = (
-        "# DarwinRouter routing-grid campaign\n\nUpdated "
+        "# NexusRouter routing-grid campaign\n\nUpdated "
         + result["at"]
         + "\n\n| Metric | Count |\n|---|---:|\n"
     )
@@ -758,11 +758,14 @@ def main():
     p.add_argument("--poll", action="store_true")
     p.add_argument("--auto-only", action="store_true")
     for field in ("host", "config", "database", "darwin"):
-        p.add_argument("--" + field, type=Path)
+        if field == "darwin":
+            p.add_argument("--nexus", "--darwin", dest="darwin", type=Path)
+        else:
+            p.add_argument("--" + field, type=Path)
     a = p.parse_args()
     if a.init:
         if not all(getattr(a, k) for k in ("host", "config", "database", "darwin")):
-            p.error("initialization needs host/config/database/darwin")
+            p.error("initialization needs host/config/database/nexus")
         initialize(a)
         return
     if a.poll:

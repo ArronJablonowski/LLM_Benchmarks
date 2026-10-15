@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Durable, sequential automatic OCR campaign through the DarwinRouter SDK.
+"""Durable, sequential automatic OCR campaign through the NexusRouter SDK.
 
 Resume only this wrapper. Launches without committed host results are ambiguous
 and block, never silently re-dispatch. Reconciliation never repeats inference.
@@ -20,7 +20,7 @@ import subprocess
 from benchmark_tests import suite_task_catalog
 from accuracy_grading import grade_task
 from vision_benchmark_support import ocr_provenance
-from darwinrouter_coding_benchmarks import record_feedback
+from nexusrouter_coding_benchmarks import record_feedback
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE = 'ocr-progressive-v1'
@@ -143,7 +143,7 @@ def reconcile_attempt(manifest,task,attempt_dir):
     launches=rows(Path(manifest['campaign_dir'])/'attempt-launches.jsonl')
     launch=next(x for x in launches if x['attempt_dir']==str(attempt_dir) and x['event']=='launch_intent')
     wall=(datetime.fromisoformat(output['finished_at'])-datetime.fromisoformat(launch['at'])).total_seconds()
-    record={'row':{'run_id':Path(manifest['campaign_dir']).name,'task_id':task['id'],'task_name':task['name'],'benchmark_profile':PROFILE,'harness':'darwinrouter-sdk-ocr','configured_model':'auto','model':metadata['model_id'],'resolved_provider':metadata['provider_id'],'darwin_task_id':result['TaskID'],'previous_task_ids':result.get('PreviousTaskIDs') or [],'status':'ok' if ok else 'error','verdict':grade['verdict'] if ok else 'infrastructure_error','wall_seconds':round(wall,3),'context_tokens':metadata.get('context_tokens')},'grading':grade,'image_evidence':{'sha256':task['image_sha256'],'delivery_sha256':sha(Path(attempt_dir)/'image-delivery.jsonl') if (Path(attempt_dir)/'image-delivery.jsonl').exists() else None},'host_result_sha256':sha(Path(attempt_dir)/'host-result.json'),'attempt_dir':str(attempt_dir),'error':output.get('error')}
+    record={'row':{'run_id':Path(manifest['campaign_dir']).name,'task_id':task['id'],'task_name':task['name'],'benchmark_profile':PROFILE,'harness':'nexusrouter-sdk-ocr','configured_model':'auto','model':metadata['model_id'],'resolved_provider':metadata['provider_id'],'darwin_task_id':result['TaskID'],'previous_task_ids':result.get('PreviousTaskIDs') or [],'status':'ok' if ok else 'error','verdict':grade['verdict'] if ok else 'infrastructure_error','wall_seconds':round(wall,3),'context_tokens':metadata.get('context_tokens')},'grading':grade,'image_evidence':{'sha256':task['image_sha256'],'delivery_sha256':sha(Path(attempt_dir)/'image-delivery.jsonl') if (Path(attempt_dir)/'image-delivery.jsonl').exists() else None},'host_result_sha256':sha(Path(attempt_dir)/'host-result.json'),'attempt_dir':str(attempt_dir),'error':output.get('error')}
     if path.exists():
         if json.loads(path.read_text())!=record: raise RuntimeError('canonical OCR evidence drift')
     else: save(path,record,exclusive=True)
@@ -177,9 +177,9 @@ def snapshot(campaign):
     result={'at':now(),'campaign_dir':str(campaign),'status':state.get('status','prepared'),'total':30,'terminal':len(final)+len(excluded),'valid':len(final),'pass':counts['pass'],'mismatch':counts['content_mismatch'],'reviewed_infrastructure_exclusions':len(excluded),'outer_attempts_completed':len(records),'infrastructure_attempts':sum(r['row']['status']!='ok' for r in records),'internal_recovery_attempts':sum(len(r['row']['previous_task_ids']) for r in records),'accepted':sum(all(c.get('Passed') for c in h['Checks']) for h in heads),'rejected':sum(not all(c.get('Passed') for c in h['Checks']) for h in heads),'missing_feedback':len(final)-len(heads),'active':active,'timing':{'samples':len(times),'scope':'pooled automatic OCR phase','min_seconds':min(times) if times else None,'max_seconds':max(times) if times else None,'campaign_eta':None,'note':'No reliable campaign ETA yet; model selection and image difficulty can change.'},'state':state}
     result['capacity_admission_deferrals']=len(rows(campaign/'admission-deferrals.jsonl'))
     save(campaign/'latest.json',result)
-    text=f"# DarwinRouter OCR campaign\n\nUpdated {result['at']}. Domain `ocr`; evidence profile `{PROFILE}`.\n\n| Status | Count |\n|---|---:|\n"
+    text=f"# NexusRouter OCR campaign\n\nUpdated {result['at']}. Domain `ocr`; evidence profile `{PROFILE}`.\n\n| Status | Count |\n|---|---:|\n"
     for key in ['terminal','valid','pass','mismatch','reviewed_infrastructure_exclusions','outer_attempts_completed','infrastructure_attempts','internal_recovery_attempts','accepted','rejected','missing_feedback']:text+=f"| {key.replace('_',' ')} | {result[key]} |\n"
-    text+='\n'+(json.dumps(active,indent=2) if active else 'No active inference identity verified at this sample.')+'\n\nImages are sent through a trusted DarwinRouter SDK adapter. Fresh native OCR/vision/image advertisements gate routing and image dispatch. GLM-OCR remains operator-excluded. Scores are routing policy scores, not pass probabilities. This is automatic selection across progressively harder synthetic English document images, not an exhaustive per-model or held-out evaluation. Exact JSON/field grading is unchanged; infrastructure failures receive no quality feedback. The public daemon API remains text-only.\n'
+    text+='\n'+(json.dumps(active,indent=2) if active else 'No active inference identity verified at this sample.')+'\n\nImages are sent through a trusted NexusRouter SDK adapter. Fresh native OCR/vision/image advertisements gate routing and image dispatch. GLM-OCR remains operator-excluded. Scores are routing policy scores, not pass probabilities. This is automatic selection across progressively harder synthetic English document images, not an exhaustive per-model or held-out evaluation. Exact JSON/field grading is unchanged; infrastructure failures receive no quality feedback. The public daemon API remains text-only.\n'
     (campaign/'report.md').write_text(text)
     return result
 
@@ -237,13 +237,13 @@ def run_locked(campaign):
 
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('campaign',type=Path);p.add_argument('--poll',action='store_true');p.add_argument('--init',action='store_true')
-    p.add_argument('--host',type=Path);p.add_argument('--config',type=Path);p.add_argument('--database',type=Path);p.add_argument('--darwin',type=Path)
+    p.add_argument('--host',type=Path);p.add_argument('--config',type=Path);p.add_argument('--database',type=Path);p.add_argument('--nexus','--darwin',dest='darwin',type=Path)
     a=p.parse_args();a.campaign=a.campaign.resolve()
     if a.init:
         if not all((a.host,a.config,a.database,a.darwin)):p.error('--init requires --host --config --database --darwin')
         a.campaign.mkdir(parents=True,exist_ok=False)
         tasks=suite_task_catalog('ocr')
-        manifest={'created_at':now(),'campaign_dir':str(a.campaign),'domain':'ocr','profile':PROFILE,'configured_model':'auto','tasks':[t['id'] for t in tasks],'host':str(a.host.resolve()),'host_sha256':sha(a.host),'config':str(a.config.resolve()),'config_sha256':sha(a.config),'database':str(a.database.resolve()),'darwin':str(a.darwin.resolve()),'ocr_provenance':ocr_provenance(tasks),'source_hashes':{name:sha(ROOT/'scripts'/name) for name in ['darwinrouter_ocr_host.go','darwinrouter_ocr_campaign.py','darwinrouter_coding_benchmarks.py','accuracy_grading.py']},'operator_excluded_models':['local-glm-ocr'],'capability_rule':'fresh Ollama OCR/image/vision advertisement, rechecked using admitted policy transport','context_tokens':32768,'image_reserve_tokens':16384,'max_output_tokens':4096,'max_outer_attempts_per_case':2}
+        manifest={'created_at':now(),'campaign_dir':str(a.campaign),'domain':'ocr','profile':PROFILE,'configured_model':'auto','tasks':[t['id'] for t in tasks],'host':str(a.host.resolve()),'host_sha256':sha(a.host),'config':str(a.config.resolve()),'config_sha256':sha(a.config),'database':str(a.database.resolve()),'darwin':str(a.darwin.resolve()),'ocr_provenance':ocr_provenance(tasks),'source_hashes':{name:sha(ROOT/'scripts'/name) for name in ['nexusrouter_ocr_host.go','nexusrouter_ocr_campaign.py','nexusrouter_coding_benchmarks.py','accuracy_grading.py']},'operator_excluded_models':['local-glm-ocr'],'capability_rule':'fresh Ollama OCR/image/vision advertisement, rechecked using admitted policy transport','context_tokens':32768,'image_reserve_tokens':16384,'max_output_tokens':4096,'max_outer_attempts_per_case':2}
         save(a.campaign/'manifest.json',manifest,exclusive=True)
         save(a.campaign/'state.json',{'status':'prepared','at':now()})
         print(json.dumps(manifest,indent=2));return

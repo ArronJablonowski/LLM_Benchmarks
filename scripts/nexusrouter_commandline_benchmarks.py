@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the isolated command-line suite through DarwinRouter's SDK tool loop."""
+"""Run the isolated command-line suite through NexusRouter's SDK tool loop."""
 from __future__ import annotations
 
 import argparse
@@ -15,7 +15,7 @@ from pathlib import Path
 from benchmark_tests import suite_task_catalog
 from coding_agent_benchmarks import prepare_workspace, grade_workspace
 from platform_support import create_sampler
-from darwinrouter_coding_benchmarks import record_feedback, task_metadata, quality_verdict
+from nexusrouter_coding_benchmarks import record_feedback, task_metadata, quality_verdict
 
 
 FIELDS = ["run_id", "benchmark_profile", "harness", "model", "task_id", "task_name",
@@ -32,7 +32,7 @@ def parse_args():
     p.add_argument("--host", type=Path, required=True)
     p.add_argument("--config", type=Path, required=True)
     p.add_argument("--database", type=Path, required=True)
-    p.add_argument("--darwin", default="darwin")
+    p.add_argument("--nexus", "--darwin", dest="darwin", default="darwin", help="NexusRouter CLI executable (legacy SDK binary name: darwin)")
     p.add_argument("--telemetry", choices=["auto", "none"], default="none")
     p.add_argument("--model", default="local-gpt-oss")
     p.add_argument("--output-dir", type=Path, required=True)
@@ -89,13 +89,13 @@ def main():
         tasks = [{**task, "grader": "cli_tasks/grader_v3.py"} for task in tasks]
     profile = "commandline-agent-v2-expanded" if any(t['id'].startswith('cli_exp_') for t in tasks) else "commandline-agent-v2-standard-20"
     profile = profile.replace("-v2-", "-" + grading_version + "-")
-    print(f"Suite: commandline ({profile}); harness: DarwinRouter; tasks: {len(tasks)}")
+    print(f"Suite: commandline ({profile}); harness: NexusRouter; tasks: {len(tasks)}")
     if not args.run: return 0
     if not args.host.is_file() or not args.config.is_file():
         raise SystemExit("--host and --config must exist")
     args.output_dir.mkdir(parents=True, exist_ok=True); args.workspace.mkdir(parents=True, exist_ok=True)
-    jsonl = args.output_dir / "darwinrouter_commandline.jsonl"
-    csv_path = args.output_dir / "darwinrouter_commandline.csv"
+    jsonl = args.output_dir / "nexusrouter_commandline.jsonl"
+    csv_path = args.output_dir / "nexusrouter_commandline.csv"
     records = [json.loads(x) for x in jsonl.read_text().splitlines()] if jsonl.exists() else []
     if any(r["row"].get("benchmark_profile") != profile for r in records):
         raise RuntimeError("cannot mix grading versions in an existing run")
@@ -123,8 +123,8 @@ def main():
     try:
         for task in tasks:
             if task["id"] in completed: continue
-            print(f"[{len(completed)+1}/{len(tasks)}] DarwinRouter {args.model} :: {task['id']}", flush=True)
-            workspace = prepare_workspace(args.workspace / run_id, "darwinrouter", args.model, task)
+            print(f"[{len(completed)+1}/{len(tasks)}] NexusRouter {args.model} :: {task['id']}", flush=True)
+            workspace = prepare_workspace(args.workspace / run_id, "nexusrouter", args.model, task)
             if grading_version == "v3":
                 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "cli_tasks"))
                 from grader_v3 import INSTRUCTIONS
@@ -158,7 +158,7 @@ def main():
             except Exception as exc:
                 metadata = {}
                 error = (error + "; metadata: " + str(exc))[:2000]
-            row = {"run_id":run_id,"benchmark_profile":profile,"harness":"darwinrouter",
+            row = {"run_id":run_id,"benchmark_profile":profile,"harness":"nexusrouter",
                    "model":args.model,"task_id":task["id"],"task_name":task["name"],
                    "status":"ok" if verdict in ("pass", "fail") else "error","verdict":verdict,
                    "checks_passed":grading.get("passed",0),"checks_total":grading.get("total",0),"wall_seconds":wall,

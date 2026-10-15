@@ -10,11 +10,15 @@ from unittest.mock import Mock, patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-import darwinrouter_coding_benchmarks as coding
-import darwinrouter_standard_benchmarks as standard
+import nexusrouter_coding_benchmarks as coding
+import nexusrouter_standard_benchmarks as standard
 
 
-class DarwinFeedbackTests(unittest.TestCase):
+class NexusFeedbackTests(unittest.TestCase):
+    def test_new_token_environment_is_default(self):
+        args = standard.parse_args(["--output-dir", "/tmp/nexus-plan"])
+        self.assertEqual(args.token_env, "NEXUSROUTER_API_TOKEN")
+
     def test_coding_lost_acknowledgement_checks_durable_history(self):
         history = [{"TaskID": "task", "Checks": [{"Source": "user_feedback", "Passed": False}]}]
         with patch.object(coding.subprocess, "run", side_effect=[
@@ -83,7 +87,7 @@ class DarwinFeedbackTests(unittest.TestCase):
                 if feedback:
                     self.assertEqual(feedback[0]["payload"]["outcome"], "accepted" if verdict == "pass" else "rejected")
                 self.assertEqual(sum(url.endswith("/v1/tasks") for url, _ in calls), 1)
-                row = json.loads((Path(tmp) / "darwinrouter_standard.jsonl").read_text())["row"]
+                row = json.loads((Path(tmp) / "nexusrouter_standard.jsonl").read_text())["row"]
                 self.assertEqual(row["feedback_recorded"], str(verdict in ("pass", "content_mismatch", "fail")).lower())
 
 

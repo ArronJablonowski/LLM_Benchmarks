@@ -1,5 +1,5 @@
-// Command darwinrouter_commandline_host runs one isolated CLI benchmark through
-// DarwinRouter's SDK tool loop. It exposes only the deterministic lab simulator
+// Command nexusrouter_commandline_host runs one isolated CLI benchmark through
+// NexusRouter's SDK tool loop. It exposes only the deterministic lab simulator
 // and the benchmark's answer artifact; it never invokes a host shell command.
 package main
 
@@ -46,10 +46,10 @@ type answer struct {
 }
 
 func main() {
-	configPath := flag.String("config", "", "DarwinRouter project configuration")
-	database := flag.String("database", "", "shared DarwinRouter learning database")
+	configPath := flag.String("config", "", "NexusRouter project configuration")
+	database := flag.String("database", "", "shared NexusRouter learning database")
 	workspace := flag.String("workspace", "", "isolated command-line benchmark workspace")
-	model := flag.String("model", "local-worker", "configured local DarwinRouter model ID")
+	model := flag.String("model", "local-worker", "configured local NexusRouter model ID")
 	prompt := flag.String("prompt", "", "benchmark prompt")
 	gradingVersion := flag.String("grading-version", "v3", "v3 strict future contract or v2 legacy")
 	timeout := flag.Duration("timeout", 15*time.Minute, "task deadline")
@@ -74,7 +74,7 @@ func main() {
 	}
 	dbPath := *database
 	if dbPath == "" {
-		dbPath = filepath.Join(root, "darwinrouter.db")
+		dbPath = filepath.Join(root, "nexusrouter.db")
 	}
 	client, err := sdk.New(sdk.ConfigOptions{
 		ProjectFile: *configPath,
@@ -140,7 +140,7 @@ func benchmarkToolsVersion(root string, lab scenario, version string) []sdk.Tool
 			if err != nil || len(instructions) > 16<<10 {
 				return runtime.ToolResult{Effect: runtime.NoEffect}, errors.New("benchmark instructions unavailable")
 			}
-			toolNote := "\nDarwinRouter tool mapping: call run_terminal_lab with kind=run and only the inner command (for example, uname -a), kind=menu and only the inner menu path, or kind=context. For simulator help, call kind=help with value empty. This is a finite simulation: unsupported commands will not become available by retrying variants. Once the requested findings are supported by observations, save the answer instead of continuing unrelated probes. Do not include the python3 terminal_lab.py wrapper. Call save_benchmark_answer exactly once, then respond with a short final confirmation and no further tools. The save receipt is authoritative; native read_file uses a different root and must not be used to verify it.\n"
+			toolNote := "\nNexusRouter tool mapping: call run_terminal_lab with kind=run and only the inner command (for example, uname -a), kind=menu and only the inner menu path, or kind=context. For simulator help, call kind=help with value empty. This is a finite simulation: unsupported commands will not become available by retrying variants. Once the requested findings are supported by observations, save the answer instead of continuing unrelated probes. Do not include the python3 terminal_lab.py wrapper. Call save_benchmark_answer exactly once, then respond with a short final confirmation and no further tools. The save receipt is authoritative; native read_file uses a different root and must not be used to verify it.\n"
 			return runtime.ToolResult{Content: string(instructions) + toolNote, Effect: runtime.NoEffect}, nil
 		},
 	}

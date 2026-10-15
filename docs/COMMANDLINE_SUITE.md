@@ -87,9 +87,9 @@ The same profile can run through the direct workspace agent, Hermes, and
 OpenClaw with `BENCH_PROJECT_SUITES="commandline"` and
 `ops/run_ollama_project_three_path_campaign.sh`.
 
-## DarwinRouter campaign recovery
+## NexusRouter campaign recovery
 
-`darwinrouter_commandline_campaign.py --campaign-dir PATH` resumes the preserved
+`nexusrouter_commandline_campaign.py --campaign-dir PATH` resumes the preserved
 manifest and result files. Each model/task case receives at most two attempts;
 a retry uses `retries/MODEL/TASK/attempt-2` and its own workspace. Original JSONL
 rows and transcripts remain unchanged. Infrastructure failures receive no
@@ -129,7 +129,7 @@ inventing a remediation action. Missing observations, unexecuted commands and
 destructive actions still fail. Reviewed regrades are appended separately to
 `grader-revisions.jsonl`, bound to the hash of the original canonical record;
 this never promotes a host/infrastructure failure into a quality grade. Durable
-feedback corrections use DarwinRouter's expected-ID revision command so the
+feedback corrections use NexusRouter's expected-ID revision command so the
 previous judgment remains in history.
 
 Diagnostic grading also accepts explicit task-scoped equivalents such as a
@@ -155,7 +155,7 @@ These additions do not waive missing recovery outcomes or persistence settings.
 The PowerShell service fixture now declares a simulated command effect: a
 successful Spooler restart changes subsequent status queries to Running. The
 standalone CLI replays successful effects from its workspace transcript; the
-DarwinRouter adapter keeps isolated state after appending the operation audit.
+NexusRouter adapter keeps isolated state after appending the operation audit.
 Failed operations do not apply effects, repeated restarts are idempotent, and a
 new workspace retains the original Stopped state. Record this fixture/host
 revision separately from older runs; preserve any contradictory old transcripts.

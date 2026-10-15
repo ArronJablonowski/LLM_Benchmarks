@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-import darwinrouter_coding_benchmarks as bench
+import nexusrouter_coding_benchmarks as bench
 
 
 class OwnershipTests(unittest.TestCase):

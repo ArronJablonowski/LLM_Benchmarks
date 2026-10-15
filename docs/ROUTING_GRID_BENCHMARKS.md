@@ -77,7 +77,7 @@ python3 scripts/routing_grid_benchmarks.py \
 
 The registry also exposes `suite_task_catalog("routing-grid")`. Legacy inference
 runners deliberately reject this suite: they cannot silently send speech as text
-or treat descriptions of generated media as actual output. The separate [DarwinRouter campaign adapter](DARWINROUTER_ROUTING_GRID_CAMPAIGN.md)
+or treat descriptions of generated media as actual output. The separate [NexusRouter campaign adapter](NEXUSROUTER_ROUTING_GRID_CAMPAIGN.md)
 now executes supported text and audio cases through the SDK with durable
 provenance and feedback reconciliation. Generation still requires a native
 generator adapter. None of the examples above executes a model or updates its ranking.
@@ -227,7 +227,7 @@ Before any future dispatch, the campaign must:
    and any required human review, for the actual completed model.
 
 Different modality adapters will be needed for speech input and genuine media
-output; current text-only DarwinRouter surfaces must not pretend to support
+output; current text-only NexusRouter surfaces must not pretend to support
 these. Automatic model selection measures the selected models only, not an
 exhaustive ranking of every eligible model. Future benchmark runs can learn
 routing from this set, but held-out generalization needs separate unseen tasks.

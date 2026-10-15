@@ -76,7 +76,7 @@ class Campaign:
             raise RuntimeError('invalid infrastructure disposition')
         hashes = []
         for path, row in found:
-            original = next(r for r in records(path / 'darwinrouter_commandline.jsonl')
+            original = next(r for r in records(path / 'nexusrouter_commandline.jsonl')
                             if r['row']['task_id'] == task)
             hashes.append(hashlib.sha256(json.dumps(original, sort_keys=True, separators=(',', ':')).encode()).hexdigest())
         if len(found) != 2 or found[-1][1]['verdict'] != 'infrastructure_error' or decision.get('canonical_sha256s') != hashes:
@@ -95,7 +95,7 @@ class Campaign:
         paths = [self.here / model, self.here / 'retries' / model / task / 'attempt-2']
         found = []
         for path in paths:
-            rows = [r for r in records(path / 'darwinrouter_commandline.jsonl') if r['row']['task_id'] == task]
+            rows = [r for r in records(path / 'nexusrouter_commandline.jsonl') if r['row']['task_id'] == task]
             if len(rows) > 1:
                 raise RuntimeError('duplicate task evidence: ' + str(path))
             if rows:
@@ -216,7 +216,7 @@ class Campaign:
         self.active = dict(model=model, task=task, attempt=attempt, attempt_started_at=now(),
                            output_dir=str(path), deadline_seconds=self.manifest['timeout_seconds'])
         self.state('running')
-        cmd = [sys.executable, str(self.root / 'scripts/darwinrouter_commandline_benchmarks.py'),
+        cmd = [sys.executable, str(self.root / 'scripts/nexusrouter_commandline_benchmarks.py'),
                '--run', '--host', self.manifest['host'], '--config', config,
                '--database', self.manifest['database'], '--darwin', self.manifest.get('darwin', '/Users/aj_lobster/DarwinRouter/bin/darwin'),
                '--model', model, '--output-dir', str(path), '--workspace', str(workspace),
@@ -249,7 +249,7 @@ class Campaign:
         history = external(show())
         if not history:
             # Repair missing feedback, never repeat inference. CLI record is task-idempotent.
-            from darwinrouter_coding_benchmarks import record_feedback
+            from nexusrouter_coding_benchmarks import record_feedback
             record_feedback(darwin, self.manifest['database'], task, accepted)
             history = external(show())
         if not history or not all(c.get('Passed') == accepted for c in history[-1]['Checks']):
@@ -333,7 +333,7 @@ class Campaign:
                     issues = self.here / 'unresolved-infrastructure.jsonl'
                     if not any(r['model'] == model and r['task'] == task for r in records(issues)):
                         append(issues, dict(model=model, task=task, attempts=len(found), recorded_at=now(),
-                                            result_paths=[str(p / 'darwinrouter_commandline.jsonl') for p, _ in found]))
+                                            result_paths=[str(p / 'nexusrouter_commandline.jsonl') for p, _ in found]))
                 else:
                     raise RuntimeError('grader or unknown error requires investigation: ' + verdict)
                 self.counts['completed'] += 1

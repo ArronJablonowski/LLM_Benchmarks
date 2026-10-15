@@ -249,24 +249,31 @@ their scores remain attributable to their actual transport and agent behavior.
 
 The separate `ocr` suite adds 30 image-only tests across six ascending difficulty levels: Word-style memo transcription, forms/checkboxes, table extraction and arithmetic, bar-chart analysis, and diagram reading. Harder fixtures add layout distractors, scan degradation, redaction and untrusted document instructions. Each task has its own hash-bound PNG and strict deterministic grading, with field accuracy and transcription CER/WER diagnostics.
 
-See [suite design, supported runners and limitations](docs/ocr-progressive-v1.md) and the [30-image gallery](data/ocr_progressive_v1/gallery.html). List without inference with `python3 scripts/ollama_standardized_local_benchmarks.py --suite ocr --list-tasks`. The separate DarwinRouter OCR SDK host checks native image capabilities and preserves image-dispatch evidence; its support does not extend the legacy Standard adapter's text-only API or imply completed OCR results.
+See [suite design, supported runners and limitations](docs/ocr-progressive-v1.md) and the [30-image gallery](data/ocr_progressive_v1/gallery.html). List without inference with `python3 scripts/ollama_standardized_local_benchmarks.py --suite ocr --list-tasks`. The separate NexusRouter OCR SDK host checks native image capabilities and preserves image-dispatch evidence; its support does not extend the legacy Standard adapter's text-only API or imply completed OCR results.
 
-### DarwinRouter Standard path
+### NexusRouter Standard path
 
-DarwinRouter has a native Standard-suite adapter that submits each text task
+Runner filenames and new evidence use the NexusRouter name. Historical
+campaigns retain their original names, task IDs and hashes; do not resume a
+frozen campaign with renamed sources. Use its preserved checkout instead.
+`NEXUSROUTER_API_TOKEN` is preferred; `DARWIN_API_TOKEN` remains a legacy fallback.
+The external SDK still declares `github.com/ArronJablonowski/DarwinRouter`
+and uses `DARWIN_PROCESS_OWNER_DIR`; those compatibility contracts are retained.
+
+NexusRouter has a native Standard-suite adapter that submits each text task
 through the authenticated durable task API with `model_id: auto`. It preserves
 the Darwin task ID, deterministic grade, route estimate, response digest, and
 macOS/NVIDIA telemetry. When the route reports an observed attempt cost, the
-adapter records the deterministic pass/fail result through DarwinRouter's
+adapter records the deterministic pass/fail result through NexusRouter's
 feedback API so later automatic routes can use the benchmark evidence.
 
 ```bash
-DARWIN_API_TOKEN=... python3 scripts/darwinrouter_standard_benchmarks.py \
-  --output-dir reports/darwinrouter-standard --run
+NEXUSROUTER_API_TOKEN=... python3 scripts/nexusrouter_standard_benchmarks.py \
+  --output-dir reports/nexusrouter-standard --run
 ```
 
 The adapter is resumable from its JSONL evidence and excludes the core image
-task until DarwinRouter exposes a qualified multimodal request contract.
+task until NexusRouter exposes a qualified multimodal request contract.
 
 ### COH Ollama
 
@@ -651,4 +658,4 @@ each hardware result remains attributable to its originating machine.
 For Spark-specific preflight and telemetry details, see
 [`docs/DGX_SPARK.md`](docs/DGX_SPARK.md). The canonical remote is
 [ArronJablonowski/LLM_Benchmarks](https://github.com/ArronJablonowski/LLM_Benchmarks).
-DarwinRouter can compare configured local models independently and then run a held-out automatic-routing validation with `scripts/darwinrouter_learning_campaign.py`. Each model writes to its own resumable evidence directory, and the standard adapter records deterministic accepted/rejected feedback in DarwinRouter after every completed task.
+NexusRouter can compare configured local models independently and then run a held-out automatic-routing validation with `scripts/nexusrouter_learning_campaign.py`. Each model writes to its own resumable evidence directory, and the standard adapter records deterministic accepted/rejected feedback in NexusRouter after every completed task.

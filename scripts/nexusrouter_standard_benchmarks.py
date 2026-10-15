@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Run the deterministic Standard suite through DarwinRouter's native API.
+"""Run the deterministic Standard suite through NexusRouter's native API.
 
-The adapter uses DarwinRouter's ``auto`` route, records the durable task ID, and
+The adapter uses NexusRouter's ``auto`` route, records the durable task ID, and
 feeds the deterministic benchmark verdict back through the authenticated
 feedback API. Evidence is append-only and resumes by task ID.
 """
@@ -38,9 +38,9 @@ FIELDS = [
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", default="http://127.0.0.1:7788")
-    parser.add_argument("--token-env", default="DARWIN_API_TOKEN")
+    parser.add_argument("--token-env", default="NEXUSROUTER_API_TOKEN")
     parser.add_argument("--model", default="auto")
-    parser.add_argument("--local-required", action="store_true", help="Require DarwinRouter to select a local model")
+    parser.add_argument("--local-required", action="store_true", help="Require NexusRouter to select a local model")
     parser.add_argument("--ollama-model", action="append", default=[], help="Unload this local Ollama model before each task so host admission observes free memory (repeatable)")
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--timeout", type=int, default=300)
@@ -67,7 +67,7 @@ def request_json(url, token, *, method="GET", payload=None, headers=None, timeou
             return response.status, json.load(response)
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:2000]
-        raise RuntimeError(f"DarwinRouter HTTP {exc.code}: {detail}") from exc
+        raise RuntimeError(f"NexusRouter HTTP {exc.code}: {detail}") from exc
 
 
 def write_csv(path, records):
@@ -105,26 +105,28 @@ def main(argv=None):
         for task in tasks:
             print(f"{task['id']}\t{task['category']}\t{task['name']}")
         return 0
-    print(f"Suite: standard (core-text-17-v1); harness: DarwinRouter; tasks: {len(tasks)}")
+    print(f"Suite: standard (core-text-17-v1); harness: NexusRouter; tasks: {len(tasks)}")
     if not args.run:
         print("Plan only. Pass --run to execute benchmark observations.")
         return 0
     if not 1 <= args.timeout <= 300:
-        raise SystemExit("--timeout must be between 1 and DarwinRouter's 300-second HTTP limit")
+        raise SystemExit("--timeout must be between 1 and NexusRouter's 300-second HTTP limit")
     token = os.environ.get(args.token_env, "")
+    if not token and args.token_env == "NEXUSROUTER_API_TOKEN":
+        token = os.environ.get("DARWIN_API_TOKEN", "")  # Legacy daemon compatibility.
     if len(token) < 32:
         raise SystemExit(f"{args.token_env} must contain the running daemon bearer token")
     base_url = args.base_url.rstrip("/")
     _, health = request_json(base_url + "/v1/health", token, timeout=30)
     if not health.get("ready"):
-        raise RuntimeError("DarwinRouter health report is not ready")
+        raise RuntimeError("NexusRouter health report is not ready")
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    jsonl_path = args.output_dir / "darwinrouter_standard.jsonl"
-    csv_path = args.output_dir / "darwinrouter_standard.csv"
+    jsonl_path = args.output_dir / "nexusrouter_standard.jsonl"
+    csv_path = args.output_dir / "nexusrouter_standard.csv"
     records = [json.loads(line) for line in jsonl_path.read_text(encoding="utf-8").split("\n") if line] if jsonl_path.exists() else []
     completed = {record["row"]["task_id"] for record in records}
     if len(completed) != len(records):
-        raise RuntimeError("Existing DarwinRouter evidence contains duplicate task IDs")
+        raise RuntimeError("Existing NexusRouter evidence contains duplicate task IDs")
     sampler = create_sampler("auto", interval_ms=1000)
     sampler.start()
     run_id = records[0]["row"]["run_id"] if records else time.strftime("%Y%m%d_%H%M%S")
@@ -132,7 +134,7 @@ def main(argv=None):
         for task in tasks:
             if task["id"] in completed:
                 continue
-            print(f"[{len(completed)+1}/{len(tasks)}] DarwinRouter {args.model} :: {task['id']}", flush=True)
+            print(f"[{len(completed)+1}/{len(tasks)}] NexusRouter {args.model} :: {task['id']}", flush=True)
             sample_start = sampler.snapshot_len()
             started = time.monotonic()
             error = ""
@@ -166,10 +168,10 @@ def main(argv=None):
                         # double-count the same model as old plus incoming load.
                         time.sleep(5)
                 if not response.get("task_id") or not isinstance(response.get("text"), str):
-                    raise RuntimeError("DarwinRouter task response omitted task_id or text")
+                    raise RuntimeError("NexusRouter task response omitted task_id or text")
             except Exception as exc:
                 if "admission_denied" in str(exc):
-                    raise RuntimeError("DarwinRouter admission denied after model unload; campaign paused without grading resource pressure") from exc
+                    raise RuntimeError("NexusRouter admission denied after model unload; campaign paused without grading resource pressure") from exc
                 error = repr(exc)
             wall = round(time.monotonic() - started, 3)
             samples = sampler.get_since(sample_start)
@@ -191,7 +193,7 @@ def main(argv=None):
                 except Exception as exc:
                     error = (error + "; " if error else "") + f"feedback: {exc!r}"
             row = {
-                "run_id": run_id, "harness": "darwinrouter", "harness_version": health.get("version", 1),
+                "run_id": run_id, "harness": "nexusrouter", "harness_version": health.get("version", 1),
                 "benchmark_profile": "core-text-17-v1", "grading_profile": GRADING_PROFILE,
                 "model": args.model, "task_id": task["id"], "darwin_task_id": task_id,
                 "task_name": task["name"], "category": task["category"], "status": status,

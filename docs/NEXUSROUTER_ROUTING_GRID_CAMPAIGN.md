@@ -1,7 +1,7 @@
-# DarwinRouter routing-grid campaign
+# NexusRouter routing-grid campaign
 
-`scripts/darwinrouter_grid_campaign.py` is the sole durable supervisor;
-`scripts/darwinrouter_grid_host.go` runs each case through the DarwinRouter SDK.
+`scripts/nexusrouter_grid_campaign.py` is the sole durable supervisor;
+`scripts/nexusrouter_grid_host.go` runs each case through the NexusRouter SDK.
 The frozen routing-grid-v1 fixtures and grader remain unchanged.
 
 ## Scope and learning
@@ -57,15 +57,15 @@ existing results and missing feedback before launching anything new.
 
 ## Operation
 
-Build the host against the current DarwinRouter module, run its explicit-file Go
+Build the host against the current NexusRouter module, run its explicit-file Go
 race tests and the Python suite, then initialize a fresh campaign:
 
 ```sh
-python3 scripts/darwinrouter_grid_campaign.py /absolute/campaign --init \
+python3 scripts/nexusrouter_grid_campaign.py /absolute/campaign --init \
   --host /absolute/darwin-grid-host-v1 --config /absolute/config.yaml \
   --database /absolute/darwin.db --darwin /absolute/bin/darwin
-python3 scripts/darwinrouter_grid_campaign.py /absolute/campaign
-python3 scripts/darwinrouter_grid_campaign.py /absolute/campaign --poll
+python3 scripts/nexusrouter_grid_campaign.py /absolute/campaign
+python3 scripts/nexusrouter_grid_campaign.py /absolute/campaign --poll
 ```
 
 Use the existing launchd secret environment and DARWIN_PROCESS_OWNER_DIR without

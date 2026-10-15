@@ -1,4 +1,4 @@
-// DarwinRouter OCR host: one fresh, image-bound SDK task. The trusted adapter
+// NexusRouter OCR host: one fresh, image-bound SDK task. The trusted adapter
 // adds pixels only to the admitted Ollama execution request, using its supplied
 // policy transport. It does not change the daemon's text-only public API.
 package main

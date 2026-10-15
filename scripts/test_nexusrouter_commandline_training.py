@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch, Mock
-import darwinrouter_commandline_benchmarks as runner
+import nexusrouter_commandline_benchmarks as runner
 
 class TrainingTests(unittest.TestCase):
     def test_explicit_expanded_lab_selection_preserves_standard_default(self):
@@ -29,7 +29,7 @@ class TrainingTests(unittest.TestCase):
                 self.assertEqual(runner.main(),0)
                 feedback.assert_called_once_with('darwin',args.database,'success',True)
                 self.assertEqual({call.args[0] for call in unload.call_args_list},{'failed-model','winner'})
-                row=json.loads((root/'out/darwinrouter_commandline.jsonl').read_text())['row']
+                row=json.loads((root/'out/nexusrouter_commandline.jsonl').read_text())['row']
                 self.assertEqual(row['previous_task_ids'],['failed'])
                 self.assertEqual(row['resolved_model'],'winner')
 
@@ -44,7 +44,7 @@ class TrainingTests(unittest.TestCase):
                 args.tasks=['lab-two']
                 self.assertEqual(runner.main(),0)
                 self.assertEqual(feedback.call_count,2)
-                self.assertEqual(len((args.output_dir/'darwinrouter_commandline.jsonl').read_text().splitlines()),2)
+                self.assertEqual(len((args.output_dir/'nexusrouter_commandline.jsonl').read_text().splitlines()),2)
                 host.write_text('different executable')
                 with self.assertRaisesRegex(RuntimeError,'contract changed|host, grader'):
                     runner.main()
@@ -60,7 +60,7 @@ class TrainingTests(unittest.TestCase):
                 self.assertEqual(runner.main(),0)
                 self.assertEqual(run.call_count,1, 'must not retry contaminated workspace')
                 self.assertEqual(record.call_count,feedback)
-                row=json.loads((root/'out/darwinrouter_commandline.jsonl').read_text())['row']
+                row=json.loads((root/'out/nexusrouter_commandline.jsonl').read_text())['row']
                 self.assertEqual(row['verdict'],expected)
                 self.assertEqual(row['darwin_task_id'],'task-1')
                 if feedback:

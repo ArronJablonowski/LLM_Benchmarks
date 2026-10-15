@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run repository-level coding tasks through DarwinRouter's native SDK host."""
+"""Run repository-level coding tasks through NexusRouter's native SDK host."""
 from __future__ import annotations
 
 import argparse, csv, hashlib, json, os, sqlite3, subprocess, time
@@ -85,8 +85,8 @@ def main():
     p.add_argument("--host",type=Path,required=True);p.add_argument("--config",type=Path,required=True)
     p.add_argument("--models",nargs="+",default=["local-muse-glimmer","local-qwen3-coder","auto"])
     p.add_argument("--ollama-model",action="append",default=[]);p.add_argument("--output-dir",type=Path,required=True);p.add_argument("--workspace",type=Path,required=True)
-    p.add_argument("--darwin",default="/Users/aj_lobster/DarwinRouter/bin/darwin")
-    p.add_argument("--database",type=Path,help="DarwinRouter learning database; use the daemon's database to share learned model/context fitness")
+    p.add_argument("--nexus", "--darwin", dest="darwin", default="darwin", help="NexusRouter CLI executable (legacy SDK binary name: darwin)")
+    p.add_argument("--database",type=Path,help="NexusRouter learning database; use the daemon's database to share learned model/context fitness")
     p.add_argument("--telemetry", choices=["auto", "mactop", "nvidia-smi", "none"], default="auto")
     p.add_argument("--timeout",type=int,default=1800);p.add_argument("--tasks",nargs="*");p.add_argument("--run",action="store_true")
     p.add_argument("--max-attempts", type=int, choices=range(1,6), default=1, help="Explicit whole-host attempt budget; each retry reuses the preserved workspace")
@@ -97,12 +97,12 @@ def main():
     if args.tasks:
         wanted=set(args.tasks);tasks=[t for t in tasks if t["id"] in wanted]
         if wanted-{t["id"] for t in tasks}:raise SystemExit("unknown coding task")
-    total=len(args.models)*len(tasks);print(f"Suite: coding (coding-agent-v2-web); harness: DarwinRouter; observations: {total}",flush=True)
+    total=len(args.models)*len(tasks);print(f"Suite: coding (coding-agent-v2-web); harness: NexusRouter; observations: {total}",flush=True)
     if not args.run:return 0
     args.output_dir.mkdir(parents=True,exist_ok=True);args.workspace.mkdir(parents=True,exist_ok=True)
-    database=(args.database or args.output_dir/"darwinrouter-coding.db").resolve()
+    database=(args.database or args.output_dir/"nexusrouter-coding.db").resolve()
     host_digest=hashlib.sha256(args.host.read_bytes()).hexdigest()
-    jsonl=args.output_dir/"darwinrouter_coding.jsonl";csv_path=args.output_dir/"darwinrouter_coding.csv"
+    jsonl=args.output_dir/"nexusrouter_coding.jsonl";csv_path=args.output_dir/"nexusrouter_coding.csv"
     records=[json.loads(x) for x in jsonl.read_text().splitlines()] if jsonl.exists() else []
     completed={(r["row"]["model"],r["row"]["task_id"]) for r in records};run_id=records[0]["row"]["run_id"] if records else time.strftime("%Y%m%d_%H%M%S")
     sampler=create_sampler(args.telemetry,interval_ms=1000);sampler.start()
@@ -110,9 +110,9 @@ def main():
       for model in args.models:
        for task in tasks:
         if (model,task["id"]) in completed:continue
-        print(f"[{len(completed)+1}/{total}] DarwinRouter {model} :: {task['id']}",flush=True)
+        print(f"[{len(completed)+1}/{total}] NexusRouter {model} :: {task['id']}",flush=True)
         stop_owned_models(args.ollama_model)
-        work=prepare_workspace(args.workspace,"darwinrouter",model,task).resolve();before=fingerprint_tree(work)
+        work=prepare_workspace(args.workspace,"nexusrouter",model,task).resolve();before=fingerprint_tree(work)
         prompt=task["prompt"]+"\n\nWork only inside: "+str(work)
         command=[str(args.host),"--config",str(args.config),"--database",str(database),"--workspace",str(work),"--model",model,"--prompt",prompt,"--timeout",f"{args.timeout}s"]
         command += ["--context-tokens", str(args.context_tokens)]
@@ -145,7 +145,7 @@ def main():
                 # acknowledgement task (auto routing could choose a different
                 # model). Preserve its ID and expose the missing feedback.
                 error=(error+f"; feedback: {exc}")[:3000]
-        row={"run_id":run_id,"benchmark_profile":"coding-agent-v2-web","harness":"darwinrouter","model":model,"task_id":task["id"],"task_name":task["name"],"status":"ok" if completed_output else "error","verdict":verdict,"checks_passed":grading.get("passed",0),"checks_total":grading.get("total",0),"wall_seconds":wall,"exit_code":proc.returncode,"files_changed":len(changed),"student_test_files":count_student_tests(work),"feedback_recorded":str(feedback).lower(),"context_tokens":context_tokens,"max_gpu_temp_c":maximum(samples,"gpu_temp_c"),"max_host_temp_c":maximum(samples,"host_temp_c"),"max_host_memory_used_bytes":maximum(samples,"host_memory_used_bytes"),"max_host_memory_pct":maximum(samples,"host_memory_pct"),"max_gpu_usage_pct":maximum(samples,"gpu_usage_pct"),"sample_count":len(samples),"error":error}
+        row={"run_id":run_id,"benchmark_profile":"coding-agent-v2-web","harness":"nexusrouter","model":model,"task_id":task["id"],"task_name":task["name"],"status":"ok" if completed_output else "error","verdict":verdict,"checks_passed":grading.get("passed",0),"checks_total":grading.get("total",0),"wall_seconds":wall,"exit_code":proc.returncode,"files_changed":len(changed),"student_test_files":count_student_tests(work),"feedback_recorded":str(feedback).lower(),"context_tokens":context_tokens,"max_gpu_temp_c":maximum(samples,"gpu_temp_c"),"max_host_temp_c":maximum(samples,"host_temp_c"),"max_host_memory_used_bytes":maximum(samples,"host_memory_used_bytes"),"max_host_memory_pct":maximum(samples,"host_memory_pct"),"max_gpu_usage_pct":maximum(samples,"gpu_usage_pct"),"sample_count":len(samples),"error":error}
         try:
             metadata=task_metadata(database, task_id)
         except (sqlite3.Error, ValueError) as exc:

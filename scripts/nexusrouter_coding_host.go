@@ -1,5 +1,5 @@
-// Command darwinrouter_coding_host runs one isolated coding benchmark through
-// DarwinRouter's SDK tool loop. All filesystem tools are rooted in workspace.
+// Command nexusrouter_coding_host runs one isolated coding benchmark through
+// NexusRouter's SDK tool loop. All filesystem tools are rooted in workspace.
 package main
 
 import (
@@ -32,10 +32,10 @@ import (
 const outputLimit = 64 << 10
 
 func main() {
-	config := flag.String("config", "", "DarwinRouter configuration")
+	config := flag.String("config", "", "NexusRouter configuration")
 	database := flag.String("database", "", "campaign telemetry database")
 	workspace := flag.String("workspace", "", "absolute isolated workspace")
-	model := flag.String("model", "auto", "DarwinRouter model ID")
+	model := flag.String("model", "auto", "NexusRouter model ID")
 	prompt := flag.String("prompt", "", "coding task")
 	timeout := flag.Duration("timeout", 2*time.Hour, "task deadline")
 	contextTokens := flag.Int("context-tokens", 0, "explicit context budget; zero selects automatically")
@@ -251,7 +251,11 @@ func main() {
 		definitions, policy, reviewer = nil, nil, nil
 	}
 	turnLimit := strconv.Itoa(*maxTurns)
-	estimatorFactory, err := codingEstimatorFactory(os.Getenv("DARWIN_BENCH_MUSE_IDENTITY"))
+	identityPath := os.Getenv("NEXUSROUTER_BENCH_MUSE_IDENTITY")
+	if identityPath == "" {
+		identityPath = os.Getenv("DARWIN_BENCH_MUSE_IDENTITY") // Legacy configuration compatibility.
+	}
+	estimatorFactory, err := codingEstimatorFactory(identityPath)
 	if err != nil {
 		fatal(err)
 	}

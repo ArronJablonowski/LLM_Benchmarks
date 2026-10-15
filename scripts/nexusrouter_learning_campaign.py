@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate local DarwinRouter models independently, then validate auto routing."""
+"""Evaluate local NexusRouter models independently, then validate auto routing."""
 from __future__ import annotations
 
 import argparse
@@ -10,7 +10,7 @@ from pathlib import Path
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--models", nargs="+", required=True, help="Configured model pairs as DarwinRouter-ID=Ollama-model")
+    parser.add_argument("--models", nargs="+", required=True, help="Configured model pairs as NexusRouter-ID=Ollama-model")
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--base-url", default="http://127.0.0.1:7788")
     parser.add_argument("--timeout", type=int, default=300)
@@ -18,15 +18,15 @@ def main() -> int:
     parser.add_argument("--skip-auto-validation", action="store_true")
     args = parser.parse_args()
 
-    runner = Path(__file__).with_name("darwinrouter_standard_benchmarks.py")
+    runner = Path(__file__).with_name("nexusrouter_standard_benchmarks.py")
     pairs = []
     for value in args.models:
         model, separator, ollama = value.partition("=")
         if not separator or not model or not ollama or model == "auto":
-            raise SystemExit("--models entries must use DarwinRouter-ID=Ollama-model")
+            raise SystemExit("--models entries must use NexusRouter-ID=Ollama-model")
         pairs.append((model, ollama))
     if len({model for model, _ in pairs}) != len(pairs):
-        raise SystemExit("--models contains duplicate DarwinRouter IDs")
+        raise SystemExit("--models contains duplicate NexusRouter IDs")
     campaign = pairs if args.skip_auto_validation else pairs + [("auto", "")]
     for index, (model, ollama) in enumerate(campaign, 1):
         phase = "held-out-auto" if model == "auto" else "local-model"

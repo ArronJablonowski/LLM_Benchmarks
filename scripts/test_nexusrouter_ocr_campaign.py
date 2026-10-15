@@ -5,7 +5,7 @@ import unittest
 import sqlite3
 from unittest.mock import patch
 
-import darwinrouter_ocr_campaign as c
+import nexusrouter_ocr_campaign as c
 
 class OCRCampaignTests(unittest.TestCase):
     def setUp(self):
