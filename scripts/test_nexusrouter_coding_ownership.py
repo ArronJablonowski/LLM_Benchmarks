@@ -1,4 +1,8 @@
 import unittest
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
 from unittest.mock import patch
 import nexusrouter_coding_benchmarks as bench
 
@@ -32,3 +36,22 @@ class QualityClassificationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class IsolationPreflightTests(unittest.TestCase):
+    def test_unavailable_isolation_stops_before_state_or_model_work(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            argv = ["bench", "--host", "/fixture/host", "--config", "/fixture/config",
+                    "--output-dir", str(root / "evidence"), "--workspace", str(root / "workspace"), "--run"]
+            result = subprocess.CompletedProcess([], 1, "", "namespace denied")
+            with patch.object(sys, "argv", argv), patch.object(bench.subprocess, "run", return_value=result) as run, patch.object(bench, "create_sampler") as sampler, patch.object(bench, "stop_owned_models") as stop, patch.object(bench, "prepare_workspace") as prepare:
+                with self.assertRaisesRegex(SystemExit, "before inference"):
+                    bench.main()
+            run.assert_called_once()
+            self.assertEqual(run.call_args.args[0], ["/fixture/host", "--check-isolation"])
+            sampler.assert_not_called()
+            stop.assert_not_called()
+            prepare.assert_not_called()
+            self.assertFalse((root / "evidence").exists())
+            self.assertFalse((root / "workspace").exists())

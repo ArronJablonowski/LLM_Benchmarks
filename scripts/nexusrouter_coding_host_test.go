@@ -8,8 +8,10 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ArronJablonowski/DarwinRouter/providers"
 	sdk "github.com/ArronJablonowski/DarwinRouter/sdk/v1"
@@ -187,6 +189,7 @@ func TestCodingCommandOutputDistinguishesEmptyDiscoveryFromPassingTests(t *testi
 }
 
 func TestCodingCommandSQLiteTemporaryDatabase(t *testing.T) {
+	requireCodingIsolation(t)
 	root := t.TempDir()
 	home := filepath.Join(filepath.Dir(root), ".benchmark-home", filepath.Base(root))
 	cmd, err := codingCommand(context.Background(), root, home, `python3 -c 'import tempfile, sqlite3; f=tempfile.NamedTemporaryFile(); c=sqlite3.connect(f.name); c.execute("create table t(x)"); c.execute("insert into t values (42)"); c.commit(); assert c.execute("select x from t").fetchone()==(42,)'`)
@@ -199,6 +202,7 @@ func TestCodingCommandSQLiteTemporaryDatabase(t *testing.T) {
 }
 
 func TestCodingCommandHeredocInIsolatedScratchHome(t *testing.T) {
+	requireCodingIsolation(t)
 	root := t.TempDir()
 	home := filepath.Join(filepath.Dir(root), ".benchmark-home", filepath.Base(root))
 	cmd, err := codingCommand(context.Background(), root, home, "python3 - <<'PY'\nprint('heredoc-ok')\nPY")
@@ -222,6 +226,163 @@ func TestCodingEstimatorOptInValidation(t *testing.T) {
 			}
 			if factory, err := codingEstimatorFactory(p); err == nil || factory != nil {
 				t.Fatal("invalid opt-in accepted")
+			}
+		})
+	}
+}
+
+// Capability skips are explicit gaps, never successful Linux isolation evidence.
+func requireCodingIsolation(t *testing.T) {
+	t.Helper()
+	if err := codingIsolationCheck(t.TempDir()); err != nil {
+		t.Skipf("isolation execution unavailable (not qualified): %v", err)
+	}
+}
+func TestLinuxCodingIsolationFailsClosedOrQualifies(t *testing.T) {
+	if goruntime.GOOS != "linux" {
+		t.Skip("Linux policy probe")
+	}
+	err := codingIsolationCheck(t.TempDir())
+	if err != nil {
+		if !strings.Contains(err.Error(), "isolation") {
+			t.Fatal(err)
+		}
+		t.Logf("FAIL-CLOSED: Linux execution NOT qualified: %v", err)
+	} else {
+		t.Log("Linux execution preflight available; adversarial tests still required")
+	}
+}
+func TestCodingOutputBufferIsBounded(t *testing.T) {
+	var tail codingTail
+	tail.Write([]byte(strings.Repeat("a", outputLimit*3)))
+	tail.Write([]byte("END"))
+	if len(tail.body) != outputLimit || !strings.HasSuffix(string(tail.body), "END") {
+		t.Fatal("unbounded or incorrect output tail")
+	}
+}
+func TestLinuxCodingRuntimePlanAndEnvironment(t *testing.T) {
+	if goruntime.GOOS != "linux" {
+		t.Skip("Linux runtime plan")
+	}
+	root := t.TempDir()
+	home := t.TempDir()
+	t.Setenv("LD_PRELOAD", "/private/malicious.so")
+	t.Setenv("SECRET_TOKEN", "sensitive")
+	cmd, err := codingCommand(context.Background(), root, home, "true")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		for _, f := range cmd.files {
+			f.Close()
+		}
+	}()
+	args := strings.Join(cmd.Args, " ")
+	for _, flag := range []string{"--unshare-all", "--unshare-user", "--disable-userns", "--assert-userns-disabled", "--cap-drop ALL", "--clearenv", "--remount-ro /", "--bind-fd", "--ro-bind-fd"} {
+		if !strings.Contains(args, flag) {
+			t.Fatal("missing isolation control", flag)
+		}
+	}
+	for _, bad := range []string{"--share-net", "--ro-bind / /", "--bind / /", "sensitive", "malicious.so", "--dev-bind"} {
+		if strings.Contains(args, bad) {
+			t.Fatal("unsafe runtime plan", bad)
+		}
+	}
+	if strings.Contains(strings.Join(cmd.Env, " "), "SECRET") || len(cmd.ExtraFiles) < 2 {
+		t.Fatal("unsafe environment or unpinned workspace")
+	}
+}
+func TestLinuxCodingAdversarialBoundaries(t *testing.T) {
+	if goruntime.GOOS != "linux" {
+		t.Skip("Linux isolation")
+	}
+	requireCodingIsolation(t)
+	base := t.TempDir()
+	root := filepath.Join(base, "workspace")
+	home := filepath.Join(base, "scratch")
+	os.Mkdir(root, 0700)
+	outside := filepath.Join(base, "solution")
+	os.WriteFile(outside, []byte("other-task-secret"), 0600)
+	os.Symlink(outside, filepath.Join(root, "escape"))
+	t.Setenv("SECRET_TOKEN", "credential-value")
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("host network escaped") }))
+	defer server.Close()
+	for _, command := range []string{
+		"cat " + outside, "printf changed > " + outside, "cat escape", "printf changed > escape", "cat /etc/passwd", "cat /home/arron_spark/.ssh/id_ed25519", "ls /run/user",
+		`python3 -c 'import urllib.request; urllib.request.urlopen("` + server.URL + `", timeout=.3)'`,
+		`python3 -c 'import socket; s=socket.socket(socket.AF_UNIX); s.connect("/run/systemd/private")'`,
+		`python3 -c 'import os; assert os.environ.get("SECRET_TOKEN") is not None'`,
+		`python3 -c 'import os; os.open("/proc/1/root/etc/passwd", os.O_RDONLY)'`,
+		`python3 -c 'import os; fds=[n for n in os.listdir("/proc/self/fd") if int(n)>2]; assert any(os.path.exists("/proc/self/fd/"+n+"/../solution") for n in fds)'`,
+	} {
+		cmd, err := codingCommand(context.Background(), root, home, command)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out, err := cmd.CombinedOutput()
+		if err == nil || strings.Contains(string(out), "other-task-secret") {
+			t.Fatal("escape succeeded", command, string(out))
+		}
+	}
+	b, err := os.ReadFile(outside)
+	if err != nil || string(b) != "other-task-secret" {
+		t.Fatal("outside modified")
+	}
+	sub := filepath.Join(root, "sub")
+	os.Mkdir(sub, 0700)
+	cmd, err := codingCommand(context.Background(), root, home, "pwd; printf edited > result")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd.Dir = sub
+	if out, err := cmd.CombinedOutput(); err != nil || !strings.Contains(string(out), sub) {
+		t.Fatal("subdirectory failed", string(out), err)
+	}
+	if b, err := os.ReadFile(filepath.Join(sub, "result")); err != nil || string(b) != "edited" {
+		t.Fatal("edit not observed", err)
+	}
+}
+func TestLinuxCodingBackgroundCleanup(t *testing.T) {
+	if goruntime.GOOS != "linux" {
+		t.Skip("Linux PID namespace")
+	}
+	requireCodingIsolation(t)
+	for _, timeout := range []bool{false, true} {
+		t.Run(fmt.Sprint(timeout), func(t *testing.T) {
+			root, home := t.TempDir(), t.TempDir()
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			command := `python3 - <<'PY'
+import subprocess, time
+subprocess.Popen(['python3','-c',"import time; time.sleep(1.5); open('leaked-child','w').write('bad')"], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+open('child-started','w').write('yes')
+` + map[bool]string{false: "", true: "time.sleep(30)\n"}[timeout] + "PY"
+			cmd, err := codingCommand(ctx, root, home, command)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if timeout {
+				go func() {
+					for i := 0; i < 100; i++ {
+						if _, e := os.Stat(filepath.Join(root, "child-started")); e == nil {
+							cancel()
+							return
+						}
+						time.Sleep(20 * time.Millisecond)
+					}
+					cancel()
+				}()
+			}
+			_, err = cmd.CombinedOutput()
+			if (err != nil) != timeout {
+				t.Fatal("unexpected command result", err)
+			}
+			if _, err := os.Stat(filepath.Join(root, "child-started")); err != nil {
+				t.Fatal("child was never launched")
+			}
+			time.Sleep(2 * time.Second)
+			if _, err := os.Stat(filepath.Join(root, "leaked-child")); !os.IsNotExist(err) {
+				t.Fatal("background child survived", err)
 			}
 		})
 	}

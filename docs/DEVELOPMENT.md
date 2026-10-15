@@ -31,3 +31,5 @@ python -m black --check path/to/new_or_refactored_module.py
 Do not run benchmark commands as part of these checks.  Real benchmark
 execution is opt-in and requires `--run`; see the root README for the runner
 CLI contracts and campaign safety rules.
+
+Native coding command isolation and Linux qualification: see [NATIVE_CODING_ISOLATION.md](NATIVE_CODING_ISOLATION.md).

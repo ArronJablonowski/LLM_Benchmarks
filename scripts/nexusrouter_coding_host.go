@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -15,9 +16,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	goruntime "runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -32,6 +35,7 @@ import (
 const outputLimit = 64 << 10
 
 func main() {
+	preflight := flag.Bool("check-isolation", false, "verify command isolation without model inference")
 	config := flag.String("config", "", "NexusRouter configuration")
 	database := flag.String("database", "", "campaign telemetry database")
 	workspace := flag.String("workspace", "", "absolute isolated workspace")
@@ -42,6 +46,20 @@ func main() {
 	maxTurns := flag.Int("max-turns", 96, "maximum coding-agent turns")
 	finalize := flag.Bool("finalize", false, "record a short completed-task result without coding tools")
 	flag.Parse()
+	if *preflight {
+		root, err := os.MkdirTemp("", "coding-isolation-probe-")
+		if err != nil {
+			fatal(err)
+		}
+		defer os.RemoveAll(root)
+		err = codingIsolationCheck(root)
+		_ = os.RemoveAll(root)
+		if err != nil {
+			fatal(err)
+		}
+		fmt.Println("coding command isolation available")
+		return
+	}
 	if *contextTokens < 0 || int64(*contextTokens) > providers.MaxOutputTokens {
 		fatal(errors.New("invalid context token budget"))
 	}
@@ -57,6 +75,11 @@ func main() {
 		fatal(err)
 	}
 	defer workspaceFS.Close()
+	if !*finalize {
+		if err := codingIsolationCheck(root); err != nil {
+			fatal(err)
+		}
+	}
 	// A recovered fixture is renamed and replaced at the same path. Include its
 	// filesystem identity so an interrupted prior attempt cannot block the new
 	// fixture, while retries against the same directory retain their lease scope.
@@ -384,8 +407,17 @@ func codingCommandOutput(body []byte, err error) string {
 }
 
 // codingCommand enforces the same workspace boundary for shell subprocesses
-// as the file tools. This macOS host deliberately has no unsandboxed fallback.
-func codingCommand(ctx context.Context, root, home, command string) (*exec.Cmd, error) {
+// as the file tools. Neither platform has an unsandboxed fallback.
+func codingCommand(ctx context.Context, root, home, command string) (*codingProcess, error) {
+	if goruntime.GOOS == "linux" {
+		return linuxCodingCommand(ctx, root, home, command)
+	}
+	if goruntime.GOOS != "darwin" {
+		return nil, errors.New("coding command isolation unsupported on this platform")
+	}
+	return macCodingCommand(ctx, root, home, command)
+}
+func macCodingCommand(ctx context.Context, root, home, command string) (*codingProcess, error) {
 	if _, err := os.Stat("/usr/bin/sandbox-exec"); err != nil {
 		return nil, errors.New("coding command isolation requires macOS sandbox-exec")
 	}
@@ -429,7 +461,7 @@ func codingCommand(ctx context.Context, root, home, command string) (*exec.Cmd, 
 	cmd.WaitDelay = 2 * time.Second
 	// Preserve tool discovery, not ambient credentials or shell startup hooks.
 	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + home, "TMPDIR=" + filepath.Join(home, "tmp"), "TMPPREFIX=" + filepath.Join(home, "tmp", "zsh"), "LANG=en_US.UTF-8", "PYTHONDONTWRITEBYTECODE=1"}
-	return cmd, nil
+	return &codingProcess{Cmd: cmd}, nil
 }
 
 // Explicit opt-in file contains accepted identity and verified asset paths.
@@ -466,4 +498,254 @@ func codingEstimatorFactory(path string) (sdk.ContextEstimatorFactory, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	return musecounter.NewFactory(ctx, cfg.Identity, cfg.TokenizerPath, cfg.ConfigPath)
+}
+
+// codingProcess owns pinned bind descriptors and a bounded combined-output tail.
+// The whole process group is cleaned on success too, not only on cancellation.
+type codingProcess struct {
+	*exec.Cmd
+	files []*os.File
+}
+type codingTail struct {
+	mu   sync.Mutex
+	body []byte
+}
+
+func (w *codingTail) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	n := len(p)
+	if len(p) >= outputLimit {
+		w.body = append(w.body[:0], p[len(p)-outputLimit:]...)
+	} else {
+		if len(w.body)+len(p) > outputLimit {
+			w.body = w.body[len(w.body)+len(p)-outputLimit:]
+		}
+		w.body = append(w.body, p...)
+	}
+	return n, nil
+}
+func (p *codingProcess) CombinedOutput() ([]byte, error) {
+	defer func() {
+		for _, f := range p.files {
+			_ = f.Close()
+		}
+	}()
+	var tail codingTail
+	p.Stdout = &tail
+	p.Stderr = &tail
+	err := p.Run()
+	if p.Process != nil {
+		_ = syscall.Kill(-p.Process.Pid, syscall.SIGKILL)
+	}
+	return bytes.Clone(tail.body), err
+}
+
+func codingIsolationCheck(root string) error {
+	home, err := os.MkdirTemp("", "coding-private-home-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(home)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	// This is deliberately a real sandbox invocation, not presence of bwrap.
+	probe := `python3 - <<'PY'
+import os, sqlite3, tempfile, socket, sys
+if sys.platform == 'linux': assert not os.path.exists('/etc/passwd') and not os.path.exists('/run')
+with tempfile.NamedTemporaryFile() as f:
+ c=sqlite3.connect(f.name); c.execute('create table t(x)'); c.close()
+s=socket.socket();s.settimeout(.1)
+try:
+ s.connect(('127.0.0.1', 9));raise RuntimeError('network unexpectedly reachable')
+except OSError:pass
+print('isolation-probe-ok')
+PY`
+	if goruntime.GOOS == "linux" {
+		for _, ns := range []string{"user", "mnt", "pid", "net", "ipc", "uts"} {
+			path := "/proc/self/ns/" + ns
+			original, e := os.Readlink(path)
+			if e != nil {
+				return errors.New("cannot inspect host isolation namespaces")
+			}
+			check := "assert os.readlink(" + strconv.Quote(path) + ") != " + strconv.Quote(original) + "\n"
+			probe = strings.Replace(probe, "print('isolation-probe-ok')", check+"print('isolation-probe-ok')", 1)
+		}
+	}
+	cmd, err := codingCommand(ctx, root, home, probe)
+	if err != nil {
+		return err
+	}
+	out, err := cmd.CombinedOutput()
+	if err != nil || !strings.Contains(string(out), "isolation-probe-ok") {
+		return fmt.Errorf("coding command isolation unavailable; no model inference permitted: %v: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// linuxCodingCommand exposes a fresh mount/PID/user/network/IPC/UTS namespace.
+// Only pinned workspace/scratch descriptors are writable host mounts. Runtime
+// files are read-only; there is no host root, home, /run, or host /proc mount.
+func linuxCodingCommand(ctx context.Context, root, home, command string) (result *codingProcess, err error) {
+	if _, err = os.Stat("/usr/bin/bwrap"); err != nil {
+		return nil, errors.New("Linux coding isolation requires /usr/bin/bwrap with working user, mount, PID and network namespaces")
+	}
+	root, err = filepath.EvalSymlinks(root)
+	if err != nil {
+		return nil, err
+	}
+	if !filepath.IsAbs(root) || root == "/" {
+		return nil, errors.New("invalid coding workspace")
+	}
+	if err = os.MkdirAll(home, 0700); err != nil {
+		return nil, err
+	}
+	home, err = filepath.EvalSymlinks(home)
+	if err != nil {
+		return nil, err
+	}
+	for _, pair := range [][2]string{{root, home}, {home, root}} {
+		rel, e := filepath.Rel(pair[0], pair[1])
+		if e != nil || rel == "." || rel != ".." && !strings.HasPrefix(rel, "../") {
+			return nil, errors.New("workspace and private scratch must be disjoint")
+		}
+	}
+	h, err := os.OpenRoot(home)
+	if err != nil {
+		return nil, err
+	}
+	err = h.MkdirAll("tmp", 0700)
+	h.Close()
+	if err != nil {
+		return nil, err
+	}
+	result = &codingProcess{}
+	owner := result
+	defer func() {
+		if err != nil {
+			for _, f := range owner.files {
+				f.Close()
+			}
+		}
+	}()
+	args := []string{"--unshare-all", "--unshare-user", "--die-with-parent", "--new-session", "--disable-userns", "--assert-userns-disabled", "--cap-drop", "ALL", "--clearenv", "--tmpfs", "/", "--proc", "/proc", "--dev", "/dev"}
+	// Stable descriptor mounts prevent source path/symlink replacement races.
+	pin := func(path, dest string, writable bool) error {
+		f, e := os.Open(path)
+		if e != nil {
+			return e
+		}
+		st, e := f.Stat()
+		if e != nil {
+			f.Close()
+			return e
+		}
+		if !writable {
+			v, ok := st.Sys().(*syscall.Stat_t)
+			if !ok || v.Uid != 0 || st.Mode().Perm()&0022 != 0 {
+				f.Close()
+				return errors.New("runtime path is not root-owned and protected")
+			}
+		}
+		result.files = append(result.files, f)
+		flag := "--ro-bind-fd"
+		if writable {
+			flag = "--bind-fd"
+		}
+		args = append(args, flag, strconv.Itoa(2+len(result.files)), dest)
+		return nil
+	}
+	if err = pin(root, root, true); err != nil {
+		return nil, err
+	}
+	if err = pin(home, home, true); err != nil {
+		return nil, err
+	}
+	// Fixed system command allowlist; never inspect workspace-controlled executables
+	// with ldd. No PATH, loader, Python, proxy, token or shell-hook env is inherited.
+	commands := []string{"sh", "bash", "python3", "sqlite3", "cat", "ls", "find", "grep", "sed", "head", "tail", "wc", "sort", "uniq", "cut", "tr", "env", "mkdir", "rmdir", "rm", "cp", "mv", "ln", "touch", "sleep", "timeout", "patch", "diff", "true", "false"}
+	runtimeFiles := map[string]bool{}
+	var addDependencies func(string) error
+	addDependencies = func(path string) error {
+		if runtimeFiles[path] {
+			return nil
+		}
+		runtimeFiles[path] = true
+		canonical, e := filepath.EvalSymlinks(path)
+		if e != nil {
+			return e
+		}
+		if !strings.HasPrefix(canonical, "/usr/") && !strings.HasPrefix(canonical, "/lib/") && !strings.HasPrefix(canonical, "/lib64/") {
+			return errors.New("unsupported system runtime location")
+		}
+		if e = pin(canonical, path, false); e != nil {
+			return e
+		}
+		probe := exec.CommandContext(ctx, "/usr/bin/ldd", canonical)
+		probe.Env = []string{"PATH=/usr/bin:/bin", "LC_ALL=C"}
+		out, e := probe.CombinedOutput()
+		if e != nil {
+			return fmt.Errorf("cannot resolve runtime libraries for %s", path)
+		}
+		for _, line := range strings.Split(string(out), "\n") {
+			for _, field := range strings.Fields(line) {
+				if strings.HasPrefix(field, "/") {
+					if e = addDependencies(field); e != nil {
+						return e
+					}
+				}
+			}
+		}
+		return nil
+	}
+	for _, name := range commands {
+		if err = addDependencies("/usr/bin/" + name); err != nil {
+			return nil, err
+		}
+	}
+	// Isolated system Python supplies only its standard library, including sqlite3.
+	py := exec.CommandContext(ctx, "/usr/bin/python3", "-I", "-c", "import sysconfig; print(sysconfig.get_path('stdlib'))")
+	py.Env = []string{"PATH=/usr/bin:/bin", "LC_ALL=C"}
+	out, e := py.Output()
+	if e != nil {
+		return nil, errors.New("system Python standard library unavailable")
+	}
+	stdlib := strings.TrimSpace(string(out))
+	if !strings.HasPrefix(stdlib, "/usr/lib/python3.") || strings.ContainsAny(stdlib, "\n\r") {
+		return nil, errors.New("unsupported Python standard library")
+	}
+	if err = pin(stdlib, stdlib, false); err != nil {
+		return nil, err
+	}
+	extensions, e := filepath.Glob(filepath.Join(stdlib, "lib-dynload", "*.so"))
+	if e != nil {
+		return nil, e
+	}
+	for _, path := range extensions { // Directory already mounted: collect dependent shared libs only.
+		probe := exec.CommandContext(ctx, "/usr/bin/ldd", path)
+		probe.Env = []string{"PATH=/usr/bin:/bin", "LC_ALL=C"}
+		data, e := probe.CombinedOutput()
+		if e != nil {
+			return nil, errors.New("Python extension dependency unavailable")
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			for _, field := range strings.Fields(line) {
+				if strings.HasPrefix(field, "/") {
+					if err = addDependencies(field); err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
+	}
+	args = append(args, "--symlink", "usr/bin", "/bin", "--remount-ro", "/", "--setenv", "PATH", "/usr/bin:/bin", "--setenv", "HOME", home, "--setenv", "TMPDIR", filepath.Join(home, "tmp"), "--setenv", "LANG", "C.UTF-8", "--setenv", "PYTHONDONTWRITEBYTECODE", "1", "--setenv", "PYTHONNOUSERSITE", "1", "--", "/bin/bash", "--noprofile", "--norc", "-c", command)
+	cmd := exec.CommandContext(ctx, "/usr/bin/bwrap", args...)
+	cmd.Dir = root
+	cmd.ExtraFiles = result.files
+	cmd.Env = []string{"PATH=/usr/bin:/bin", "LC_ALL=C"}
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
+	cmd.WaitDelay = 2 * time.Second
+	result.Cmd = cmd
+	return result, nil
 }

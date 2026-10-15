@@ -99,6 +99,12 @@ def main():
         if wanted-{t["id"] for t in tasks}:raise SystemExit("unknown coding task")
     total=len(args.models)*len(tasks);print(f"Suite: coding (coding-agent-v2-web); harness: NexusRouter; observations: {total}",flush=True)
     if not args.run:return 0
+    try:
+        isolation = subprocess.run([str(args.host), '--check-isolation'], text=True, capture_output=True, timeout=30)
+    except subprocess.TimeoutExpired as exc:
+        raise SystemExit('Native coding isolation preflight timed out before inference') from exc
+    if isolation.returncode != 0:
+        raise SystemExit('Native coding isolation unavailable before inference: ' + isolation.stderr.strip())
     args.output_dir.mkdir(parents=True,exist_ok=True);args.workspace.mkdir(parents=True,exist_ok=True)
     database=(args.database or args.output_dir/"nexusrouter-coding.db").resolve()
     host_digest=hashlib.sha256(args.host.read_bytes()).hexdigest()
